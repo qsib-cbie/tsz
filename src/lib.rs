@@ -169,6 +169,8 @@ extern crate std;
 
 extern crate alloc;
 
+pub mod vlq;
+
 // A static variable to flag initialization once.
 static mut INITED: AtomicBool = AtomicBool::new(false);
 
