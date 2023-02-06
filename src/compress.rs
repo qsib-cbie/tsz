@@ -1,7 +1,28 @@
 use bitvec::prelude::*;
 
+///
+/// A `Compressor` instance holds the state of the compression process.
+/// 
+/// Implement the `Compress` trait for your data type. 
+/// Create a `Compressor` instance.
+/// Call `compress` for each row of data, handing off your `Compressor` instance.
+/// Call `finish` to get the compressed data.
+/// 
 pub struct Compressor<T: Compress> {
     pub output: BitVec,
+    pub row_n: Option<T>,
+    pub row_n1: Option<T>,
+}
+
+///
+/// A `Decompressor` instance holds the state of the decompression process.
+/// 
+/// Implement the `Decompress` trait for your data type.
+/// Create a `Decompressor` instance.
+/// Call `decompress` to iterate over the decompressed rows, handing off your `Decompressor` instance.
+/// 
+pub struct Decompressor<'de, T: Decompress> {
+    pub input: &'de BitSlice,
     pub row_n: Option<T>,
     pub row_n1: Option<T>,
 }
@@ -18,8 +39,21 @@ pub trait Compress: Copy + Sized {
     fn into_deltadelta(&self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta;
 }
 
+pub trait Decompress: Copy + Sized {
+    type Full: FromCompressBits;
+    type Delta: FromCompressBits;
+
+    fn from_full(bits: &BitSlice) -> Result<(Self, usize), &'static str>;
+    fn from_delta(bits: &BitSlice, prev_row: &Self) -> Result<(Self, usize), &'static str>;
+    fn from_deltadelta(bits: &BitSlice, prev_row: &Self, delta: Self::Delta) -> Result<(Self, usize), &'static str>;
+}
+
 pub trait IntoCompressBits: Sized {
     fn into_bits(&self, out: &mut BitVec);
+}
+
+pub trait FromCompressBits: Sized {
+    fn from_bits(input: &BitSlice) -> Self;
 }
 
 impl<T: Compress> Compressor<T> {
@@ -67,6 +101,62 @@ impl<T: Compress> Compressor<T> {
 
     pub fn finish(self) -> BitVec {
         self.output
+    }
+}
+
+impl <'de, T: Decompress> Decompressor<'de, T> {
+    pub fn new(input: &'de BitSlice) -> Self {
+        Self {
+            input,
+            row_n: None,
+            row_n1: None,
+        }
+    }
+
+    pub fn decompress(&mut self) -> Result<impl Iterator<Item = T>, &'static str> {
+        // The first row is represented as the each value
+        // Encoded to unsigned VLQ
+
+        let (row, read) = match T::from_full(self.input) {
+            Ok(row) => row,
+            Err(e) => return Err(e),
+        };
+        self.input = &self.input[read..];
+
+
+        //     let representation = T::Full::from_bits(&self.input);
+        //     let row = T::from_full(representation);
+
+        //     self.row_n = Some(row);
+
+        //     // todo emit this row
+            
+
+        //     return;
+        // };
+
+        // let Some(row_n1) = self.row_n1.take() else {
+        //     self.row_n1 = Some(row);
+            
+        //     // The second row is represented as the difference between the first row and the second row
+        //     // Encoded to Gorilla Delta-Delta Encoding
+        //     let representation = row.into_delta(&row_n);
+        //     representation.into_bits(&mut self.output);
+
+        //     return;
+        // };
+
+        // // Each subsequent row is represented as the deltadelta = (row - row_n1) - (row_n1 - row_n)
+        // // Encoded to Gorilla Delta-Delta Encoding
+        // let representation = row.into_deltadelta(&row_n, &row_n1);
+        // representation.into_bits(&mut self.output);
+
+        // // Move the rows along
+        
+        // self.row_n = Some(row_n1);
+        // self.row_n1 = Some(row);
+
+        Ok(None.into_iter())
     }
 }
 
@@ -175,6 +265,60 @@ mod tests {
             }
         }
 
+        // How to unmarshal a row from a bit slice
+        impl FromCompressBits for TestRow {
+            fn from_bits(input: &BitSlice) -> Self {
+                let (ts, ts_bits) = Uvlq::from_bits(input);
+                let (v8, v8_bits) = Uvlq::from_bits(&input[ts_bits..]);
+                let (v16, v16_bits) = Uvlq::from_bits(&input[ts_bits + v8_bits..]);
+                let (v32, v32_bits) = Uvlq::from_bits(&input[ts_bits + v8_bits + v16_bits..]);
+                let (v64, v64_bits) = Uvlq::from_bits(&input[ts_bits + v8_bits + v16_bits + v32_bits..]);
+                let (vi8, vi8_bits) = Svlq::from_bits(&input[ts_bits + v8_bits + v16_bits + v32_bits + v64_bits..]);
+                let (vi16, vi16_bits) = Svlq::from_bits(&input[ts_bits + v8_bits + v16_bits + v32_bits + v64_bits + vi8_bits..]);
+                let (vi32, vi32_bits) = Svlq::from_bits(&input[ts_bits + v8_bits + v16_bits + v32_bits + v64_bits + vi8_bits + vi16_bits..]);
+                let (vi64, vi64_bits) = Svlq::from_bits(&input[ts_bits + v8_bits + v16_bits + v32_bits + v64_bits + vi8_bits + vi16_bits + vi32_bits..]);
+
+                Self {
+                    ts: ts.into(),
+                    v8: v8.into(),
+                    v16: v16.into(),
+                    v32: v32.into(),
+                    v64: v64.into(),
+                    vi8: vi8.into(),
+                    vi16: vi16.into(),
+                    vi32: vi32.into(),
+                    vi64: vi64.into(),
+                }
+            }
+        }
+
+        // How to unmarshal a delta from a bit slice
+        impl FromCompressBits for TestRowDelta {
+            fn from_bits(input: &BitSlice) -> Self {
+                let (ts, ts_bits) = Svlq::from_bits(input);
+                let (v8, v8_bits) = Svlq::from_bits(&input[ts_bits..]);
+                let (v16, v16_bits) = Svlq::from_bits(&input[ts_bits + v8_bits..]);
+                let (v32, v32_bits) = Svlq::from_bits(&input[ts_bits + v8_bits + v16_bits..]);
+                let (v64, v64_bits) = Svlq::from_bits(&input[ts_bits + v8_bits + v16_bits + v32_bits..]);
+                let (vi8, vi8_bits) = Svlq::from_bits(&input[ts_bits + v8_bits + v16_bits + v32_bits + v64_bits..]);
+                let (vi16, vi16_bits) = Svlq::from_bits(&input[ts_bits + v8_bits + v16_bits + v32_bits + v64_bits + vi8_bits..]);
+                let (vi32, vi32_bits) = Svlq::from_bits(&input[ts_bits + v8_bits + v16_bits + v32_bits + v64_bits + vi8_bits + vi16_bits..]);
+                let (vi64, vi64_bits) = Svlq::from_bits(&input[ts_bits + v8_bits + v16_bits + v32_bits + v64_bits + vi8_bits + vi16_bits + vi32_bits..]);
+
+                Self {
+                    ts: ts.into(),
+                    v8: v8.into(),
+                    v16: v16.into(),
+                    v32: v32.into(),
+                    v64: v64.into(),
+                    vi8: vi8.into(),
+                    vi16: vi16.into(),
+                    vi32: vi32.into(),
+                    vi64: vi64.into(),
+                }
+            }
+        }
+
         // How to compute the representations for a series of rows
         impl Compress for TestRow {
             type Full = TestRow;
@@ -192,6 +336,24 @@ mod tests {
             fn into_deltadelta(&self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta {
                 (*self - *prev_row) - (*prev_row - *prev_prev_row)
             }
+        }
+
+        impl Decompress for TestRow {
+            type Full = TestRow;
+            type Delta = TestRowDelta;
+
+            fn from_full(bits: &BitSlice) -> Result<(Self, usize), &'static str> {
+                todo!()
+            }
+
+            fn from_delta(bits: &BitSlice, prev_row: &Self) -> Result<(Self, usize), &'static str> {
+                todo!()
+            }
+
+            fn from_deltadelta(bits: &BitSlice, prev_row: &Self, delta: Self::Delta) -> Result<(Self, usize), &'static str> {
+                todo!()
+            }
+
         }
 
         let mut compressor = Compressor::new();
@@ -214,6 +376,11 @@ mod tests {
 
         let encoded = compressor.finish();
         println!("{:?}", encoded);
+
+        let mut decompressor = Decompressor::<TestRow>::new(&encoded);
+        for (idx, row) in decompressor.decompress().unwrap().enumerate() {
+            println!("{:?}", row);
+        }
 
 
     }
