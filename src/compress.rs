@@ -1,4 +1,3 @@
-use crate::vlq::*;
 use bitvec::prelude::*;
 
 pub struct Compressor<T: Compress> {
@@ -74,6 +73,8 @@ impl<T: Compress> Compressor<T> {
 #[cfg(test)]
 mod tests {
     use core::ops::Sub;
+    use crate::uvlq::*;
+    use crate::svlq::*;
 
     use super::*;
 
@@ -87,10 +88,10 @@ mod tests {
             v16: u16,
             v32: u32,
             v64: u64,
-            // vi8: i8,
-            // vi16: i16,
-            // vi32: i32,
-            // vi64: i64,
+            vi8: i8,
+            vi16: i16,
+            vi32: i32,
+            vi64: i64,
         }
 
         // A row to capture the difference between two rows
@@ -100,10 +101,10 @@ mod tests {
             v16: i32,
             v32: i64,
             v64: i128,
-            // vi8: i16,
-            // vi16: i32,
-            // vi32: i64,
-            // vi64: i128,
+            vi8: i16,
+            vi16: i32,
+            vi32: i64,
+            vi64: i128,
         }
 
         // How to take the difference between two rows
@@ -117,10 +118,10 @@ mod tests {
                     v16: self.v16 as i32 - rhs.v16 as i32,
                     v32: self.v32 as i64 - rhs.v32 as i64,
                     v64: self.v64 as i128 - rhs.v64 as i128,
-                    // vi8: self.vi8 as i16 - rhs.vi8 as i16,
-                    // vi16: self.vi16 as i32 - rhs.vi16 as i32,
-                    // vi32: self.vi32 as i64 - rhs.vi32 as i64,
-                    // vi64: self.vi64 as i128 - rhs.vi64 as i128,
+                    vi8: self.vi8 as i16 - rhs.vi8 as i16,
+                    vi16: self.vi16 as i32 - rhs.vi16 as i32,
+                    vi32: self.vi32 as i64 - rhs.vi32 as i64,
+                    vi64: self.vi64 as i128 - rhs.vi64 as i128,
                 }
             }
         }
@@ -136,10 +137,10 @@ mod tests {
                     v16: self.v16 - rhs.v16,
                     v32: self.v32 - rhs.v32,
                     v64: self.v64 - rhs.v64,
-                    // vi8: self.vi8 - rhs.vi8,
-                    // vi16: self.vi16 - rhs.vi16,
-                    // vi32: self.vi32 - rhs.vi32,
-                    // vi64: self.vi64 - rhs.vi64,
+                    vi8: self.vi8 - rhs.vi8,
+                    vi16: self.vi16 - rhs.vi16,
+                    vi32: self.vi32 - rhs.vi32,
+                    vi64: self.vi64 - rhs.vi64,
                 }
             }
         }
@@ -152,25 +153,25 @@ mod tests {
                 out.extend(Uvlq::from(self.v16).bits);
                 out.extend(Uvlq::from(self.v32).bits);
                 out.extend(Uvlq::from(self.v64).bits);
-                // out.extend(Svlq::from(self.vi8).bits);
-                // out.extend(Svlq::from(self.vi16).bits);
-                // out.extend(Svlq::from(self.vi32).bits);
-                // out.extend(Svlq::from(self.vi64).bits);
+                out.extend(Svlq::from(self.vi8).bits);
+                out.extend(Svlq::from(self.vi16).bits);
+                out.extend(Svlq::from(self.vi32).bits);
+                out.extend(Svlq::from(self.vi64).bits);
             }
         }
 
         // How to bit pack a delta
         impl IntoCompressBits for TestRowDelta {
-            fn into_bits(&self, _out: &mut BitVec) {
-                // out.extend(Svlq::from(self.ts).bits);
-                // out.extend(Svlq::from(self.v8).bits);
-                // out.extend(Svlq::from(self.v16).bits);
-                // out.extend(Svlq::from(self.v32).bits);
-                // out.extend(Svlq::from(self.v64).bits);
-                // out.extend(Svlq::from(self.vi8).bits);
-                // out.extend(Svlq::from(self.vi16).bits);
-                // out.extend(Svlq::from(self.vi32).bits);
-                // out.extend(Svlq::from(self.vi64).bits);
+            fn into_bits(&self, out: &mut BitVec) {
+                out.extend(Svlq::from(self.ts).bits);
+                out.extend(Svlq::from(self.v8).bits);
+                out.extend(Svlq::from(self.v16).bits);
+                out.extend(Svlq::from(self.v32).bits);
+                out.extend(Svlq::from(self.v64).bits);
+                out.extend(Svlq::from(self.vi8).bits);
+                out.extend(Svlq::from(self.vi16).bits);
+                out.extend(Svlq::from(self.vi32).bits);
+                out.extend(Svlq::from(self.vi64).bits);
             }
         }
 
@@ -202,10 +203,10 @@ mod tests {
                 v16: i.try_into().unwrap(),
                 v32: i.try_into().unwrap(),
                 v64: i.try_into().unwrap(),
-                // vi8: 0,
-                // vi16: 0,
-                // vi32: 0,
-                // vi64: 0,
+                vi8: i.try_into().unwrap(),
+                vi16: i.try_into().unwrap(),
+                vi32: i.try_into().unwrap(),
+                vi64: i.try_into().unwrap(),
             };
             compressor.compress(row);
         }

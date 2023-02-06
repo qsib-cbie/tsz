@@ -8,7 +8,6 @@ pub struct Uvlq {
 }
 
 ///
-///
 /// Construct a Uvlq from an unsigned.
 /// Construct an unsigned from a Uvlq.
 ///
