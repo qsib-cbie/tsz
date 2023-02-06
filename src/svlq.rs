@@ -9,6 +9,11 @@ pub struct Svlq {
 }
 
 ///
+/// A reference to bits in an Svlq.
+///
+pub struct SvlqRef<'a>(pub(crate) &'a BitSlice);
+
+///
 /// Construct a Svlq from an signed.
 /// Construct an signed from a svlq.
 ///
@@ -82,10 +87,6 @@ macro_rules! impl_signed_svlq {
                 let mut negative = None;
                 let bits: usize = (Self::BITS - 1) as usize; // Signed bit in primitive can't be parsed from unsigned VLQ storage
                 for (vlq_idx, vlq_byte) in value.bits.chunks_exact(8).enumerate() {
-                    // #[cfg(test)]
-                    // {
-                    //     println!("out_idx: {:?} vlq_byte: {:?}", out_idx, vlq_byte);
-                    // }
                     let mut vlq_byte = &vlq_byte[..8];
                     let bits_to_read = if negative.is_none() {
                         if vlq_byte[0] {
@@ -101,19 +102,6 @@ macro_rules! impl_signed_svlq {
 
                     let extra_bits = if out_idx + bits_to_read > bits {
                         let mut extra = (out_idx + bits_to_read - bits) as usize;
-                        // #[cfg(test)]
-                        // {
-                        //     println!(
-                        //         "extra: {:?} overflow: {:?}",
-                        //         extra,
-                        //         vlq_byte
-                        //             .iter()
-                        //             .skip(1)
-                        //             .take(extra)
-                        //             .map(|b| *b)
-                        //             .collect::<Vec<_>>()
-                        //     );
-                        // }
 
                         // For signed VLQ, there is a special case for one more value in magnitude
                         // allowed, only when the value is negative. This is because the magnitude
@@ -135,13 +123,7 @@ macro_rules! impl_signed_svlq {
 
                     let mut val: Self = 0;
                     for bit in vlq_byte.iter().skip(1 + extra_bits) {
-                        // #[cfg(test)]
-                        // {
-                        //     println!("out_idx: {:?} val: {:b} bit: {:?}", out_idx, val, bit);
-                        // }
-
                         val <<= 1;
-
                         if *bit {
                             if out_idx >= bits {
                                 return Err(());
@@ -158,12 +140,6 @@ macro_rules! impl_signed_svlq {
                         out |= (val as u128) << shift;
                     }
                 }
-
-                // #[cfg(test)]
-                // {
-                //     println!("out: {:b}", out);
-                //     println!("negative: {:?}", negative);
-                // }
 
                 let out = if negative.unwrap_or(false) {
                     -(out as i128)
@@ -186,6 +162,101 @@ impl_signed_svlq!(i16);
 impl_signed_svlq!(i32);
 impl_signed_svlq!(i64);
 impl_signed_svlq!(i128);
+
+macro_rules! impl_signed_svlq_ref {
+    ($signed:ident) => {
+        impl TryFrom<SvlqRef<'_>> for ($signed, usize) {
+            type Error = ();
+
+            fn try_from(value: SvlqRef) -> Result<Self, Self::Error> {
+                let mut out: u128 = 0;
+                let mut out_idx = 0;
+                let mut negative = None;
+                let mut consumed = 0;
+                let bits: usize = ($signed::BITS - 1) as usize; // Signed bit in primitive can't be parsed from unsigned VLQ storage
+                for (vlq_idx, vlq_byte) in value.0.chunks_exact(8).enumerate() {
+                    consumed += 8;
+                    let mut vlq_byte = &vlq_byte[..8];
+                    let bits_to_read = if negative.is_none() {
+                        if vlq_byte[0] {
+                            negative = Some(true);
+                        } else {
+                            negative = Some(false);
+                        }
+                        vlq_byte = &vlq_byte[1..];
+                        6
+                    } else {
+                        7
+                    };
+
+                    let extra_bits = if out_idx + bits_to_read > bits {
+                        let mut extra = (out_idx + bits_to_read - bits) as usize;
+
+                        // For signed VLQ, there is a special case for one more value in magnitude
+                        // allowed, only when the value is negative. This is because the magnitude
+                        // is stored as the two's complement of the value, ie, [-128, 127]
+
+                        if negative.unwrap_or(false) {
+                            extra = max(extra as isize - 1, 0) as usize;
+                        }
+
+                        let overflow = vlq_byte.iter().skip(1).take(extra).any(|b| *b);
+                        if overflow {
+                            return Err(());
+                        }
+
+                        extra
+                    } else {
+                        0
+                    };
+
+                    let mut val: $signed = 0;
+                    for bit in vlq_byte.iter().skip(1 + extra_bits) {
+                        val <<= 1;
+                        if *bit {
+                            if out_idx >= bits {
+                                return Err(());
+                            }
+                            val |= 1;
+                        }
+                        out_idx += 1;
+                    }
+
+                    if vlq_idx == 0 {
+                        out = val as u128;
+                        if !vlq_byte[1] {
+                            break;
+                        }
+                    } else {
+                        let shift = (7 * (vlq_idx - 1)) + 6;
+                        out |= (val as u128) << shift;
+                        if !vlq_byte[0] {
+                            break;
+                        }
+                    }
+                }
+
+                let out = if negative.unwrap_or(false) {
+                    -(out as i128)
+                } else {
+                    out as i128
+                };
+
+                if out < $signed::MIN as i128 || out > $signed::MAX as i128 {
+                    return Err(());
+                }
+
+                Ok((out as $signed, consumed))
+            }
+        }
+    };
+}
+
+impl_signed_svlq_ref!(i8);
+impl_signed_svlq_ref!(i16);
+impl_signed_svlq_ref!(i32);
+impl_signed_svlq_ref!(i64);
+impl_signed_svlq_ref!(i128);
 
 #[cfg(test)]
 mod tests {

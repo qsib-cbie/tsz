@@ -8,6 +8,11 @@ pub struct Uvlq {
 }
 
 ///
+/// A reference to bits in a Uvlq.
+///
+pub struct UvlqRef<'a>(pub(crate) &'a BitSlice);
+
+///
 /// Construct a Uvlq from an unsigned.
 /// Construct an unsigned from a Uvlq.
 ///
@@ -53,18 +58,8 @@ macro_rules! impl_unsigned_uvlq {
                 let mut out: Self = 0;
                 let mut out_idx = 0;
                 for (vlq_idx, vlq_byte) in value.bits.chunks_exact(8).enumerate() {
-                    // #[cfg(test)]
-                    // {
-                    //     println!("out_idx: {:?} vlq_byte: {:?}", out_idx, vlq_byte);
-                    // }
-
                     let extra_bits = if out_idx + 7 > Self::BITS {
                         let extra = (out_idx + 7 - Self::BITS) as usize;
-                        // #[cfg(test)]
-                        // {
-                        //     println!("extra: {:?} overflow: {:?}", extra, vlq_byte.iter().skip(1).take(extra).map(|b| *b).collect::<Vec<_>>());
-                        // }
-
                         let overflow = vlq_byte.iter().skip(1).take(extra).any(|b| *b);
                         if overflow {
                             return Err(());
@@ -76,13 +71,7 @@ macro_rules! impl_unsigned_uvlq {
 
                     let mut val: Self = 0;
                     for bit in vlq_byte.iter().skip(1 + extra_bits) {
-                        // #[cfg(test)]
-                        // {
-                        //     println!("out_idx: {:?} val: {:b} bit: {:?}", out_idx, val, bit);
-                        // }
-
                         val <<= 1;
-
                         if *bit {
                             if out_idx >= Self::BITS {
                                 return Err(());
@@ -91,10 +80,63 @@ macro_rules! impl_unsigned_uvlq {
                         }
                         out_idx += 1;
                     }
-
                     out |= val << (7 * vlq_idx);
                 }
                 Ok(out)
+            }
+        }
+    };
+}
+
+macro_rules! impl_unsigned_uvlq_ref {
+    ($unsigned:ident) => {
+        impl TryFrom<UvlqRef<'_>> for ($unsigned, usize) {
+            type Error = ();
+
+            fn try_from(value: UvlqRef) -> Result<Self, Self::Error> {
+                let mut out: $unsigned = 0;
+                let mut out_idx = 0;
+                let mut consumed = 0;
+                for (vlq_idx, vlq_byte) in value.0.chunks_exact(8).enumerate() {
+                    #[cfg(test)]
+                    {
+                        println!("vlq: {:?}", vlq_byte);
+                    }
+                    consumed += 8;
+                    let extra_bits = if out_idx + 7 > $unsigned::BITS {
+                        let extra = (out_idx + 7 - $unsigned::BITS) as usize;
+                        let overflow = vlq_byte.iter().skip(1).take(extra).any(|b| *b);
+                        if overflow {
+                            return Err(());
+                        }
+                        extra
+                    } else {
+                        0
+                    };
+
+                    let mut val: $unsigned = 0;
+                    for bit in vlq_byte.iter().skip(1 + extra_bits) {
+                        val <<= 1;
+                        if *bit {
+                            if out_idx >= $unsigned::BITS {
+                                return Err(());
+                            }
+                            val |= 1;
+                        }
+                        out_idx += 1;
+                    }
+                    out |= val << (7 * vlq_idx);
+
+                    #[cfg(test)]
+                    {
+                        println!("vlq_byte[0]: {}", vlq_byte[0]);
+                    }
+
+                    if !vlq_byte[0] {
+                        break;
+                    }
+                }
+                Ok((out, consumed))
             }
         }
     };
@@ -104,6 +146,13 @@ impl_unsigned_uvlq!(u8);
 impl_unsigned_uvlq!(u16);
 impl_unsigned_uvlq!(u32);
 impl_unsigned_uvlq!(u64);
+impl_unsigned_uvlq!(u128);
+
+impl_unsigned_uvlq_ref!(u8);
+impl_unsigned_uvlq_ref!(u16);
+impl_unsigned_uvlq_ref!(u32);
+impl_unsigned_uvlq_ref!(u64);
+impl_unsigned_uvlq_ref!(u128);
 
 #[cfg(test)]
 mod tests {
