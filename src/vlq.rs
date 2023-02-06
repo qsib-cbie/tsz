@@ -3,8 +3,8 @@ use bitvec::prelude::*;
 ///
 /// An unsigned variable-length quantity.
 ///
-struct Uvlq {
-    bits: BitVec,
+pub struct Uvlq {
+    pub(crate) bits: BitVec,
 }
 
 ///
