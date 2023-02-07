@@ -170,6 +170,7 @@ extern crate std;
 extern crate alloc;
 
 pub mod compress;
+pub mod delta;
 pub mod svlq;
 pub mod uvlq;
 

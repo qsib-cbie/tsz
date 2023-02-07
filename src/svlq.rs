@@ -166,7 +166,7 @@ impl_signed_svlq!(i128);
 macro_rules! impl_signed_svlq_ref {
     ($signed:ident) => {
         impl TryFrom<SvlqRef<'_>> for ($signed, usize) {
-            type Error = ();
+            type Error = &'static str;
 
             fn try_from(value: SvlqRef) -> Result<Self, Self::Error> {
                 let mut out: u128 = 0;
@@ -202,7 +202,7 @@ macro_rules! impl_signed_svlq_ref {
 
                         let overflow = vlq_byte.iter().skip(1).take(extra).any(|b| *b);
                         if overflow {
-                            return Err(());
+                            return Err("Signed VLQ bit overflow");
                         }
 
                         extra
@@ -215,7 +215,7 @@ macro_rules! impl_signed_svlq_ref {
                         val <<= 1;
                         if *bit {
                             if out_idx >= bits {
-                                return Err(());
+                                return Err("Signed VLQ bit overflow");
                             }
                             val |= 1;
                         }
@@ -243,7 +243,7 @@ macro_rules! impl_signed_svlq_ref {
                 };
 
                 if out < $signed::MIN as i128 || out > $signed::MAX as i128 {
-                    return Err(());
+                    return Err("Signed VLQ value out of bit range");
                 }
 
                 Ok((out as $signed, consumed))

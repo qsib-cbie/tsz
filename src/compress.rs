@@ -51,7 +51,7 @@ pub trait IntoCompressBits: Sized {
 }
 
 pub trait FromCompressBits: Sized {
-    fn from_bits(input: &BitSlice) -> Result<(Self, &BitSlice), ()>;
+    fn from_bits(input: &BitSlice) -> Result<(Self, &BitSlice), &'static str>;
 }
 
 impl<T: Compress> Compressor<T> {
@@ -76,6 +76,7 @@ impl<T: Compress> Compressor<T> {
         };
 
         let Some(row_n1) = self.row_n1.take() else {
+            self.row_n =  Some(row_n);
             self.row_n1 = Some(row);
             
             // The second row is represented as the difference between the first row and the second row
@@ -118,7 +119,7 @@ impl <'de> Decompressor<'de> {
         #[cfg(test)]
         {
             println!("First row: {:?}", first_row);
-            println!("Trailing: {:?}", self.input);
+            // println!("Trailing: {:?}", self.input);
         }
 
         // The second row is represented as the difference between the first row and the second row
@@ -129,6 +130,7 @@ impl <'de> Decompressor<'de> {
         #[cfg(test)]
         {
             println!("Second row: {:?}", second_row);
+            // println!("Trailing: {:?}", self.input);
         }
         
         // Each subsequent row is represented as the deltadelta = (row - row_n1) - (row_n1 - row_n)
@@ -154,10 +156,14 @@ impl <'de> Decompressor<'de> {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use core::ops::Add;
     use core::ops::Sub;
+    use rand::Rng;
+
+    use crate::delta::*;
     use crate::uvlq::*;
     use crate::svlq::*;
 
@@ -180,6 +186,7 @@ mod tests {
         }
 
         // A row to capture the difference between two rows
+        #[derive(Debug, Copy, Clone)]
         struct TestRowDelta {
             ts: i128,
             v8: i16,
@@ -266,23 +273,39 @@ mod tests {
 
         // How to bit pack a delta
         impl IntoCompressBits for TestRowDelta {
-            fn into_bits(&self, _out: &mut BitVec) {
-                todo!()
-                // out.extend(Svlq::from(self.ts).bits);
-                // out.extend(Svlq::from(self.v8).bits);
-                // out.extend(Svlq::from(self.v16).bits);
-                // out.extend(Svlq::from(self.v32).bits);
-                // out.extend(Svlq::from(self.v64).bits);
-                // out.extend(Svlq::from(self.vi8).bits);
-                // out.extend(Svlq::from(self.vi16).bits);
-                // out.extend(Svlq::from(self.vi32).bits);
-                // out.extend(Svlq::from(self.vi64).bits);
+            fn into_bits(&self, out: &mut BitVec) {
+
+                if self.ts >= i64::MIN as i128 && self.ts <= i64::MAX as i128 {
+                    encode_delta_i64(self.ts as i64, out);
+                } else {
+                    unimplemented!()
+                }
+
+                encode_delta_i16(self.v8, out);
+                encode_delta_i32(self.v16 , out);
+                encode_delta_i64(self.v32 , out);
+
+                if self.v64 >= i128::MIN as i128 && self.v64 <= i128::MAX as i128 {
+                    encode_delta_i64(self.v64 as i64, out);
+                } else {
+                    unimplemented!()
+                }
+
+                encode_delta_i16(self.vi8, out);
+                encode_delta_i32(self.vi16 , out);
+                encode_delta_i64(self.vi32 , out);
+
+                if self.vi64 >= i64::MIN as i128 && self.vi64 <= i64::MAX as i128 {
+                    encode_delta_i64(self.vi64 as i64, out);
+                } else {
+                    unimplemented!()
+                }
             }
         }
 
         // How to unmarshal a row from a bit slice
         impl FromCompressBits for TestRow {
-            fn from_bits(input: &BitSlice) -> Result<(Self, &BitSlice), ()> {
+            fn from_bits(input: &BitSlice) -> Result<(Self, &BitSlice), &'static str> {
                 let (ts, ts_bits) = <(u64, usize)>::try_from(UvlqRef(input))?;
                 let input = &input[ts_bits..];
                 let (v8, v8_bits) = <(u8, usize)>::try_from(UvlqRef(input))?;
@@ -319,40 +342,53 @@ mod tests {
 
         // How to unmarshal a delta from a bit slice
         impl FromCompressBits for TestRowDelta {
-            fn from_bits(_input: &BitSlice) -> Result<(Self, &BitSlice), ()> {
-                todo!()
-                // let (ts, ts_bits) = <(i128, usize)>::try_from(SvlqRef(input)).unwrap();
-                // let input = &input[ts_bits..];
-                // let (v8, v8_bits) = <(i16, usize)>::try_from(SvlqRef(input)).unwrap();
-                // let input = &input[v8_bits..];
-                // let (v16, v16_bits) = <(i32, usize)>::try_from(SvlqRef(input)).unwrap();
-                // let input = &input[v16_bits..];
-                // let (v32, v32_bits) = <(i64, usize)>::try_from(SvlqRef(input)).unwrap();
-                // let input = &input[v32_bits..];
-                // let (v64, v64_bits) = <(i128, usize)>::try_from(SvlqRef(input)).unwrap();
-                // let input = &input[v64_bits..];
+            fn from_bits(input: &BitSlice) -> Result<(Self, &BitSlice), &'static str> {
+                let (ts, input) = decode_delta_i64(input)?;
+                let Some(input) = input else {
+                    return Err("Early EOF");
+                };
+                let (v8, input) = decode_delta_i16(input)?;
+                let Some(input) = input else {
+                    return Err("Early EOF");
+                };
+                let (v16, input) = decode_delta_i32(input)?;
+                let Some(input) = input else {
+                    return Err("Early EOF");
+                };
+                let (v32, input) = decode_delta_i64(input)?;
+                let Some(input) = input else {
+                    return Err("Early EOF");
+                };
+                let (v64, input) = decode_delta_i64(input)?;
+                let Some(input) = input else {
+                    return Err("Early EOF");
+                };
+                let (vi8, input) = decode_delta_i16(input)?;
+                let Some(input) = input else {
+                    return Err("Early EOF");
+                };
+                let (vi16, input) = decode_delta_i32(input)?;
+                let Some(input) = input else {
+                    return Err("Early EOF");
+                };
+                let (vi32, input) = decode_delta_i64(input)?;
+                let Some(input) = input else {
+                    return Err("Early EOF");
+                };
+                let (vi64, input) = decode_delta_i64(input)?;
+                let input = input.unwrap_or_default();
 
-                // let (vi8, vi8_bits) = <(i16, usize)>::try_from(SvlqRef(input)).unwrap();
-                // let input = &input[vi8_bits..];
-                // let (vi16, vi16_bits) = <(i32, usize)>::try_from(SvlqRef(input)).unwrap();
-                // let input = &input[vi16_bits..];
-                // let (vi32, vi32_bits) = <(i64, usize)>::try_from(SvlqRef(input)).unwrap();
-                // let input = &input[vi32_bits..];
-                // let (vi64, vi64_bits) = <(i128, usize)>::try_from(SvlqRef(input)).unwrap();
-                // let input = &input[vi64_bits..];
-
-
-                // Ok((Self {
-                //     ts,
-                //     v8,
-                //     v16,
-                //     v32,
-                //     v64,
-                //     vi8,
-                //     vi16,
-                //     vi32,
-                //     vi64,
-                // }, input))
+                Ok((Self {
+                    ts: ts as i128,
+                    v8,
+                    v16,
+                    v32,
+                    v64: v64 as i128,
+                    vi8,
+                    vi16,
+                    vi32,
+                    vi64: vi64 as i128,
+                }, input))
             }
         }
 
@@ -363,14 +399,18 @@ mod tests {
             type Delta = TestRowDelta;
 
             fn into_full(&self) -> Self::Full {
+                // println!("into_full({:?})", self);
                 *self
             }
 
             fn into_delta(&self, prev_row: &Self) -> Self::Delta {
-                *prev_row - *self
+                let r = *self - *prev_row;
+                // println!("into_delta: {:?} - {:?} = {:?}", prev_row, self, r);
+                r
             }
 
             fn into_deltadelta(&self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta {
+                // println!("into_deltadelta: {:?} - {:?} = {:?}",  (*self - *prev_row), (*prev_row - *prev_prev_row), (*self - *prev_row) - (*prev_row - *prev_prev_row));
                 (*self - *prev_row) - (*prev_row - *prev_prev_row)
             }
         }
@@ -398,18 +438,20 @@ mod tests {
 
         let mut compressor = Compressor::new();
 
-        for i in 0..2usize {
+        let mut j = 0; 
+        for i in 0..10usize {
             let row = TestRow {
-                ts: i.try_into().unwrap(),
-                v8: i.try_into().unwrap(),
-                v16: i.try_into().unwrap(),
-                v32: i.try_into().unwrap(),
-                v64: i.try_into().unwrap(),
-                vi8: i.try_into().unwrap(),
-                vi16: i.try_into().unwrap(),
-                vi32: i.try_into().unwrap(),
-                vi64: i.try_into().unwrap(),
+                ts: (j + i).try_into().unwrap(),
+                v8: (j + i).try_into().unwrap(),
+                v16: (j + i).try_into().unwrap(),
+                v32: (j + i).try_into().unwrap(),
+                v64: (j + i).try_into().unwrap(),
+                vi8: (j + i).try_into().unwrap(),
+                vi16: (j + i).try_into().unwrap(),
+                vi32: (j + i).try_into().unwrap(),
+                vi64: (j + i).try_into().unwrap(),
             };
+            j += i;
             println!("compressing row {:?}", row);
             compressor.compress(row);
         }

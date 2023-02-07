@@ -91,23 +91,19 @@ macro_rules! impl_unsigned_uvlq {
 macro_rules! impl_unsigned_uvlq_ref {
     ($unsigned:ident) => {
         impl TryFrom<UvlqRef<'_>> for ($unsigned, usize) {
-            type Error = ();
+            type Error = &'static str;
 
             fn try_from(value: UvlqRef) -> Result<Self, Self::Error> {
                 let mut out: $unsigned = 0;
                 let mut out_idx = 0;
                 let mut consumed = 0;
                 for (vlq_idx, vlq_byte) in value.0.chunks_exact(8).enumerate() {
-                    #[cfg(test)]
-                    {
-                        println!("vlq: {:?}", vlq_byte);
-                    }
                     consumed += 8;
                     let extra_bits = if out_idx + 7 > $unsigned::BITS {
                         let extra = (out_idx + 7 - $unsigned::BITS) as usize;
                         let overflow = vlq_byte.iter().skip(1).take(extra).any(|b| *b);
                         if overflow {
-                            return Err(());
+                            return Err("Unsigned VLQ bit overflow");
                         }
                         extra
                     } else {
@@ -119,18 +115,13 @@ macro_rules! impl_unsigned_uvlq_ref {
                         val <<= 1;
                         if *bit {
                             if out_idx >= $unsigned::BITS {
-                                return Err(());
+                                return Err("Unsigned VLQ bit overflow");
                             }
                             val |= 1;
                         }
                         out_idx += 1;
                     }
                     out |= val << (7 * vlq_idx);
-
-                    #[cfg(test)]
-                    {
-                        println!("vlq_byte[0]: {}", vlq_byte[0]);
-                    }
 
                     if !vlq_byte[0] {
                         break;
