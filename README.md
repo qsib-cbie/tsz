@@ -44,3 +44,27 @@ Compresses down by 3.2x in example here, extrapolating to 5.9x per 251 byte pack
 | 6 | 10 | 6 | 1 | 1 | 1 |
 
 See the docs for more info.
+
+## Benchmarks
+
+Initial benchmark results for compression on M1 Max Pro (not target platform)
+
+Consistent delta and delta-delta compresses faster than continuously changing data.
+
+19000 bytes per iteration yields between 173MiB/s to 960MiB/s on "good" hardware.
+
+```
+compress monotontic 500 time:   [109.46 µs 109.77 µs 110.06 µs]
+                        change: [-0.2060% +0.0239% +0.2984%] (p = 0.85 > 0.05)
+                        No change in performance detected.
+Found 18 outliers among 100 measurements (18.00%)
+  1 (1.00%) low mild
+  5 (5.00%) high mild
+  12 (12.00%) high severe
+
+compress linear 500     time:   [19.752 µs 19.791 µs 19.838 µs]
+                        change: [+0.0169% +0.2636% +0.4882%] (p = 0.03 < 0.05)
+                        Change within noise threshold.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high severe
+```

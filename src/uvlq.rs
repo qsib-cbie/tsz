@@ -4,13 +4,13 @@ use bitvec::prelude::*;
 /// An unsigned variable-length quantity.
 ///
 pub struct Uvlq {
-    pub(crate) bits: BitVec,
+    pub bits: BitVec,
 }
 
 ///
 /// A reference to bits in a Uvlq.
 ///
-pub struct UvlqRef<'a>(pub(crate) &'a BitSlice);
+pub struct UvlqRef<'a>(pub &'a BitSlice);
 
 ///
 /// Construct a Uvlq from an unsigned.

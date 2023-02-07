@@ -5,13 +5,13 @@ use core::cmp::max;
 /// An signed variable-length quantity.
 ///
 pub struct Svlq {
-    pub(crate) bits: BitVec,
+    pub bits: BitVec,
 }
 
 ///
 /// A reference to bits in an Svlq.
 ///
-pub struct SvlqRef<'a>(pub(crate) &'a BitSlice);
+pub struct SvlqRef<'a>(pub &'a BitSlice);
 
 ///
 /// Construct a Svlq from an signed.
