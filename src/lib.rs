@@ -174,6 +174,11 @@ pub mod delta;
 pub mod svlq;
 pub mod uvlq;
 
+pub mod prelude {
+    pub use crate::compress::*;
+    pub use bitvec::prelude as bv;
+}
+
 // A static variable to flag initialization once.
 static mut INITED: AtomicBool = AtomicBool::new(false);
 

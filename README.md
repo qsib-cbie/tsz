@@ -20,6 +20,64 @@ Periodic integral data, like those from embedded sensor data, that changes with 
 
 ❌ `tsz` is not designed to prioritize (de)compression rates over memory usage or compression ratio.
 
+## Interface
+
+With a macro (or manually), implement the 2 traits for compression `Compress` and `IntoCompressBits` and/or 2 traits for decompression `Decompress` and `FromCompressBits`.
+
+From the end-to-end tests using a procedural macro to generate the delta encoding match and trait implementations, we have a functional example
+
+```
+// Import proc_macros and trait definitions
+use tsz::prelude::*;
+
+// `Row` must be a `Copy` struct of integral primitives
+// `DeltaEncodable` generates a `RowDelta` struct to represent the difference between rows and how to add/subtract them
+// `Compressible` generates `Compress` and `IntoCompressBits` implementations for a `Row` and `RowDelta` struct
+// `Decompressible` generates `Decompress` and `FromCompressBits` implementations for a `Row` and `RowDelta` struct
+#[derive(Copy, Clone, DeltaEncodable, Compressible, Decompressible)]
+pub struct Row {
+    pub ts: i64,
+    pub val0: i8,
+    pub val1: i16,
+    pub val2: i32,
+    pub val3: i64,
+}
+
+// Create a compressor instance to hold compression state
+let mut c = Compressor::new();
+
+// Insert a bunch of rows
+let lower = -100000;
+let upper = 100000;
+for i in lower..upper {
+    let row = AnotherRow {
+        ts: i,
+        val0: i as i8,
+        val1: i as i16,
+        val2: i as i32,
+        val3: i as i64,
+    };
+    c.compress(row);
+}
+
+// Emit the final encoded bits
+let bits = c.finish();
+
+// Create a decompressor instance to hold decompression state
+let mut d = Decompressor::new(&bits);
+
+// Iterate through rows, decompressing each subsequent row on the Iterator::next call
+// All rows don't have to be read all at once, but typically are using the iterator pattern
+for (i, row) in d.decompress::<AnotherRow>().unwrap().enumerate() {
+    let i = i - lower as usize;
+    assert_eq!(row.ts, i as i64);
+    assert_eq!(row.val0, i as i8);
+    assert_eq!(row.val1, i as i16);
+    assert_eq!(row.val2, i as i32);
+    assert_eq!(row.val3, i as i64);
+}
+```
+
 
 ## Example
 

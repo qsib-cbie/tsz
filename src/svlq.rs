@@ -33,10 +33,10 @@ macro_rules! impl_signed_svlq {
                 let mut bits = BitVec::with_capacity(8);
                 let mut value = if value < 0 {
                     bits.push(true);
-                    -value
+                    -(value as i128) as u128
                 } else if value > 0 {
                     bits.push(false);
-                    value
+                    value as u128
                 } else {
                     for _ in 0..8 {
                         bits.push(false);
@@ -125,7 +125,7 @@ macro_rules! impl_signed_svlq {
                     for bit in vlq_byte.iter().skip(1 + extra_bits) {
                         val <<= 1;
                         if *bit {
-                            if out_idx >= bits {
+                            if out_idx > bits {
                                 return Err(());
                             }
                             val |= 1;
@@ -224,15 +224,12 @@ macro_rules! impl_signed_svlq_ref {
 
                     if vlq_idx == 0 {
                         out = val as u128;
-                        if !vlq_byte[1] {
-                            break;
-                        }
                     } else {
                         let shift = (7 * (vlq_idx - 1)) + 6;
                         out |= (val as u128) << shift;
-                        if !vlq_byte[0] {
-                            break;
-                        }
+                    }
+                    if !vlq_byte[0] {
+                        break;
                     }
                 }
 
@@ -260,6 +257,8 @@ impl_signed_svlq_ref!(i128);
 
 #[cfg(test)]
 mod tests {
+    use rand::Rng;
+
     #[test]
     fn can_encode_0() {
         let svlq = super::Svlq::from(0i8);
@@ -743,5 +742,97 @@ mod tests {
         let svlq = super::Svlq::from(us);
         let value = i64::try_from(svlq).unwrap();
         assert_eq!(value, us);
+    }
+
+    #[test]
+    fn can_convert_all_i8() {
+        for i in -128..=127 {
+            // println!("i: {}", i);
+            let svlq = super::Svlq::from(i);
+            let value = i8::try_from(svlq).unwrap();
+            assert_eq!(value, i);
+        }
+    }
+
+    #[test]
+    fn can_convert_all_i16() {
+        for i in -128..=127 {
+            // println!("i: {}", i);
+            let svlq = super::Svlq::from(i);
+            let value = i16::try_from(svlq).unwrap();
+            assert_eq!(value, i);
+        }
+
+        for i in -32768..=32767 {
+            // println!("i: {}", i);
+            let svlq = super::Svlq::from(i);
+            let value = i16::try_from(svlq).unwrap();
+            assert_eq!(value, i);
+        }
+    }
+
+    #[test]
+    fn can_convert_all_i32() {
+        for i in i8::MIN..=i8::MAX {
+            // println!("i: {}", i);
+            let svlq = super::Svlq::from(i);
+            let value = i32::try_from(svlq).unwrap();
+            assert_eq!(value, i as i32);
+        }
+
+        for i in i16::MIN..=i16::MAX {
+            // println!("i: {}", i);
+            let svlq = super::Svlq::from(i);
+            let value = i32::try_from(svlq).unwrap();
+            assert_eq!(value, i as i32);
+        }
+
+        // for i in i32::MIN..=i32::MAX {
+        //     if i % 1000000 == 0 {
+        //         println!("i: {}", i);
+        //     }
+        //     let svlq = super::Svlq::from(i);
+        //     let value = i32::try_from(svlq).unwrap();
+        //     assert_eq!(value, i as i32);
+        // }
+
+        let mut rng = rand::thread_rng();
+        for _ in 0..100000 {
+            let i = rng.gen_range(i32::MIN..=i32::MAX);
+            let svlq = super::Svlq::from(i);
+            let value = i32::try_from(svlq).unwrap();
+            assert_eq!(value, i as i32);
+        }
+    }
+
+    #[test]
+    fn can_convert_all_i64() {
+        for i in i8::MIN..=i8::MAX {
+            let svlq = super::Svlq::from(i);
+            let value = i64::try_from(svlq).unwrap();
+            assert_eq!(value, i as i64);
+        }
+
+        for i in i16::MIN..=i16::MAX {
+            let svlq = super::Svlq::from(i);
+            let value = i64::try_from(svlq).unwrap();
+            assert_eq!(value, i as i64);
+        }
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..100000 {
+            let i = rng.gen_range(i32::MIN..=i32::MAX);
+            let svlq = super::Svlq::from(i);
+            let value = i64::try_from(svlq).unwrap();
+            assert_eq!(value, i as i64);
+        }
+
+        for _ in 0..100000 {
+            let i = rng.gen_range(i64::MIN..=i64::MAX);
+            let svlq = super::Svlq::from(i);
+            let value = i64::try_from(svlq).unwrap();
+            assert_eq!(value, i as i64);
+        }
     }
 }

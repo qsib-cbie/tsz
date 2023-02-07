@@ -1,4 +1,5 @@
 use bitvec::prelude::*;
+pub use tsz_macro::*;
 
 ///
 /// A `Compressor` instance holds the state of the compression process.
@@ -110,29 +111,17 @@ impl <'de> Decompressor<'de> {
         }
     }
 
-    pub fn decompress<T: Decompress + core::fmt::Debug>(&mut self) -> Result<impl Iterator<Item = T>, &'static str> {
+    pub fn decompress<T: Decompress>(&mut self) -> Result<impl Iterator<Item = T>, &'static str> {
         // The first row is represented as the each value
         // Encoded to unsigned VLQ
         let (first_row, trailing) = T::from_full(self.input)?;
         self.input = trailing;
         
-        #[cfg(test)]
-        {
-            println!("First row: {:?}", first_row);
-            // println!("Trailing: {:?}", self.input);
-        }
-
         // The second row is represented as the difference between the first row and the second row
         // Encoded to Gorilla Delta-Delta Encoding
         let (second_row, trailing) = T::from_delta(self.input, &first_row)?;
         self.input = trailing;
 
-        #[cfg(test)]
-        {
-            println!("Second row: {:?}", second_row);
-            // println!("Trailing: {:?}", self.input);
-        }
-        
         // Each subsequent row is represented as the deltadelta = (row - row_n1) - (row_n1 - row_n)
         // Encoded to Gorilla Delta-Delta Encoding
         let mut t_prev_prev = first_row;
@@ -141,11 +130,6 @@ impl <'de> Decompressor<'de> {
             // Read the deltadelta, D, and reconstruct the row, t
             let (row, trailing) = T::from_deltadelta(self.input, &t_prev, &t_prev_prev)?;
             self.input = trailing;
-
-            #[cfg(test)]
-            {
-                println!("Row: {:?}", row);
-            }
 
             // Move the rows along
             t_prev_prev = t_prev;
@@ -275,31 +259,28 @@ mod tests {
         impl IntoCompressBits for TestRowDelta {
             fn into_bits(&self, out: &mut BitVec) {
 
-                if self.ts >= i64::MIN as i128 && self.ts <= i64::MAX as i128 {
-                    encode_delta_i64(self.ts as i64, out);
-                } else {
+                if self.ts < i64::MIN as i128 && self.ts > i64::MAX as i128 {
                     unimplemented!()
                 }
+                encode_delta_i64(self.ts as i64, out);
 
                 encode_delta_i16(self.v8, out);
                 encode_delta_i32(self.v16 , out);
                 encode_delta_i64(self.v32 , out);
 
-                if self.v64 >= i128::MIN as i128 && self.v64 <= i128::MAX as i128 {
-                    encode_delta_i64(self.v64 as i64, out);
-                } else {
+                if self.v64 < i128::MIN as i128 && self.v64 > i128::MAX as i128 {
                     unimplemented!()
                 }
+                encode_delta_i64(self.v64 as i64, out);
 
                 encode_delta_i16(self.vi8, out);
                 encode_delta_i32(self.vi16 , out);
                 encode_delta_i64(self.vi32 , out);
 
-                if self.vi64 >= i64::MIN as i128 && self.vi64 <= i64::MAX as i128 {
-                    encode_delta_i64(self.vi64 as i64, out);
-                } else {
+                if self.vi64 < i64::MIN as i128 && self.vi64 > i64::MAX as i128 {
                     unimplemented!()
                 }
+                encode_delta_i64(self.vi64 as i64, out);
             }
         }
 
@@ -438,20 +419,21 @@ mod tests {
 
         let mut compressor = Compressor::new();
 
-        let mut j = 0; 
-        for i in 0..10usize {
+        let lower = -32;
+        let j = 0; 
+        for i in lower..10isize {
             let row = TestRow {
-                ts: (j + i).try_into().unwrap(),
-                v8: (j + i).try_into().unwrap(),
-                v16: (j + i).try_into().unwrap(),
-                v32: (j + i).try_into().unwrap(),
-                v64: (j + i).try_into().unwrap(),
-                vi8: (j + i).try_into().unwrap(),
-                vi16: (j + i).try_into().unwrap(),
-                vi32: (j + i).try_into().unwrap(),
-                vi64: (j + i).try_into().unwrap(),
+                ts: (j + i - lower) as u64,
+                v8: (j + i - lower) as u8,
+                v16: (j + i - lower) as u16,
+                v32: (j + i - lower) as u32,
+                v64: (j + i - lower) as u64,
+                vi8: (j + i) as i8,
+                vi16: (j + i) as i16,
+                vi32: (j + i) as i32,
+                vi64: (j + i) as i64,
             };
-            j += i;
+            // j += i;
             println!("compressing row {:?}", row);
             compressor.compress(row);
         }
@@ -464,7 +446,6 @@ mod tests {
         for (idx, row) in decompressor.decompress::<TestRow>().unwrap().enumerate() {
             println!("{:?}: {:?}", idx, row);
         }
-
-
     }
+
 }

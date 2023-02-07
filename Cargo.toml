@@ -10,6 +10,7 @@ crate-type = ["rlib"]
 serde = { version = "1.0.152", default-features = false, features = ["derive", "alloc"] }
 serde_json = { version = "1.0.91", default-features = false, features = ["alloc"] }
 bitvec = { version = "1.0.1", default-features = false, features = ["alloc", "atomic"] }
+tsz_macro = { path = "./tsz_macro" }
 
 [dev-dependencies]
 criterion = "0.4.0"
@@ -18,3 +19,7 @@ rand = "0.8.5"
 [[bench]]
 name = "compression"
 harness = false
+
+[[bin]]
+name = "example"
+path = "bin/example.rs"

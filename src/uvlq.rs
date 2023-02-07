@@ -147,6 +147,8 @@ impl_unsigned_uvlq_ref!(u128);
 
 #[cfg(test)]
 mod tests {
+    use rand::Rng;
+
     #[test]
     fn can_encode_0() {
         let uvlq = super::Uvlq::from(0u32);
@@ -471,5 +473,89 @@ mod tests {
         let uvlq = super::Uvlq::from(us);
         let value = u64::try_from(uvlq).unwrap();
         assert_eq!(value, us);
+    }
+
+    #[test]
+    fn can_convert_all_u8() {
+        for i in u8::MIN..=u8::MAX {
+            // println!("i: {}", i);
+            let svlq = super::Uvlq::from(i);
+            let value = u8::try_from(svlq).unwrap();
+            assert_eq!(value, i);
+        }
+    }
+
+    #[test]
+    fn can_convert_all_u16() {
+        for i in u8::MIN..=u8::MAX {
+            // println!("i: {}", i);
+            let svlq = super::Uvlq::from(i);
+            let value = u16::try_from(svlq).unwrap();
+            assert_eq!(value, i as u16);
+        }
+
+        for i in u16::MIN..=u16::MAX {
+            // println!("i: {}", i);
+            let svlq = super::Uvlq::from(i);
+            let value = u16::try_from(svlq).unwrap();
+            assert_eq!(value, i);
+        }
+    }
+
+    #[test]
+    fn can_convert_all_u32() {
+        for i in u8::MIN..=u8::MAX {
+            // println!("i: {}", i);
+            let svlq = super::Uvlq::from(i);
+            let value = u32::try_from(svlq).unwrap();
+            assert_eq!(value, i as u32);
+        }
+
+        for i in u16::MIN..=u16::MAX {
+            // println!("i: {}", i);
+            let svlq = super::Uvlq::from(i);
+            let value = u32::try_from(svlq).unwrap();
+            assert_eq!(value, i as u32);
+        }
+
+        let mut rng = rand::thread_rng();
+        for _ in 0..100000 {
+            let i = rng.gen_range(u32::MIN..=u32::MAX);
+            let svlq = super::Uvlq::from(i);
+            let value = u32::try_from(svlq).unwrap();
+            assert_eq!(value, i as u32);
+        }
+    }
+
+    #[test]
+    fn can_convert_all_u64() {
+        for i in u8::MIN..=u8::MAX {
+            println!("i: {}", i);
+            let svlq = super::Uvlq::from(i);
+            let value = u64::try_from(svlq).unwrap();
+            assert_eq!(value, i as u64);
+        }
+
+        for i in u16::MIN..=u16::MAX {
+            println!("i: {}", i);
+            let svlq = super::Uvlq::from(i);
+            let value = u64::try_from(svlq).unwrap();
+            assert_eq!(value, i as u64);
+        }
+
+        let mut rng = rand::thread_rng();
+        for _ in 0..100000 {
+            let i = rng.gen_range(u32::MIN..=u32::MAX);
+            let svlq = super::Uvlq::from(i);
+            let value = u64::try_from(svlq).unwrap();
+            assert_eq!(value, i as u64);
+        }
+
+        for _ in 0..100000 {
+            let i = rng.gen_range(u64::MIN..=u64::MAX);
+            let svlq = super::Uvlq::from(i);
+            let value = u64::try_from(svlq).unwrap();
+            assert_eq!(value, i);
+        }
     }
 }

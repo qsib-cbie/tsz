@@ -561,6 +561,15 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
+ "tsz_macro",
+]
+
+[[package]]
+name = "tsz_macro"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]
