@@ -1,4 +1,4 @@
-![Rust](https://github.com/qsib-cbie/tsz/actions/workflows/rust.yml/badge.svg)
+![Rust](https://github.com/trueb2/tsz/actions/workflows/rust.yml/badge.svg)
 
 
 # tsz :: Compact Integral Time-Series Compression
