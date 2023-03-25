@@ -8,5 +8,5 @@ members = [
 version = "1.0.1"
 
 [workspace.dependencies]
-# tsz-macro = "1.0.0"
-tsz-macro = { path = "tsz-macro" }
+tsz-macro = "1.0.1"
+# tsz-macro = { path = "tsz-macro" }
