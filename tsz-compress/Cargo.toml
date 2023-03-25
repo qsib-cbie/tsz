@@ -8,6 +8,7 @@ description = "Delta-delta compression for time series data"
 license = "MIT OR Apache-2.0"
 categories = ["compression"]
 keywords = ["time-series", "delta", "compression", "Gorilla", "serde"]
+readme = "README.md"
 version = { workspace = true }
 
 [lib]
