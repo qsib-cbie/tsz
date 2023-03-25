@@ -105,6 +105,45 @@ Compresses down by 3.2x in example here, extrapolating to 5.9x per 251 byte pack
 
 See the docs for more info.
 
+### Best-case Compression Example
+
+For maximal compression ratio, an incrementing integer requires 1 bit per value to represent after the delta and delta-delta header. In this trivialized example, we have 63.999x compression at 1.5GBps.
+
+```rust
+use tsz_compress::prelude::*;
+
+#[derive(Clone, Copy, DeltaEncodable, Compressible, Decompressible)]
+struct Row {
+    a: i64,
+}
+
+fn main() {
+    let start = std::time::Instant::now();
+    let mut c = Compressor::new();
+    for i in 0..1000000000 {
+        let row = Row { a: i };
+        c.compress(row);
+    }
+
+    // Prints: 'compressed size: 125000002 bytes
+    println!("compressed size: {} bytes", c.len());
+    let bytes = c.finish();
+    // Prints: `5.232524s`
+    println!("{:?}", start.elapsed());
+
+    let mut d = Decompressor::new(&bytes);
+    d.decompress::<Row>()
+        .unwrap()
+        .enumerate()
+        .for_each(|(i, row)| {
+            assert_eq!(row.a, i as i64);
+        });
+
+    // Prints: `10.380991875s`
+    println!("{:?}", start.elapsed());
+}
+```
+
 ## Benchmarks
 
 Initial benchmark results for compression on M1 Max Pro (not target platform)
