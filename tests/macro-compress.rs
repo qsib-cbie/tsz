@@ -2,6 +2,8 @@ use tsz_compress::prelude::*;
 
 #[cfg(test)]
 mod tests {
+    use bitvec::prelude::BitVec;
+
     use super::*;
 
     #[test]
@@ -47,5 +49,37 @@ mod tests {
             assert_eq!(row.val2, i as i32);
             assert_eq!(row.val3, i as i64);
         }
+    }
+
+    #[test]
+    fn test_macro_hygiene() {
+        #[derive(Copy, Clone, Debug, DeltaEncodable, Compressible, Decompressible)]
+        pub struct ARow {
+            pub ts: i64,
+            pub val0: i8,
+            pub val1: i16,
+            pub val2: i32,
+            pub val3: i64,
+        }
+
+        let _ = Compressor::<ARow>::new();
+        let bits = BitVec::new();
+        let mut d = Decompressor::new(&bits);
+        let _ = d.decompress::<ARow>();
+
+        #[derive(Copy, Clone, Debug, DeltaEncodable, Compressible, Decompressible)]
+        pub struct BRow {
+            pub ts: i64,
+            pub val0: i8,
+            pub val1: i16,
+            pub val2: i32,
+            pub val3: i64,
+            pub val4: i128,
+        }
+
+        let _ = Compressor::<BRow>::new();
+        let bits = BitVec::new();
+        let mut d = Decompressor::new(&bits);
+        let _ = d.decompress::<BRow>();
     }
 }
