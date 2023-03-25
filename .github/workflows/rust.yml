@@ -11,13 +11,22 @@ env:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+   strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy
+    - name: Build no_std
+      run: cargo build --verbose --no-default-features
     - name: Build
       run: cargo build --verbose
+    - name: Build Release
+      run: cargo build --verbose --release
     - name: Run tests
       run: cargo test --verbose
     - name: Run tests (release)
