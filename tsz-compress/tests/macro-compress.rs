@@ -82,4 +82,22 @@ mod tests {
         let mut d = Decompressor::new(&bits);
         let _ = d.decompress::<BRow>();
     }
+
+    #[test]
+    fn test_size() {
+        #[derive(Clone, Copy, DeltaEncodable, Compressible, Decompressible)]
+        struct Row {
+            a: i64,
+        }
+
+        let mut c = Compressor::new();
+        for i in 0..10000 {
+            let row = Row { a: i };
+            c.compress(row);
+        }
+
+        // Expect a byte size for 1 bit for every 64 bits per value plus the header
+        assert!(!c.is_empty());
+        assert_eq!(c.len(), 2 + (10000 / (64 / 8)));
+    }
 }

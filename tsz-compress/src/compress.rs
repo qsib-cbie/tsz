@@ -131,7 +131,9 @@ impl<T: Compress> Compressor<T> {
     /// Check the number of bytes in the compressed data.
     ///
     pub fn len(&self) -> usize {
-        self.output.len()
+        // Round up to the nearest byte
+        let num_bits = self.output.len();
+        (num_bits + 7) / 8
     }
 
     ///
