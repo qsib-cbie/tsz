@@ -7,7 +7,7 @@
 
 A portable implementation for bit-packing and precise framing on space-constrained systems for periodic time-series integral data.
 
-Inspiration drawn from IC FIFO compression and Gorilla timestamp compression.
+Inspiration drawn from IC FIFO compression and Gorilla timestamp compression. https://www.vldb.org/pvldb/vol8/p1816-teller.pdf
 
 ## Pros and Cons
 
