@@ -6,7 +6,6 @@ use syn::{
     parse_macro_input, parse_quote, Token,
 };
 
-
 #[proc_macro_derive(DeltaEncodable)]
 pub fn derive_delta_encodable(item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as syn::DeriveInput);
@@ -86,7 +85,7 @@ pub fn derive_delta_encodable(item: TokenStream) -> TokenStream {
         .collect::<Vec<_>>();
 
     let field_types = fields.iter().map(|(_, ty)| ty).collect::<Vec<_>>();
- 
+
     quote! {
         #[derive(Clone, Copy, Debug)]
         pub struct #delta_ident {
@@ -271,7 +270,7 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
         // check if the field is in bounds of i64::MIN and i64::MAX for those fields
 
         let encode_fn_name = format_ident!("encode_delta_{}", encoded_field_ty.to_string().to_lowercase());
-        let field_ty_name =syn::parse2::<syn::Type>(field_ty.clone()).unwrap(); 
+        let field_ty_name =syn::parse2::<syn::Type>(field_ty.clone()).unwrap();
         match field_ty_name {
             syn::Type::Path(syn::TypePath { path, .. }) => {
                 let segment = path.segments.first().unwrap();
@@ -289,7 +288,7 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
                         quote! {
                             tsz_compress::delta::#encode_fn_name(self.#field_name, out);
                         }
-                    }                    
+                    }
                     _ => panic!("Unsupported type to delta encode/decode"),
                 }
             }
@@ -301,13 +300,13 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
     quote! {
 
         impl IntoCompressBits for #ident {
-            fn into_bits(self, out: &mut bv::BitVec) {
+            fn into_bits(self, out: &mut tsz_compress::prelude::BitBuffer) {
                 #( out.extend(#vlq_types::from(self.#delta_field_names).bits); )*
             }
         }
 
         impl IntoCompressBits for #delta_ident {
-            fn into_bits(self, out: &mut bv::BitVec) {
+            fn into_bits(self, out: &mut tsz_compress::prelude::BitBuffer) {
                 #(
                     #encode_delta_fn_calls
                 )*
@@ -443,7 +442,7 @@ pub fn derive_decompressible(item: TokenStream) -> TokenStream {
             // ty
         })
         .collect::<Vec<_>>();
-    
+
     // functions to call for the typ like, decode_delta_i8, decode_delta_i16, etc.
     let decode_delta_fns = delta_field_encoded_types
         .iter()
@@ -464,7 +463,6 @@ pub fn derive_decompressible(item: TokenStream) -> TokenStream {
                 }
                 _ => panic!("Unsupported type"),
             }
-
         })
         .collect::<Vec<_>>();
 
@@ -476,7 +474,10 @@ pub fn derive_decompressible(item: TokenStream) -> TokenStream {
     //     };
     // )*
 
-    let decode_delta_fn_calls = delta_field_names.iter().zip(decode_delta_fns.iter()).enumerate()
+    let decode_delta_fn_calls = delta_field_names
+        .iter()
+        .zip(decode_delta_fns.iter())
+        .enumerate()
         .map(|(idx, (field_name, fn_name))| {
             if idx != decode_delta_fns.len() - 1 {
                 quote! {
@@ -494,11 +495,10 @@ pub fn derive_decompressible(item: TokenStream) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-
     quote! {
         impl FromCompressBits for #ident {
-            fn from_bits(input: &bv::BitSlice) -> Result<(Self, &bv::BitSlice), &'static str> {
-                #( 
+            fn from_bits(input: &tsz_compress::prelude::BitBufferSlice) -> Result<(Self, &tsz_compress::prelude::BitBufferSlice), &'static str> {
+                #(
                     let (#delta_field_names, read) = <(#field_types, usize)>::try_from(#vlq_ref_types(input))?;
                     let input = &input[read..];
                 )*
@@ -510,7 +510,7 @@ pub fn derive_decompressible(item: TokenStream) -> TokenStream {
         }
 
         impl FromCompressBits for #delta_ident {
-            fn from_bits(input: &bv::BitSlice) -> Result<(Self, &bv::BitSlice), &'static str> {
+            fn from_bits(input: &tsz_compress::prelude::BitBufferSlice) -> Result<(Self, &tsz_compress::prelude::BitBufferSlice), &'static str> {
                 #(
                     #decode_delta_fn_calls
                 )*
@@ -520,24 +520,25 @@ pub fn derive_decompressible(item: TokenStream) -> TokenStream {
                 }, input))
             }
         }
-        
+
         impl Decompress for #ident {
             type Full = #ident;
             type Delta = #delta_ident;
 
-            fn from_full<'a>(bits: &'a bv::BitSlice) -> Result<(Self, &'a bv::BitSlice), &'static str> {
+            fn from_full<'a>(bits: &'a tsz_compress::prelude::BitBufferSlice) -> Result<(Self, &'a tsz_compress::prelude::BitBufferSlice), &'static str> {
                 #ident::from_bits(bits).map_err(|_| "failed to unmarshal full row")
             }
 
-            fn from_delta<'a>(bits: &'a bv::BitSlice, prev_row: &Self) -> Result<(Self, &'a bv::BitSlice), &'static str> {
+            fn from_delta<'a>(bits: &'a tsz_compress::prelude::BitBufferSlice, prev_row: &Self) -> Result<(Self, &'a tsz_compress::prelude::BitBufferSlice), &'static str> {
                 let delta = #delta_ident::from_bits(bits).map_err(|_| "failed to unmarshal delta row")?;
                 Ok((*prev_row + delta.0, delta.1))
             }
 
-            fn from_deltadelta<'a>(bits: &'a bv::BitSlice, prev_row: &Self, prev_prev_row: &Self) -> Result<(Self, &'a bv::BitSlice), &'static str> {
+            fn from_deltadelta<'a>(bits: &'a tsz_compress::prelude::BitBufferSlice, prev_row: &Self, prev_prev_row: &Self) -> Result<(Self, &'a tsz_compress::prelude::BitBufferSlice), &'static str> {
                 let deltadelta = #delta_ident::from_bits(bits).map_err(|_| "failed to unmarshal deltadelta row")?;
                 Ok((*prev_row + (*prev_row - *prev_prev_row) + deltadelta.0, deltadelta.1))
             }
         }
     }
-    .into()}
+    .into()
+}

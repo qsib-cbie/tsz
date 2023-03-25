@@ -565,29 +565,19 @@ dependencies = [
 
 [[package]]
 name = "tsz-compress"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "bitvec",
  "criterion",
  "rand",
  "serde",
  "serde_json",
- "tsz-macro 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tsz-macro",
 ]
 
 [[package]]
 name = "tsz-macro"
-version = "1.0.0"
-dependencies = [
- "quote",
- "syn 2.0.10",
-]
-
-[[package]]
-name = "tsz-macro"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d249695c33df11074b8ebbcb5071c05ea16fe2f2280cd679a1049ae521442d6"
+version = "1.0.1"
 dependencies = [
  "quote",
  "syn 2.0.10",

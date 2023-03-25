@@ -1,4 +1,3 @@
-use bitvec::prelude::*;
 use core::ops::Add;
 use core::ops::Sub;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
@@ -95,7 +94,7 @@ impl Sub for TestRowDelta {
 
 // How to bit pack a row
 impl IntoCompressBits for TestRow {
-    fn into_bits(self, out: &mut BitVec) {
+    fn into_bits(self, out: &mut BitBuffer) {
         out.extend(Uvlq::from(self.ts).bits);
         out.extend(Uvlq::from(self.v8).bits);
         out.extend(Uvlq::from(self.v16).bits);
@@ -110,7 +109,7 @@ impl IntoCompressBits for TestRow {
 
 // How to bit pack a delta
 impl IntoCompressBits for TestRowDelta {
-    fn into_bits(self, out: &mut BitVec) {
+    fn into_bits(self, out: &mut BitBuffer) {
         if self.ts >= i64::MIN as i128 && self.ts <= i64::MAX as i128 {
             encode_delta_i64(self.ts as i64, out);
         } else {
@@ -141,7 +140,7 @@ impl IntoCompressBits for TestRowDelta {
 
 // How to unmarshal a row from a bit slice
 impl FromCompressBits for TestRow {
-    fn from_bits(input: &BitSlice) -> Result<(Self, &BitSlice), &'static str> {
+    fn from_bits(input: &BitBufferSlice) -> Result<(Self, &BitBufferSlice), &'static str> {
         let (ts, ts_bits) = <(u64, usize)>::try_from(UvlqRef(input))?;
         let input = &input[ts_bits..];
         let (v8, v8_bits) = <(u8, usize)>::try_from(UvlqRef(input))?;
@@ -181,7 +180,7 @@ impl FromCompressBits for TestRow {
 
 // How to unmarshal a delta from a bit slice
 impl FromCompressBits for TestRowDelta {
-    fn from_bits(input: &BitSlice) -> Result<(Self, &BitSlice), &'static str> {
+    fn from_bits(input: &BitBufferSlice) -> Result<(Self, &BitBufferSlice), &'static str> {
         let (ts, input) = decode_delta_i64(input)?;
         let Some(input) = input else {
                     return Err("Early EOF");
@@ -261,23 +260,23 @@ impl Decompress for TestRow {
     type Full = TestRow;
     type Delta = TestRowDelta;
 
-    fn from_full<'a>(bits: &'a BitSlice) -> Result<(Self, &'a BitSlice), &'static str> {
+    fn from_full<'a>(bits: &'a BitBufferSlice) -> Result<(Self, &'a BitBufferSlice), &'static str> {
         TestRow::from_bits(bits).map_err(|_| "failed to unmarshal full row")
     }
 
     fn from_delta<'a>(
-        bits: &'a BitSlice,
+        bits: &'a BitBufferSlice,
         prev_row: &Self,
-    ) -> Result<(Self, &'a BitSlice), &'static str> {
+    ) -> Result<(Self, &'a BitBufferSlice), &'static str> {
         let delta = TestRowDelta::from_bits(bits).map_err(|_| "failed to unmarshal delta row")?;
         Ok((*prev_row + delta.0, delta.1))
     }
 
     fn from_deltadelta<'a>(
-        bits: &'a BitSlice,
+        bits: &'a BitBufferSlice,
         prev_row: &Self,
         prev_prev_row: &Self,
-    ) -> Result<(Self, &'a BitSlice), &'static str> {
+    ) -> Result<(Self, &'a BitBufferSlice), &'static str> {
         // t = D + (t_prev - t_prev_prev) + t_prev
         let deltadelta =
             TestRowDelta::from_bits(bits).map_err(|_| "failed to unmarshal deltadelta row")?;
@@ -288,7 +287,7 @@ impl Decompress for TestRow {
     }
 }
 
-fn compress(values: Vec<TestRow>) -> BitVec {
+fn compress(values: Vec<TestRow>) -> BitBuffer {
     let mut compressor = Compressor::new();
     values.into_iter().for_each(|row| compressor.compress(row));
     let compressed = compressor.finish();

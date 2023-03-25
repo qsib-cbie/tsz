@@ -1,17 +1,17 @@
-use bitvec::prelude::*;
+use crate::prelude::{BitBuffer, BitBufferSlice};
 use core::cmp::max;
 
 ///
 /// An signed variable-length quantity.
 ///
 pub struct Svlq {
-    pub bits: BitVec,
+    pub bits: BitBuffer,
 }
 
 ///
 /// A reference to bits in an Svlq.
 ///
-pub struct SvlqRef<'a>(pub &'a BitSlice);
+pub struct SvlqRef<'a>(pub &'a BitBufferSlice);
 
 ///
 /// Construct a Svlq from an signed.
@@ -30,7 +30,7 @@ macro_rules! impl_signed_svlq {
     ($signed:ident) => {
         impl From<$signed> for Svlq {
             fn from(value: $signed) -> Self {
-                let mut bits = BitVec::with_capacity(8);
+                let mut bits = BitBuffer::with_capacity(8);
                 let mut value = if value < 0 {
                     bits.push(true);
                     -(value as i128) as u128

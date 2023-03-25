@@ -1,16 +1,16 @@
-use bitvec::prelude::*;
+use crate::prelude::{BitBuffer, BitBufferSlice};
 
 ///
 /// An unsigned variable-length quantity.
 ///
 pub struct Uvlq {
-    pub bits: BitVec,
+    pub bits: BitBuffer,
 }
 
 ///
 /// A reference to bits in a Uvlq.
 ///
-pub struct UvlqRef<'a>(pub &'a BitSlice);
+pub struct UvlqRef<'a>(pub &'a BitBufferSlice);
 
 ///
 /// Construct a Uvlq from an unsigned.
@@ -28,7 +28,7 @@ macro_rules! impl_unsigned_uvlq {
     ($unsigned:ident) => {
         impl From<$unsigned> for Uvlq {
             fn from(value: $unsigned) -> Self {
-                let mut bits = BitVec::with_capacity(8);
+                let mut bits = BitBuffer::with_capacity(8);
                 let mut value = value;
                 while value > 0 {
                     let mut byte = (value & 0x7f) as u8;

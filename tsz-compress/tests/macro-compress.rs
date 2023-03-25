@@ -2,8 +2,6 @@ use tsz_compress::prelude::*;
 
 #[cfg(test)]
 mod tests {
-    use bitvec::prelude::BitVec;
-
     use super::*;
 
     #[test]
@@ -63,7 +61,7 @@ mod tests {
         }
 
         let _ = Compressor::<ARow>::new();
-        let bits = BitVec::new();
+        let bits = BitBuffer::new();
         let mut d = Decompressor::new(&bits);
         let _ = d.decompress::<ARow>();
 
@@ -78,7 +76,7 @@ mod tests {
         }
 
         let _ = Compressor::<BRow>::new();
-        let bits = BitVec::new();
+        let bits = BitBuffer::new();
         let mut d = Decompressor::new(&bits);
         let _ = d.decompress::<BRow>();
     }

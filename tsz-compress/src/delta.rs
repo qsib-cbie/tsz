@@ -1,6 +1,6 @@
-use bitvec::prelude::*;
+use crate::prelude::{BitBuffer, BitBufferSlice};
 
-pub fn encode_delta_i8(mut value: i8, out: &mut BitVec) {
+pub fn encode_delta_i8(mut value: i8, out: &mut BitBuffer) {
     if value == 0 {
         out.push(false);
         return;
@@ -45,7 +45,7 @@ pub fn encode_delta_i8(mut value: i8, out: &mut BitVec) {
     }
 }
 
-pub fn encode_delta_i16(mut value: i16, out: &mut BitVec) {
+pub fn encode_delta_i16(mut value: i16, out: &mut BitBuffer) {
     if value == 0 {
         out.push(false);
         return;
@@ -123,7 +123,7 @@ pub fn encode_delta_i16(mut value: i16, out: &mut BitVec) {
     }
 }
 
-pub fn encode_delta_i32(mut value: i32, out: &mut BitVec) {
+pub fn encode_delta_i32(mut value: i32, out: &mut BitBuffer) {
     if value == 0 {
         out.push(false);
         return;
@@ -211,7 +211,7 @@ pub fn encode_delta_i32(mut value: i32, out: &mut BitVec) {
     }
 }
 
-pub fn encode_delta_i64(mut value: i64, out: &mut BitVec) {
+pub fn encode_delta_i64(mut value: i64, out: &mut BitBuffer) {
     if value == 0 {
         out.push(false);
         return;
@@ -309,7 +309,9 @@ pub fn encode_delta_i64(mut value: i64, out: &mut BitVec) {
     }
 }
 
-pub fn decode_delta_i8(bits: &'_ BitSlice) -> Result<(i8, Option<&'_ BitSlice>), &'static str> {
+pub fn decode_delta_i8(
+    bits: &'_ BitBufferSlice,
+) -> Result<(i8, Option<&'_ BitBufferSlice>), &'static str> {
     if bits.is_empty() {
         return Err("Not enough bits to decode");
     }
@@ -380,7 +382,9 @@ pub fn decode_delta_i8(bits: &'_ BitSlice) -> Result<(i8, Option<&'_ BitSlice>),
     }
 }
 
-pub fn decode_delta_i16(bits: &'_ BitSlice) -> Result<(i16, Option<&'_ BitSlice>), &'static str> {
+pub fn decode_delta_i16(
+    bits: &'_ BitBufferSlice,
+) -> Result<(i16, Option<&'_ BitBufferSlice>), &'static str> {
     if bits.is_empty() {
         return Err("Not enough bits to decode");
     }
@@ -493,7 +497,9 @@ pub fn decode_delta_i16(bits: &'_ BitSlice) -> Result<(i16, Option<&'_ BitSlice>
     }
 }
 
-pub fn decode_delta_i32(bits: &'_ BitSlice) -> Result<(i32, Option<&'_ BitSlice>), &'static str> {
+pub fn decode_delta_i32(
+    bits: &'_ BitBufferSlice,
+) -> Result<(i32, Option<&'_ BitBufferSlice>), &'static str> {
     if bits.is_empty() {
         return Err("Not enough bits to decode");
     }
@@ -619,7 +625,9 @@ pub fn decode_delta_i32(bits: &'_ BitSlice) -> Result<(i32, Option<&'_ BitSlice>
     }
 }
 
-pub fn decode_delta_i64(bits: &'_ BitSlice) -> Result<(i64, Option<&'_ BitSlice>), &'static str> {
+pub fn decode_delta_i64(
+    bits: &'_ BitBufferSlice,
+) -> Result<(i64, Option<&'_ BitBufferSlice>), &'static str> {
     if bits.is_empty() {
         return Err("Not enough bits to decode");
     }
@@ -770,7 +778,7 @@ mod tests {
     use super::*;
 
     fn encode_decode_i8(value: i8) {
-        let mut bits: BitVec<_, Lsb0> = BitVec::new();
+        let mut bits = BitBuffer::new();
         encode_delta_i8(value, &mut bits);
         let (decoded, remaining) = decode_delta_i8(&bits).unwrap();
         assert_eq!(value, decoded);
@@ -778,7 +786,7 @@ mod tests {
     }
 
     fn encode_decode_i16(value: i16) {
-        let mut bits = BitVec::new();
+        let mut bits = BitBuffer::new();
         encode_delta_i16(value, &mut bits);
         let (decoded, remaining) = decode_delta_i16(&bits).unwrap();
         assert_eq!(value, decoded);
@@ -786,7 +794,7 @@ mod tests {
     }
 
     fn encode_decode_i32(value: i32) {
-        let mut bits = BitVec::new();
+        let mut bits = BitBuffer::new();
         encode_delta_i32(value, &mut bits);
         // println!("{:?}", bits);
         let (decoded, remaining) = decode_delta_i32(&bits).unwrap();
@@ -795,7 +803,7 @@ mod tests {
     }
 
     fn encode_decode_i64(value: i64) {
-        let mut bits = BitVec::new();
+        let mut bits = BitBuffer::new();
         encode_delta_i64(value, &mut bits);
         let (decoded, remaining) = decode_delta_i64(&bits).unwrap();
         assert_eq!(value, decoded);
