@@ -580,7 +580,7 @@ name = "tsz-macro"
 version = "0.1.1"
 dependencies = [
  "quote",
- "syn 1.0.109",
+ "syn 2.0.10",
 ]
 
 [[package]]
