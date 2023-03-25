@@ -1,32 +1,12 @@
-[package]
-name = "tsz-compress"
-version = "0.1.0"
-edition = "2021"
-authors = ["Jacob T. <jtrueb@northwestern.edu>"]
-homepage = "https://github.com/trueb2/tsz"
-repository = "https://github.com/trueb2/tsz"
-description = "Delta-delta compression for time series data"
-license = "MIT OR Apache-2.0"
-categories = ["compression"]
-keywords = ["time-series", "delta", "compression", "Gorilla", "serde"]
+[workspace]
+members = [
+    "tsz-compress",
+    "tsz-macro",
+]
 
-[lib]
-crate-type = ["rlib"]
+[workspace.package]
+version = "0.1.1"
 
-[dependencies]
-serde = { version = "1.0.152", default-features = false, features = ["derive", "alloc"] }
-serde_json = { version = "1.0.91", default-features = false, features = ["alloc"] }
-bitvec = { version = "1.0.1", default-features = false, features = ["alloc", "atomic"] }
-tsz_macro = { path = "./tsz_macro" }
-
-[dev-dependencies]
-criterion = "0.4.0"
-rand = "0.8.5"
-
-[[bench]]
-name = "compression"
-harness = false
-
-[[bin]]
-name = "example"
-path = "bin/example.rs"
+[workspace.dependencies]
+# tsz-macro = "0.1.1"
+tsz-macro = { path = "tsz-macro" }
