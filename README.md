@@ -28,7 +28,7 @@ From the end-to-end tests using a procedural macro to generate the delta encodin
 
 ```
 // Import proc_macros and trait definitions
-use tsz::prelude::*;
+use tsz_compress::prelude::*;
 
 // `Row` must be a `Copy` struct of integral primitives
 // `DeltaEncodable` generates a `RowDelta` struct to represent the difference between rows and how to add/subtract them

@@ -208,23 +208,23 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
     let vlq_types = fields
         .iter()
         .map(|(_, ty)| {
-            // Signed values will use tsz::compress::Svlq, unsigned values will use tsz::compress::Uvlq.
+            // Signed values will use tsz_compress::compress::Svlq, unsigned values will use tsz_compress::compress::Uvlq.
 
             match ty {
                 syn::Type::Path(syn::TypePath { path, .. }) => {
                     let segment = path.segments.first().unwrap();
                     let ident = segment.ident.clone();
                     match ident.to_string().as_str() {
-                        "i8" => quote! { tsz::svlq::Svlq },
-                        "i16" => quote! { tsz::svlq::Svlq },
-                        "i32" => quote! { tsz::svlq::Svlq },
-                        "i64" => quote! { tsz::svlq::Svlq },
-                        "i128" => quote! { tsz::svlq::Svlq },
-                        "u8" => quote! { tsz::uvlq ::Uvlq },
-                        "u16" => quote! { tsz::uvlq::Uvlq },
-                        "u32" => quote! { tsz::uvlq::Uvlq },
-                        "u64" => quote! { tsz::uvlq::Uvlq },
-                        "u128" => quote! { tsz::uvlq::Uvlq },
+                        "i8" => quote! { tsz_compress::svlq::Svlq },
+                        "i16" => quote! { tsz_compress::svlq::Svlq },
+                        "i32" => quote! { tsz_compress::svlq::Svlq },
+                        "i64" => quote! { tsz_compress::svlq::Svlq },
+                        "i128" => quote! { tsz_compress::svlq::Svlq },
+                        "u8" => quote! { tsz_compress::uvlq ::Uvlq },
+                        "u16" => quote! { tsz_compress::uvlq::Uvlq },
+                        "u32" => quote! { tsz_compress::uvlq::Uvlq },
+                        "u64" => quote! { tsz_compress::uvlq::Uvlq },
+                        "u128" => quote! { tsz_compress::uvlq::Uvlq },
                         _ => panic!("Unsupported type"),
                     }
                 }
@@ -237,23 +237,23 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
     let vlq_ref_types = fields
         .iter()
         .map(|(_, ty)| {
-            // Signed values will use tsz::compress::Svlq, unsigned values will use tsz::compress::Uvlq.
+            // Signed values will use tsz_compress::compress::Svlq, unsigned values will use tsz_compress::compress::Uvlq.
 
             match ty {
                 syn::Type::Path(syn::TypePath { path, .. }) => {
                     let segment = path.segments.first().unwrap();
                     let ident = segment.ident.clone();
                     match ident.to_string().as_str() {
-                        "i8" => quote! { tsz::svlq::SvlqRef },
-                        "i16" => quote! { tsz::svlq::SvlqRef },
-                        "i32" => quote! { tsz::svlq::SvlqRef },
-                        "i64" => quote! { tsz::svlq::SvlqRef },
-                        "i128" => quote! { tsz::svlq::SvlqRef },
-                        "u8" => quote! { tsz::uvlq::UvlqRef },
-                        "u16" => quote! { tsz::uvlq::UvlqRef },
-                        "u32" => quote! { tsz::uvlq::UvlqRef },
-                        "u64" => quote! { tsz::uvlq::UvlqRef },
-                        "u128" => quote! { tsz::uvlq::UvlqRef },
+                        "i8" => quote! { tsz_compress::svlq::SvlqRef },
+                        "i16" => quote! { tsz_compress::svlq::SvlqRef },
+                        "i32" => quote! { tsz_compress::svlq::SvlqRef },
+                        "i64" => quote! { tsz_compress::svlq::SvlqRef },
+                        "i128" => quote! { tsz_compress::svlq::SvlqRef },
+                        "u8" => quote! { tsz_compress::uvlq::UvlqRef },
+                        "u16" => quote! { tsz_compress::uvlq::UvlqRef },
+                        "u32" => quote! { tsz_compress::uvlq::UvlqRef },
+                        "u64" => quote! { tsz_compress::uvlq::UvlqRef },
+                        "u128" => quote! { tsz_compress::uvlq::UvlqRef },
                         _ => panic!("Unsupported type"),
                     }
                 }
@@ -282,12 +282,12 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
                             if self.#field_name < i64::MIN as i128 || self.#field_name > i64::MAX as i128 {
                                 unimplemented!();
                             }
-                            tsz::delta::#encode_fn_name(self.#field_name as i64, out);
+                            tsz_compress::delta::#encode_fn_name(self.#field_name as i64, out);
                         }
                     },
                     _ => {
                         quote! {
-                            tsz::delta::#encode_fn_name(self.#field_name, out);
+                            tsz_compress::delta::#encode_fn_name(self.#field_name, out);
                         }
                     }                    
                     _ => panic!("Unsupported type to delta encode/decode"),
@@ -417,23 +417,23 @@ pub fn derive_decompressible(item: TokenStream) -> TokenStream {
     let vlq_ref_types = fields
         .iter()
         .map(|(_, ty)| {
-            // Signed values will use tsz::compress::Svlq, unsigned values will use tsz::compress::Uvlq.
+            // Signed values will use tsz_compress::compress::Svlq, unsigned values will use tsz_compress::compress::Uvlq.
 
             match ty {
                 syn::Type::Path(syn::TypePath { path, .. }) => {
                     let segment = path.segments.first().unwrap();
                     let ident = segment.ident.clone();
                     match ident.to_string().as_str() {
-                        "i8" => quote! { tsz::svlq::SvlqRef },
-                        "i16" => quote! { tsz::svlq::SvlqRef },
-                        "i32" => quote! { tsz::svlq::SvlqRef },
-                        "i64" => quote! { tsz::svlq::SvlqRef },
-                        "i128" => quote! { tsz::svlq::SvlqRef },
-                        "u8" => quote! { tsz::uvlq::UvlqRef },
-                        "u16" => quote! { tsz::uvlq::UvlqRef },
-                        "u32" => quote! { tsz::uvlq::UvlqRef },
-                        "u64" => quote! { tsz::uvlq::UvlqRef },
-                        "u128" => quote! { tsz::uvlq::UvlqRef },
+                        "i8" => quote! { tsz_compress::svlq::SvlqRef },
+                        "i16" => quote! { tsz_compress::svlq::SvlqRef },
+                        "i32" => quote! { tsz_compress::svlq::SvlqRef },
+                        "i64" => quote! { tsz_compress::svlq::SvlqRef },
+                        "i128" => quote! { tsz_compress::svlq::SvlqRef },
+                        "u8" => quote! { tsz_compress::uvlq::UvlqRef },
+                        "u16" => quote! { tsz_compress::uvlq::UvlqRef },
+                        "u32" => quote! { tsz_compress::uvlq::UvlqRef },
+                        "u64" => quote! { tsz_compress::uvlq::UvlqRef },
+                        "u128" => quote! { tsz_compress::uvlq::UvlqRef },
                         _ => panic!("Unsupported type"),
                     }
                 }
@@ -480,14 +480,14 @@ pub fn derive_decompressible(item: TokenStream) -> TokenStream {
         .map(|(idx, (field_name, fn_name))| {
             if idx != decode_delta_fns.len() - 1 {
                 quote! {
-                    let (#field_name, input) = tsz::delta::#fn_name(input)?;
+                    let (#field_name, input) = tsz_compress::delta::#fn_name(input)?;
                     let Some(input) = input else {
                         return Err("Early EOF");
                     };
                 }
             } else {
                 quote! {
-                    let (#field_name, input) = tsz::delta::#fn_name(input)?;
+                    let (#field_name, input) = tsz_compress::delta::#fn_name(input)?;
                     let input = input.unwrap_or_default();
                 }
             }

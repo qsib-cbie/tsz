@@ -3,10 +3,10 @@ use core::ops::Add;
 use core::ops::Sub;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 // use rand::Rng;
-use tsz::compress::*;
-use tsz::delta::*;
-use tsz::svlq::*;
-use tsz::uvlq::*;
+use tsz_compress::compress::*;
+use tsz_compress::delta::*;
+use tsz_compress::svlq::*;
+use tsz_compress::uvlq::*;
 
 // A row of data with a timestamp
 #[derive(Debug, Copy, Clone)]

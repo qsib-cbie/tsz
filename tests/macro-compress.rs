@@ -1,4 +1,4 @@
-use tsz::prelude::*;
+use tsz_compress::prelude::*;
 
 #[cfg(test)]
 mod tests {

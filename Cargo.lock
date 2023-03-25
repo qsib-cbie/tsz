@@ -553,7 +553,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tsz"
+name = "tsz-compress"
 version = "0.1.0"
 dependencies = [
  "bitvec",

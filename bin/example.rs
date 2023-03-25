@@ -1,4 +1,4 @@
-use tsz::prelude::*;
+use tsz_compress::prelude::*;
 
 #[derive(Copy, Clone, DeltaEncodable, Compressible, Decompressible)]
 pub struct Row {

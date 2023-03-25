@@ -1,7 +1,14 @@
 [package]
-name = "tsz"
+name = "tsz-compress"
 version = "0.1.0"
 edition = "2021"
+authors = ["Jacob T. <jtrueb@northwestern.edu>"]
+homepage = "https://github.com/trueb2/tsz"
+repository = "https://github.com/trueb2/tsz"
+description = "Delta-delta compression for time series data"
+license = "MIT OR Apache-2.0"
+categories = ["compression"]
+keywords = ["time-series", "delta", "compression", "Gorilla", "serde"]
 
 [lib]
 crate-type = ["rlib"]
