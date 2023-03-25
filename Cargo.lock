@@ -572,22 +572,22 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
- "tsz-macro 0.1.1",
-]
-
-[[package]]
-name = "tsz-macro"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0df66ed3f70aa0502a84865f09484e13800a7829bab5db6f5385df57d0451225"
-dependencies = [
- "quote",
- "syn 1.0.109",
+ "tsz-macro 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "tsz-macro"
 version = "0.1.2"
+dependencies = [
+ "quote",
+ "syn 2.0.10",
+]
+
+[[package]]
+name = "tsz-macro"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71701480a71970ee2f9640a3502c76d0bdc41f068b482a537e241f5918bec8af"
 dependencies = [
  "quote",
  "syn 2.0.10",
