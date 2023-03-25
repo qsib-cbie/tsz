@@ -187,9 +187,13 @@ static mut INITED: AtomicBool = AtomicBool::new(false);
 ///
 /// This should only be called once.
 ///
+/// # Safety
+/// tsz_init is expected to be called during application initialization
+/// from an embedded no_std environment. It is unsafe so that the caller can be in C.
+///
 #[no_mangle]
 pub unsafe extern "C" fn tsz_init(_heap_start: *mut u8, _heap_size: u32) {
-    let Ok(false  ) = INITED.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) else {
+    let Ok(false) = INITED.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) else {
         return;
     };
 }

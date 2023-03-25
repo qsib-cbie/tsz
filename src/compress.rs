@@ -8,7 +8,8 @@ pub use tsz_macro::*;
 /// Create a `Compressor` instance.
 /// Call `compress` for each row of data, handing off your `Compressor` instance.
 /// Call `finish` to get the compressed data.
-/// 
+///
+#[derive(Default)]
 pub struct Compressor<T: Compress> {
     pub output: BitVec,
     pub row_n: Option<T>,
@@ -33,9 +34,9 @@ pub trait Compress: Copy + Sized {
     type Full: IntoCompressBits;
     type Delta: IntoCompressBits;
 
-    fn into_full(&self) -> Self::Full;
-    fn into_delta(&self, prev_row: &Self) -> Self::Delta;
-    fn into_deltadelta(&self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta;
+    fn into_full(self) -> Self::Full;
+    fn into_delta(self, prev_row: &Self) -> Self::Delta;
+    fn into_deltadelta(self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta;
 }
 
 pub trait Decompress: Copy + Sized {
@@ -48,7 +49,7 @@ pub trait Decompress: Copy + Sized {
 }
 
 pub trait IntoCompressBits: Sized {
-    fn into_bits(&self, out: &mut BitVec);
+    fn into_bits(self, out: &mut BitVec);
 }
 
 pub trait FromCompressBits: Sized {
@@ -242,7 +243,7 @@ mod tests {
 
         // How to bit pack a row
         impl IntoCompressBits for TestRow {
-            fn into_bits(&self, out: &mut BitVec) {
+            fn into_bits(self, out: &mut BitVec) {
                 out.extend(Uvlq::from(self.ts).bits);
                 out.extend(Uvlq::from(self.v8).bits);
                 out.extend(Uvlq::from(self.v16).bits);
@@ -257,7 +258,7 @@ mod tests {
 
         // How to bit pack a delta
         impl IntoCompressBits for TestRowDelta {
-            fn into_bits(&self, out: &mut BitVec) {
+            fn into_bits(self, out: &mut BitVec) {
 
                 if self.ts < i64::MIN as i128 && self.ts > i64::MAX as i128 {
                     unimplemented!()
@@ -379,20 +380,20 @@ mod tests {
 
             type Delta = TestRowDelta;
 
-            fn into_full(&self) -> Self::Full {
+            fn into_full(self) -> Self::Full {
                 // println!("into_full({:?})", self);
-                *self
+                self
             }
 
-            fn into_delta(&self, prev_row: &Self) -> Self::Delta {
-                let r = *self - *prev_row;
+            fn into_delta(self, prev_row: &Self) -> Self::Delta {
+                let r = self - *prev_row;
                 // println!("into_delta: {:?} - {:?} = {:?}", prev_row, self, r);
                 r
             }
 
-            fn into_deltadelta(&self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta {
+            fn into_deltadelta(self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta {
                 // println!("into_deltadelta: {:?} - {:?} = {:?}",  (*self - *prev_row), (*prev_row - *prev_prev_row), (*self - *prev_row) - (*prev_row - *prev_prev_row));
-                (*self - *prev_row) - (*prev_row - *prev_prev_row)
+                (self - *prev_row) - (*prev_row - *prev_prev_row)
             }
         }
 

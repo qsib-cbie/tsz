@@ -309,7 +309,7 @@ pub fn encode_delta_i64(mut value: i64, out: &mut BitVec) {
     }
 }
 
-pub fn decode_delta_i8<'a>(bits: &'a BitSlice) -> Result<(i8, Option<&'a BitSlice>), &'static str> {
+pub fn decode_delta_i8(bits: &'_ BitSlice) -> Result<(i8, Option<&'_ BitSlice>), &'static str> {
     if bits.is_empty() {
         return Err("Not enough bits to decode");
     }
@@ -380,9 +380,7 @@ pub fn decode_delta_i8<'a>(bits: &'a BitSlice) -> Result<(i8, Option<&'a BitSlic
     }
 }
 
-pub fn decode_delta_i16<'a>(
-    bits: &'a BitSlice,
-) -> Result<(i16, Option<&'a BitSlice>), &'static str> {
+pub fn decode_delta_i16(bits: &'_ BitSlice) -> Result<(i16, Option<&'_ BitSlice>), &'static str> {
     if bits.is_empty() {
         return Err("Not enough bits to decode");
     }
@@ -495,9 +493,7 @@ pub fn decode_delta_i16<'a>(
     }
 }
 
-pub fn decode_delta_i32<'a>(
-    bits: &'a BitSlice,
-) -> Result<(i32, Option<&'a BitSlice>), &'static str> {
+pub fn decode_delta_i32(bits: &'_ BitSlice) -> Result<(i32, Option<&'_ BitSlice>), &'static str> {
     if bits.is_empty() {
         return Err("Not enough bits to decode");
     }
@@ -623,9 +619,7 @@ pub fn decode_delta_i32<'a>(
     }
 }
 
-pub fn decode_delta_i64<'a>(
-    bits: &'a BitSlice,
-) -> Result<(i64, Option<&'a BitSlice>), &'static str> {
+pub fn decode_delta_i64(bits: &'_ BitSlice) -> Result<(i64, Option<&'_ BitSlice>), &'static str> {
     if bits.is_empty() {
         return Err("Not enough bits to decode");
     }

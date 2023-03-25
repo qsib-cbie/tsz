@@ -95,7 +95,7 @@ impl Sub for TestRowDelta {
 
 // How to bit pack a row
 impl IntoCompressBits for TestRow {
-    fn into_bits(&self, out: &mut BitVec) {
+    fn into_bits(self, out: &mut BitVec) {
         out.extend(Uvlq::from(self.ts).bits);
         out.extend(Uvlq::from(self.v8).bits);
         out.extend(Uvlq::from(self.v16).bits);
@@ -110,7 +110,7 @@ impl IntoCompressBits for TestRow {
 
 // How to bit pack a delta
 impl IntoCompressBits for TestRowDelta {
-    fn into_bits(&self, out: &mut BitVec) {
+    fn into_bits(self, out: &mut BitVec) {
         if self.ts >= i64::MIN as i128 && self.ts <= i64::MAX as i128 {
             encode_delta_i64(self.ts as i64, out);
         } else {
@@ -240,20 +240,20 @@ impl Compress for TestRow {
 
     type Delta = TestRowDelta;
 
-    fn into_full(&self) -> Self::Full {
+    fn into_full(self) -> Self::Full {
         // println!("into_full({:?})", self);
-        *self
+        self
     }
 
-    fn into_delta(&self, prev_row: &Self) -> Self::Delta {
-        let r = *self - *prev_row;
+    fn into_delta(self, prev_row: &Self) -> Self::Delta {
+        let r = self - *prev_row;
         // println!("into_delta: {:?} - {:?} = {:?}", prev_row, self, r);
         r
     }
 
-    fn into_deltadelta(&self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta {
+    fn into_deltadelta(self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta {
         // println!("into_deltadelta: {:?} - {:?} = {:?}",  (*self - *prev_row), (*prev_row - *prev_prev_row), (*self - *prev_row) - (*prev_row - *prev_prev_row));
-        (*self - *prev_row) - (*prev_row - *prev_prev_row)
+        (self - *prev_row) - (*prev_row - *prev_prev_row)
     }
 }
 

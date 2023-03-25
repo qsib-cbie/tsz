@@ -301,13 +301,13 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
     quote! {
 
         impl IntoCompressBits for #ident {
-            fn into_bits(&self, out: &mut bv::BitVec) {
+            fn into_bits(self, out: &mut bv::BitVec) {
                 #( out.extend(#vlq_types::from(self.#delta_field_names).bits); )*
             }
         }
 
         impl IntoCompressBits for #delta_ident {
-            fn into_bits(&self, out: &mut bv::BitVec) {
+            fn into_bits(self, out: &mut bv::BitVec) {
                 #(
                     #encode_delta_fn_calls
                 )*
@@ -318,16 +318,16 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
             type Full = #ident;
             type Delta = #delta_ident;
 
-            fn into_full(&self) -> Self::Full {
-                *self
+            fn into_full(self) -> Self::Full {
+                self
             }
 
-            fn into_delta(&self, prev: &Self::Full) -> Self::Delta {
-                *self - *prev
+            fn into_delta(self, prev: &Self::Full) -> Self::Delta {
+                self - *prev
             }
 
-            fn into_deltadelta(&self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta {
-                (*self - *prev_row) - (*prev_row - *prev_prev_row)
+            fn into_deltadelta(self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta {
+                (self - *prev_row) - (*prev_row - *prev_prev_row)
             }
         }
     }
