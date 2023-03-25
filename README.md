@@ -28,7 +28,7 @@ With a macro (or manually), implement the 2 traits for compression `Compress` an
 
 From the end-to-end tests using a procedural macro to generate the delta encoding match and trait implementations, we have a functional example
 
-```
+```rust
 // Import proc_macros and trait definitions
 use tsz_compress::prelude::*;
 
