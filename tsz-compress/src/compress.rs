@@ -135,6 +135,13 @@ impl<T: Compress> Compressor<T> {
     }
 
     ///
+    /// Check if the compressed data is empty.
+    ///
+    pub fn is_empty(&self) -> bool {
+        self.output.is_empty()
+    }
+
+    ///
     /// Take the compressed data, suitable for constructing a `Decompressor` instance.
     ///
     pub fn finish(self) -> BitVec {
