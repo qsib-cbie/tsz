@@ -1,4 +1,5 @@
 ![Rust](https://github.com/trueb2/tsz/actions/workflows/rust.yml/badge.svg)
+[![DOI](https://zenodo.org/badge/597249911.svg)](https://zenodo.org/badge/latestdoi/597249911)
 
 
 # tsz :: Compact Integral Time-Series Compression
