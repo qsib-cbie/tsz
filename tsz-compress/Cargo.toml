@@ -15,8 +15,6 @@ version = { workspace = true }
 crate-type = ["rlib"]
 
 [dependencies]
-serde = { version = "1.0.158", default-features = false, features = ["derive", "alloc"] }
-serde_json = { version = "1.0.94", default-features = false, features = ["alloc"] }
 bitvec = { version = "1.0.1", default-features = false, features = ["alloc", "atomic"] }
 tsz-macro = { workspace = true }
 
