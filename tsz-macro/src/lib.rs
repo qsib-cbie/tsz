@@ -1,10 +1,11 @@
-#![allow(unused)]
+#![no_std]
+extern crate alloc;
+use alloc::string::ToString;
+use alloc::vec::Vec;
+
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{
-    parse::{Parse, ParseStream},
-    parse_macro_input, parse_quote, Token,
-};
+use syn::parse_macro_input;
 
 #[proc_macro_derive(DeltaEncodable)]
 pub fn derive_delta_encodable(item: TokenStream) -> TokenStream {
@@ -48,32 +49,6 @@ pub fn derive_delta_encodable(item: TokenStream) -> TokenStream {
                         "u32" => quote! { i64 },
                         "u64" => quote! { i128 },
                         "u128" => quote! { i128 },
-                        _ => panic!("Unsupported type"),
-                    }
-                }
-                _ => panic!("Unsupported type"),
-            }
-
-            // ty
-        })
-        .collect::<Vec<_>>();
-    let delta_field_encoded_types = fields
-        .iter()
-        .map(|(_, ty)| {
-            // Find the next highest type that can represent the delta.
-            // If non primitive, then panic.
-            // i8 -> i16, i16 -> i32, i32 -> i64, i64 -> i64, i128 -> i64
-
-            match ty {
-                syn::Type::Path(syn::TypePath { path, .. }) => {
-                    let segment = path.segments.first().unwrap();
-                    let ident = segment.ident.clone();
-                    match ident.to_string().as_str() {
-                        "i8" => quote! { i16 },
-                        "i16" => quote! { i32 },
-                        "i32" => quote! { i64 },
-                        "i64" => quote! { i64 },
-                        "i128" => quote! { i64 },
                         _ => panic!("Unsupported type"),
                     }
                 }
@@ -203,7 +178,6 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    let field_types = fields.iter().map(|(_, ty)| ty).collect::<Vec<_>>();
     let vlq_types = fields
         .iter()
         .map(|(_, ty)| {
@@ -233,39 +207,10 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
             // ty
         })
         .collect::<Vec<_>>();
-    let vlq_ref_types = fields
-        .iter()
-        .map(|(_, ty)| {
-            // Signed values will use tsz_compress::compress::Svlq, unsigned values will use tsz_compress::compress::Uvlq.
-
-            match ty {
-                syn::Type::Path(syn::TypePath { path, .. }) => {
-                    let segment = path.segments.first().unwrap();
-                    let ident = segment.ident.clone();
-                    match ident.to_string().as_str() {
-                        "i8" => quote! { tsz_compress::svlq::SvlqRef },
-                        "i16" => quote! { tsz_compress::svlq::SvlqRef },
-                        "i32" => quote! { tsz_compress::svlq::SvlqRef },
-                        "i64" => quote! { tsz_compress::svlq::SvlqRef },
-                        "i128" => quote! { tsz_compress::svlq::SvlqRef },
-                        "u8" => quote! { tsz_compress::uvlq::UvlqRef },
-                        "u16" => quote! { tsz_compress::uvlq::UvlqRef },
-                        "u32" => quote! { tsz_compress::uvlq::UvlqRef },
-                        "u64" => quote! { tsz_compress::uvlq::UvlqRef },
-                        "u128" => quote! { tsz_compress::uvlq::UvlqRef },
-                        _ => panic!("Unsupported type"),
-                    }
-                }
-                _ => panic!("Unsupported type"),
-            }
-
-            // ty
-        })
-        .collect::<Vec<_>>();
 
     // All i128 columns need to check if the values are out of supported bounds.
-    let encode_delta_fn_calls = delta_field_names.iter().zip(delta_field_types.iter().zip(delta_field_encoded_types.iter())).enumerate()
-    .map(|(idx, (field_name, (field_ty, encoded_field_ty)))| {
+    let encode_delta_fn_calls = delta_field_names.iter().zip(delta_field_types.iter().zip(delta_field_encoded_types.iter()))
+    .map(| (field_name, (field_ty, encoded_field_ty))| {
         // if the field_ty is i128, then encoded_field_ty will be i64
         // check if the field is in bounds of i64::MIN and i64::MAX for those fields
 
@@ -289,7 +234,6 @@ pub fn derive_compressible(item: TokenStream) -> TokenStream {
                             tsz_compress::delta::#encode_fn_name(self.#field_name, out);
                         }
                     }
-                    _ => panic!("Unsupported type to delta encode/decode"),
                 }
             }
             _ => panic!("Unsupported type"),
