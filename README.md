@@ -71,7 +71,8 @@ let mut d = Decompressor::new(&bits);
 // Iterate through rows, decompressing each subsequent row on the Iterator::next call
 // All rows don't have to be read all at once, but typically are using the iterator pattern
 for (i, row) in d.decompress::<AnotherRow>().unwrap().enumerate() {
-    let i = i - lower as usize;
+    let row = row.unwrap();
+    let i = i as isize + lower as isize;
     assert_eq!(row.ts, i as i64);
     assert_eq!(row.val0, i as i8);
     assert_eq!(row.val1, i as i16);

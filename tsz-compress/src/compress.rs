@@ -169,32 +169,112 @@ impl<'de> Decompressor<'de> {
     ///
     /// Decompress the data into an iterator over the rows.
     ///
-    pub fn decompress<T: Decompress>(&mut self) -> Result<impl Iterator<Item = T>, &'static str> {
-        // The first row is represented as the each value
-        // Encoded to unsigned VLQ
-        let (first_row, trailing) = T::from_full(self.input)?;
-        self.input = trailing;
+    pub fn decompress<'a, T: Decompress>(&'a mut self) -> DecompressIter<'a, T> {
+        DecompressIter {
+            input: self.input,
+            finished: false,
+            first_row: None,
+            second_row: None,
+            t_prev_prev: None,
+            t_prev: None,
+        }
+    }
+}
 
-        // The second row is represented as the difference between the first row and the second row
-        // Encoded to Gorilla Delta-Delta Encoding
-        let (second_row, trailing) = T::from_delta(self.input, &first_row)?;
-        self.input = trailing;
+///
+/// An iterator over the decompressed data.
+///
+pub struct DecompressIter<'a, T> {
+    input: &'a BitBufferSlice,
+    finished: bool,
+    first_row: Option<T>,
+    second_row: Option<T>,
+    t_prev_prev: Option<T>,
+    t_prev: Option<T>,
+}
+
+///
+/// This iterator is returned on a decompress call to a Decompressor instance.
+///
+impl<'a, T> Iterator for DecompressIter<'a, T>
+where
+    T: Decompress,
+{
+    type Item = Result<T, &'static str>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        let Some(first_row) = self.first_row.as_ref() else {
+            // Base case, no data
+            if self.input.is_empty() {
+                self.finished = true;
+                return None;
+            }
+
+            // The first row is represented as the each value
+            // Encoded to unsigned VLQ
+            let (first_row, trailing) = match T::from_full(self.input) {
+                Ok(x) => x,
+                Err(e) => {
+                    self.finished = true;
+                    return Some(Err(e));
+                }
+            };
+            self.input = trailing;
+            self.first_row = Some(first_row);
+            return Some(Ok(first_row));
+        };
+
+        let Some(_second_row) = self.second_row.as_ref() else {
+            // Base case, one row
+            if self.input.is_empty() {
+                self.finished = true;
+                return None;
+            }
+
+            // The second row is represented as the difference between the first row and the second row
+            // Encoded to Gorilla Delta-Delta Encoding
+            let (second_row, trailing) = match T::from_delta(self.input, first_row) {
+                Ok(x) => x,
+                Err(e) => {
+                    self.finished = true;
+                    return Some(Err(e));
+                }
+            };
+            self.input = trailing;
+            self.second_row = Some(second_row);
+            self.t_prev_prev = Some(*first_row);
+            self.t_prev = Some(second_row);
+            return Some(Ok(second_row));
+        };
 
         // Each subsequent row is represented as the deltadelta = (row - row_n1) - (row_n1 - row_n)
         // Encoded to Gorilla Delta-Delta Encoding
-        let mut t_prev_prev = first_row;
-        let mut t_prev = second_row;
-        while !self.input.is_empty() {
-            // Read the deltadelta, D, and reconstruct the row, t
-            let (row, trailing) = T::from_deltadelta(self.input, &t_prev, &t_prev_prev)?;
-            self.input = trailing;
 
-            // Move the rows along
-            t_prev_prev = t_prev;
-            t_prev = row;
+        if self.input.is_empty() {
+            self.finished = true;
+            return None;
         }
 
-        Ok(None.into_iter())
+        let t_prev = self.t_prev.take().unwrap();
+        let t_prev_prev = self.t_prev_prev.take().unwrap();
+
+        // Read the deltadelta, D, and reconstruct the row, t
+        let (row, trailing) = match T::from_deltadelta(self.input, &t_prev, &t_prev_prev) {
+            Ok(x) => x,
+            Err(e) => {
+                self.finished = true;
+                return Some(Err(e));
+            }
+        };
+        self.input = trailing;
+        self.t_prev_prev = Some(t_prev);
+        self.t_prev = Some(row);
+
+        Some(Ok(row))
     }
 }
 
@@ -517,7 +597,7 @@ mod tests {
         println!("{:?}", encoded);
 
         let mut decompressor = Decompressor::new(&encoded);
-        for (idx, row) in decompressor.decompress::<TestRow>().unwrap().enumerate() {
+        for (idx, row) in decompressor.decompress::<TestRow>().enumerate() {
             println!("{:?}: {:?}", idx, row);
         }
     }

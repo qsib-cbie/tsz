@@ -39,8 +39,9 @@ mod tests {
         );
 
         let mut d = Decompressor::new(&bits);
-        for (i, row) in d.decompress::<AnotherRow>().unwrap().enumerate() {
-            let i = i - lower as usize;
+        for (i, row) in d.decompress::<AnotherRow>().enumerate() {
+            let row = row.unwrap();
+            let i = i as isize + lower as isize;
             assert_eq!(row.ts, i as i64);
             assert_eq!(row.val0, i as i8);
             assert_eq!(row.val1, i as i16);
@@ -79,6 +80,83 @@ mod tests {
         let bits = BitBuffer::new();
         let mut d = Decompressor::new(&bits);
         let _ = d.decompress::<BRow>();
+    }
+
+    #[test]
+    fn test_one_row() {
+        #[derive(Clone, Copy, DeltaEncodable, Compressible, Decompressible)]
+        struct Row {
+            a: i64,
+        }
+
+        let mut c = Compressor::new();
+        let row = Row { a: 1 };
+        c.compress(row);
+
+        let bits = c.finish();
+        assert!(!bits.is_empty());
+        let mut d = Decompressor::new(&bits);
+        let row = d.decompress::<Row>().next().unwrap();
+        let row = row.unwrap();
+        assert_eq!(row.a, 1);
+    }
+
+    #[test]
+    fn test_two_rows() {
+        #[derive(Clone, Copy, DeltaEncodable, Compressible, Decompressible)]
+        struct Row {
+            a: i64,
+        }
+
+        let mut c = Compressor::new();
+        let row = Row { a: 1 };
+        c.compress(row);
+        let row = Row { a: 2 };
+        c.compress(row);
+
+        let bits = c.finish();
+        assert!(!bits.is_empty());
+        let mut d = Decompressor::new(&bits);
+        let mut itr = d.decompress::<Row>();
+        let row = itr.next().unwrap().unwrap();
+        assert_eq!(row.a, 1);
+        let row = itr.next().unwrap().unwrap();
+        assert_eq!(row.a, 2);
+    }
+
+    #[test]
+    fn test_five_rows() {
+        #[derive(Clone, Copy, DeltaEncodable, Compressible, Decompressible)]
+        struct Row {
+            a: i64,
+        }
+
+        let mut c = Compressor::new();
+        let row = Row { a: 1 };
+        c.compress(row);
+        let row = Row { a: 2 };
+        c.compress(row);
+        let row = Row { a: 3 };
+        c.compress(row);
+        let row = Row { a: 4 };
+        c.compress(row);
+        let row = Row { a: 5 };
+        c.compress(row);
+
+        let bits = c.finish();
+        assert!(!bits.is_empty());
+        let mut d = Decompressor::new(&bits);
+        let mut itr = d.decompress::<Row>();
+        let row = itr.next().unwrap().unwrap();
+        assert_eq!(row.a, 1);
+        let row = itr.next().unwrap().unwrap();
+        assert_eq!(row.a, 2);
+        let row = itr.next().unwrap().unwrap();
+        assert_eq!(row.a, 3);
+        let row = itr.next().unwrap().unwrap();
+        assert_eq!(row.a, 4);
+        let row = itr.next().unwrap().unwrap();
+        assert_eq!(row.a, 5);
     }
 
     #[test]

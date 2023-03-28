@@ -565,7 +565,7 @@ dependencies = [
 
 [[package]]
 name = "tsz-compress"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "bitvec",
  "criterion",
@@ -575,7 +575,7 @@ dependencies = [
 
 [[package]]
 name = "tsz-macro"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "quote",
  "syn 2.0.10",
