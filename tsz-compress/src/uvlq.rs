@@ -149,6 +149,8 @@ impl_unsigned_uvlq_ref!(u128);
 mod tests {
     use rand::Rng;
 
+    use crate::{prelude::BitBuffer, uvlq::UvlqRef};
+
     #[test]
     fn can_encode_0() {
         let uvlq = super::Uvlq::from(0u32);
@@ -499,6 +501,23 @@ mod tests {
             let svlq = super::Uvlq::from(i);
             let value = u16::try_from(svlq).unwrap();
             assert_eq!(value, i);
+        }
+    }
+
+    #[test]
+    fn can_encode_all_u16() {
+        let mut bits = BitBuffer::new();
+
+        for i in u16::MIN..=u16::MAX {
+            let svlq = super::Uvlq::from(i);
+            bits.extend(svlq.bits.iter());
+        }
+
+        let mut bits = bits.as_bitslice();
+        for i in u16::MIN..=u16::MAX {
+            let (vu16, vu16_bits) = <(u16, usize)>::try_from(UvlqRef(bits)).unwrap();
+            bits = &bits[vu16_bits..];
+            assert_eq!(vu16, i);
         }
     }
 

@@ -214,7 +214,7 @@ macro_rules! impl_signed_svlq_ref {
                     for bit in vlq_byte.iter().skip(1 + extra_bits) {
                         val <<= 1;
                         if *bit {
-                            if out_idx >= bits {
+                            if out_idx > bits {
                                 return Err("Signed VLQ bit overflow");
                             }
                             val |= 1;
@@ -258,6 +258,8 @@ impl_signed_svlq_ref!(i128);
 #[cfg(test)]
 mod tests {
     use rand::Rng;
+
+    use crate::{prelude::BitBuffer, svlq::SvlqRef};
 
     #[test]
     fn can_encode_0() {
@@ -763,11 +765,28 @@ mod tests {
             assert_eq!(value, i);
         }
 
-        for i in -32768..=32767 {
+        for i in i16::MIN..=i16::MAX {
             // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i16::try_from(svlq).unwrap();
             assert_eq!(value, i);
+        }
+    }
+
+    #[test]
+    fn can_encode_all_i16() {
+        let mut bits = BitBuffer::new();
+
+        for i in i16::MIN..=i16::MAX {
+            let svlq = super::Svlq::from(i);
+            bits.extend(svlq.bits.iter());
+        }
+
+        let mut bits = bits.as_bitslice();
+        for i in i16::MIN..=i16::MAX {
+            let (vi16, vi16_bits) = <(i16, usize)>::try_from(SvlqRef(bits)).unwrap();
+            bits = &bits[vi16_bits..];
+            assert_eq!(vi16, i);
         }
     }
 
