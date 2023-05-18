@@ -81,6 +81,42 @@ for (i, row) in d.decompress::<AnotherRow>().unwrap().enumerate() {
 }
 ```
 
+## Current Compression Scheme
+
+The initial compression scheme implementation included:
+1. A VLQ encoding of the full value for each column for the first row
+2. A VLQ encoding of the delta from the first row to the second row
+3. For each subsequent row, a unary encoding header indicating the number of following bits and the bits for the delta-delta from the previous delta.
+    1. header 0, 0 bits
+    1. header 10, 4 bits
+    1. header 110, 7 bits
+    1. header 1110, 9 bits
+    1. header 11110, 12 bits
+    1. header 111110, 15 bits
+    1. header 1111110, 18 bits
+    1. header 11111110, 32 bits
+    1. header 111111110, 64 bits
+
+## Future Compression Scheme
+
+The future compression scheme will include a single bit before each delta-delta to indicate:
+* the following is a truncated binary encoding header indicating the number of following bits and the bits for the delta-delta from the previous delta. Each delta-delta is zigzag encoded
+    1. 0, 00, 1 bit
+    1. 0, 01, 5 bits
+    1. 0, 10, 9 bits
+    1. 0, 110, 16 bits
+    1. 0, 111, 64 bits
+
+* the following is a truncated binary encoding header indicating the number of bit-packed deltas (not delta-deltas) in the next 32-bits. Each delta is zigzag encoded
+    1. 1, 00, pad 0, 2 samples (16 bits)
+    1. 1, 01, pad 000, 3 samples (10 bits)
+    1. 1, 10, pad 0, 4 samples (8 bits)
+    1. 1, 110, 8 samples (4 bits)
+    1. 1, 111, pad 00, 10 samples (3 bits)
+
+In the updated scheme, the final encoding will include a final pass with an entropy coding with the minimum word size as 4 bits. All headers and delta bit sequences are 4 bit aligned, with octets tending towards 0000 for constant slope and 1111 for 10 consecutive data points within +-3. Values in delta zigzag encoding may also include octets of leading 0s.
+
+
 
 ## Example
 
