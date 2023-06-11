@@ -80,33 +80,244 @@ pub fn decode_delta_i8(
     if bits.is_empty() {
         return Err("Not enough bits to decode");
     }
-    if bits[0] || bits[1] {
+    if bits[0]{
         return Err("Not a delta-delta encoded value");
+    }
+    if bits[1] {
+        return Err("Not enough bits to decode");
     }
     let mut idx = 0;
     let mut value = 0;
     if !bits[2] {
         // read 1 bit
-        if bits[]
+        if !bits[3] {
+            if bits.len() > 4 {
+                return Ok((0, Some(&bits[4..])));
+            } else {
+                return Ok((0, None));
+            }
+        } else {
+            if bits.len() > 4 {
+                return Ok((-1, Some(&bits[4..])));
+            } else {
+                return Ok((-1, None));
+            }
+        }
+    } else {
+        // read 3 bits
+        idx += 3;
+        // read 5 bits
+        let i in 0..4 {
+            value |= (bits[idx+i] as i8) << i;
+        }
+        value = (value >> 1) ^ (-(n&1));
+    }
+
+    if bits.len() > idx {
+        Ok((value, Some(&bits[idx..])))
+    } else {
+        Ok((value, None))
     }
 }
 
 pub fn decode_delta_i16(
     bits: &'_ BitBufferSlice,
 ) -> Result<(i16, Option<&'_ BitBufferSlice>), &'static str> {
-    
+    if bits.is_empty() {
+        return Err("Not enough bits to decode");
+    }
+    if bits[0] {
+        return Err("Not a delta-delta encoded value");
+    }
+    let mut idx = 0;
+    let mut value = 0;
+    if !bits[1] {
+        if !bits[2] {
+            // read 3 bits
+            idx += 3;
+            // read 1 bit
+            if !bits[3] {
+                if bits.len() > 4 {
+                    return Ok((0, Some(&bits[4..])));
+                } else {
+                    return Ok((0, None));
+                }
+            } else {
+                if bits.len() > 4 {
+                    return Ok((-1, Some(&bits[4..])));
+                } else {
+                    return Ok((-1, None));
+                }
+            }
+        } else {
+            // read 3 bits
+            idx += 3;
+            // read 5 bits
+            let i in 0..4 {
+                value |= (bits[idx+i] as i16) << i;
+            }
+            value = (value >> 1) ^ (-(n&1));
+        }
+    } else {
+        if !bits[2] {
+            // read 3 bits
+            idx += 3;
+            // read 9 bits
+            let i in 0..8 {
+                value |= (bits[idx+i] as i16) << i;
+            }
+            value = (value >> 1) ^ (-(n&1));
+        } else {
+            return Err("Not enough bits to decode");
+        }
+    }
+    if bits.len() > idx {
+        Ok((value, Some(&bits[idx..])))
+    } else {
+        Ok((value, None))
+    }
 }
 
 pub fn decode_delta_i32(
     bits: &'_ BitBufferSlice,
 ) -> Result<(i32, Option<&'_ BitBufferSlice>), &'static str> {
-    
+    if bits.is_empty() {
+        return Err("Not enough bits to decode");
+    }
+    if bits[0] {
+        return Err("Not a delta-delta encoded value");
+    }
+    let mut idx = 0;
+    let mut value = 0;
+    if !bits[1] {
+        if !bits[2] {
+            // read 3 bits
+            idx += 3;
+            // read 1 bit
+            if !bits[3] {
+                if bits.len() > 4 {
+                    return Ok((0, Some(&bits[4..])));
+                } else {
+                    return Ok((0, None));
+                }
+            } else {
+                if bits.len() > 4 {
+                    return Ok((-1, Some(&bits[4..])));
+                } else {
+                    return Ok((-1, None));
+                }
+            }
+        } else {
+            // read 3 bits
+            idx += 3;
+            // read 5 bits
+            let i in 0..4 {
+                value |= (bits[idx+i]) << i;
+            }
+            value = (value >> 1) ^ (-(n&1));
+        }
+    } else {
+        if !bits[2] {
+            // read 3 bits
+            idx += 3;
+            // read 9 bits
+            let i in 0..8 {
+                value |= (bits[idx+i] as i32) << i;
+            }
+            value = (value >> 1) ^ (-(n&1));
+        } else {
+            if !bits[3] {
+                // read 4 bits
+                idx += 4;
+                // read 16 bits
+                let i in 0..15 {
+                    value |= (bits[idx+i] as i32) << i;
+                }
+                value = (value >> 1) ^ (-(n&1));
+            } else {
+                return Err("Not enough bits to decode");
+            }
+        }
+    }
+    if bits.len() > idx {
+        Ok((value, Some(&bits[idx..])))
+    } else {
+        Ok((value, None))
+    }
 }
 
 pub fn decode_delta_i64(
     bits: &'_ BitBufferSlice,
 ) -> Result<(i64, Option<&'_ BitBufferSlice>), &'static str> {
-    
+    if bits.is_empty() {
+        return Err("Not enough bits to decode");
+    }
+    if bits[0] {
+        return Err("Not a delta-delta encoded value");
+    }
+    let mut idx = 0;
+    let mut value = 0;
+    if !bits[1] {
+        if !bits[2] {
+            // read 3 bits
+            idx += 3;
+            // read 1 bit
+            if !bits[3] {
+                if bits.len() > 4 {
+                    return Ok((0, Some(&bits[4..])));
+                } else {
+                    return Ok((0, None));
+                }
+            } else {
+                if bits.len() > 4 {
+                    return Ok((-1, Some(&bits[4..])));
+                } else {
+                    return Ok((-1, None));
+                }
+            }
+        } else {
+            // read 3 bits
+            idx += 3;
+            // read 5 bits
+            let i in 0..4 {
+                value |= (bits[idx+i]) << i;
+            }
+            value = (value >> 1) ^ (-(n&1));
+        }
+    } else {
+        if !bits[2] {
+            // read 3 bits
+            idx += 3;
+            // read 9 bits
+            let i in 0..8 {
+                value |= (bits[idx+i] as i64) << i;
+            }
+            value = (value >> 1) ^ (-(n&1));
+        } else {
+            if !bits[3] {
+                // read 4 bits
+                idx += 4;
+                // read 16 bits
+                let i in 0..15 {
+                    value |= (bits[idx+i] as i64) << i;
+                }
+                value = (value >> 1) ^ (-(n&1));
+            } else {
+                // read 4 bits
+                idx += 4;
+                // read 64 bits
+                let i in 0..63 {
+                    value |= (bits[idx+i] as i64) << i;
+                }
+                value = (value >> 1) ^ (-(n&1));
+            }
+        }
+    }
+    if bits.len() > idx {
+        Ok((value, Some(&bits[idx..])))
+    } else {
+        Ok((value, None))
+    }
 }
 
 #[cfg(test)]

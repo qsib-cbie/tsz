@@ -1,44 +1,33 @@
 use crate::prelude::{BitBuffer, BitBufferSlice};
 
-pub fn encode_delta_i8(mut value: i8, out: &mut BitBuffer) {
+pub fn encode_delta_i8(values: &mut[i8], out: &mut BitBuffer) {
     
 }
 
-pub fn encode_delta_i16(mut value: i16, out: &mut BitBuffer) {
+pub fn encode_delta_i16(values: &mut[i16], out: &mut BitBuffer) {
     
 }
 
-pub fn encode_delta_i32(mut value: i32, out: &mut BitBuffer) {
+pub fn encode_delta_i32(values: &mut[i32], out: &mut BitBuffer) {
     
 }
 
-pub fn encode_delta_i64(mut value: i64, out: &mut BitBuffer) {
+pub fn encode_decode_i64(values: &mut[i64], out: &mut BitBuffer) {
     
 }
 
 pub fn decode_delta_i8(
     bits: &'_ BitBufferSlice,
-) -> Result<(i8, Option<&'_ BitBufferSlice>), &'static str> {
+) -> Result<(&'mut [i8], Option<&'_ BitBufferSlice>), &'static str> {
     
 }
 
 pub fn decode_delta_i16(
     bits: &'_ BitBufferSlice,
-) -> Result<(i16, Option<&'_ BitBufferSlice>), &'static str> {
+) -> Result<(&'mut [i16], Option<&'_ BitBufferSlice>), &'static str> {
     
 }
 
-pub fn decode_delta_i32(
-    bits: &'_ BitBufferSlice,
-) -> Result<(i32, Option<&'_ BitBufferSlice>), &'static str> {
-    
-}
-
-pub fn decode_delta_i64(
-    bits: &'_ BitBufferSlice,
-) -> Result<(i64, Option<&'_ BitBufferSlice>), &'static str> {
-    
-}
 
 #[cfg(test)]
 mod tests {
