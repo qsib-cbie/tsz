@@ -15,8 +15,8 @@ pub fn encode_delta_i8(values: &mut[i8], out: &mut BitBuffer) {
         for i in 0..3 {
             let val = values[i] as i8;
             let encoded: ((value << 1) ^ (value >> 127)) as u8;
-            for i in 0..7 {
-                out.push(encoded & (1 << i) != 0);
+            for j in 0..7 {
+                out.push(encoded & (1 << j) != 0);
             }
         }
     } else if values.len() == 8 {
@@ -28,8 +28,8 @@ pub fn encode_delta_i8(values: &mut[i8], out: &mut BitBuffer) {
         for i in 0..7 {
             let val = values[i] as i8;
             let encoded: ((value << 1) ^ (value >> 7)) as u8;
-            for i in 0..3 {
-                out.push(encoded & (1 << i) != 0);
+            for j in 0..3 {
+                out.push(encoded & (1 << j) != 0);
             }
         }
     } else if values.len() == 10 {
@@ -43,8 +43,8 @@ pub fn encode_delta_i8(values: &mut[i8], out: &mut BitBuffer) {
         for i in 0..9 {
             let val = values[i] as i8;
             let encoded: ((value << 1) ^ (value >> 7)) as u8;
-            for i in 0..2 {
-                out.push(encoded & (1 << i) != 0);
+            for j in 0..2 {
+                out.push(encoded & (1 << j) != 0);
             }
         }
     } else {
@@ -62,8 +62,8 @@ pub fn encode_delta_i16(values: &mut[i16], out: &mut BitBuffer) {
         for i in 0..1 {
             let value = values[i] as i16;
             let encoded: ((value << 1) ^ (value >> 15)) as u16;
-            for i in 0..15 {
-                out.push(encoded & (1 << i) != 0);
+            for j in 0..15 {
+                out.push(encoded & (1 << j) != 0);
             }
         }
     } else if values.len() == 3 {
@@ -77,8 +77,8 @@ pub fn encode_delta_i16(values: &mut[i16], out: &mut BitBuffer) {
         for i in 0..2 {
             let value = values[i] as i16;
             let encoded: ((value << 1) ^ (value >> 15)) as u16;
-            for i in 0..9 {
-                out.push(encoded & (1 << i) != 0);
+            for j in 0..9 {
+                out.push(encoded & (1 << j) != 0);
             }
         }
     }
@@ -103,10 +103,11 @@ pub fn decode_delta_i8(
             let mut value = 0;
             // read 8 bits
             for j in 0..7 {
-                value |= (bits[idx+j]) << i; 
+                value |= (bits[idx+j]) << j; 
             }
             value = (value >> 1) ^ (-(n&1));
             values[i] = value;
+            idx += 8;
         }
     } else if !bits[3] {
         // 8 samples of 4 bits
@@ -118,10 +119,11 @@ pub fn decode_delta_i8(
             let mut value = 0;
             // read 4 bits
             for j in 0..3 {
-                value |= (bits[idx+j]) << i; 
+                value |= (bits[idx+j]) << j; 
             }
             value = (value >> 1) ^ (-(n&1));
             values[i] = value;
+            idx += 4;
         }
     } else {
         // 10 samples of 3 bits
@@ -133,10 +135,11 @@ pub fn decode_delta_i8(
             let mut value = 0;
             // read 3 bits
             for j in 0..2 {
-                value |= (bits[idx+j]) << i; 
+                value |= (bits[idx+j]) << j; 
             }
             value = (value >> 1) ^ (-(n&1));
             values[i] = value;
+            idx += 3;
         }
     }
     if bits.len() > idx {
@@ -149,7 +152,50 @@ pub fn decode_delta_i8(
 pub fn decode_delta_i16(
     bits: &'_ BitBufferSlice,
 ) -> Result<(&'mut [i16], Option<&'_ BitBufferSlice>), &'static str> {
-    
+    if !bits[0]{
+        return Err("Not valid for delta decoding");
+    }
+    let mut idx = 0;
+    if bits[1] {
+        return Err("Not in good use of bits");
+    } else bits[2] {
+        // 3 samples of 10 bits
+        let mut values = [0i16; 3];
+        // read 6 bits
+        idx += 6;
+        // for 3 samples
+        for i in 0..2 {
+            let mut value = 0;
+            // read 10 bits
+            for j in 0..9 {
+                value |= (bits[idx+j]) << j; 
+            }
+            value = (value >> 1) ^ (-(n&1));
+            values[i] = value;
+            idx += 10;
+        }
+    } else {
+        // 2 samples of 16 bits
+        let mut values = [0i16; 2];
+        // read 4 bits
+        idx += 4;
+        // for 2 samples
+        for i in 0..1 {
+            let mut value = 0;
+            // read 16 bits
+            for j in 0..15 {
+                value |= (bits[idx+j]) << j; 
+            }
+            value = (value >> 1) ^ (-(n&1));
+            values[i] = value;
+            idx += 16;
+        }
+    }
+    if bits.len() > idx {
+        Ok((values, Some(&bits[idx..])))
+    } else {
+        Ok((values, None))
+    }
 }
 
 pub fn decode_delta_i32(
