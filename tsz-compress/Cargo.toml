@@ -7,7 +7,7 @@ repository = "https://github.com/trueb2/tsz"
 description = "Delta-delta compression for time series data"
 license = "MIT OR Apache-2.0"
 categories = ["compression"]
-keywords = ["time-series", "delta", "compression", "Gorilla", "serde", "delta_new", "deltadelta_new"]
+keywords = ["time-series", "delta", "compression", "Gorilla", "serde"]
 readme = "README.md"
 version = { workspace = true }
 
