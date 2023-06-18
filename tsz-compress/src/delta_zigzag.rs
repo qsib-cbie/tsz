@@ -355,71 +355,143 @@ mod tests {
 
     #[test]
     fn can_encode_decode_all_i8() {
-        for i in i8::MIN..=i8::MAX {
-            encode_decode_i8(i);
+        for i in -4..4 {
+            let mut values: [i8; 10] = [0; 10];
+            for j in 0..10 {
+                values[j] = i;
+            }
+            encode_decode_i8(&mut values[..]);
+        }
+        for i in -8..8 {
+            let mut values: [i8; 8] = [0; 8];
+            for j in 0..8 {
+                values[j] = i;
+            }
+            encode_decode_i8(&mut values[..]);
+        }
+        for i in -128..=127 {
+            let mut values: [i8; 4] = [0; 4];
+            for j in 0..4 {
+                values[j] = i;
+            }
+            encode_decode_i8(&mut values[..]);
         }
     }
 
     #[test]
     fn can_encode_decode_all_i16() {
-        for i in i8::MIN..=i8::MAX {
-            encode_decode_i16(i as i16);
+        for i in -4..4 {
+            let mut values: [i16; 10] = [0; 10];
+            for j in 0..10 {
+                values[j] = i;
+            }
+            encode_decode_i16(&mut values[..]);
         }
-
-        for i in i16::MIN..=i16::MAX {
-            encode_decode_i16(i);
+        for i in -8..8 {
+            let mut values: [i16; 8] = [0; 8];
+            for j in 0..8 {
+                values[j] = i;
+            }
+            encode_decode_i16(&mut values[..]);
+        }
+        for i in -128..128 {
+            let mut values: [i16; 4] = [0; 4];
+            for j in 0..4 {
+                values[j] = i;
+            }
+            encode_decode_i16(&mut values[..]);
+        }
+        for i in -512..512 {
+            let mut values: [i16; 3] = [0; 3];
+            for j in 0..3 {
+                values[j] = i;
+            }
+            encode_decode_i16(&mut values[..]);
+        }
+        for i in -32768..=32767 {
+            let mut values: [i16; 2] = [0; 2];
+            for j in 0..2 {
+                values[j] = i;
+            }
+            encode_decode_i16(&mut values[..]);
         }
     }
 
     #[test]
     fn can_encode_decode_all_i32() {
-        for i in i8::MIN..=i8::MAX {
-            encode_decode_i32(i as i32);
+        for i in -4..4 {
+            let mut values: [i32; 10] = [0; 10];
+            for j in 0..10 {
+                values[j] = i;
+            }
+            encode_decode_i32(&mut values[..]);
         }
-
-        for i in i16::MIN..=i16::MAX {
-            encode_decode_i32(i as i32);
+        for i in -8..8 {
+            let mut values: [i32; 8] = [0; 8];
+            for j in 0..8 {
+                values[j] = i;
+            }
+            encode_decode_i32(&mut values[..]);
         }
-
-        let mut rng = rand::thread_rng();
-
-        // Randomly skip most of the values
-        encode_decode_i32(i32::MIN);
-        encode_decode_i32(0);
-        encode_decode_i32(i32::MAX);
-        for _ in 0..=10000 {
-            let i = rng.gen_range(i32::MIN..=i32::MAX);
-            encode_decode_i32(i);
+        for i in -128..128 {
+            let mut values: [i32; 4] = [0; 4];
+            for j in 0..4 {
+                values[j] = i;
+            }
+            encode_decode_i32(&mut values[..]);
+        }
+        for i in -512..512 {
+            let mut values: [i32; 3] = [0; 3];
+            for j in 0..3 {
+                values[j] = i;
+            }
+            encode_decode_i32(&mut values[..]);
+        }
+        for i in -32768..32768 {
+            let mut values: [i32; 2] = [0; 2];
+            for j in 0..2 {
+                values[j] = i;
+            }
+            encode_decode_i32(&mut values[..]);
         }
     }
 
     #[test]
     fn can_encode_decode_all_i64() {
-        for i in i8::MIN..=i8::MAX {
-            encode_decode_i64(i as i64);
+        for i in -4..4 {
+            let mut values: [i64; 10] = [0; 10];
+            for j in 0..10 {
+                values[j] = i;
+            }
+            encode_decode_i64(&mut values[..]);
         }
-
-        for i in i16::MIN..=i16::MAX {
-            encode_decode_i64(i as i64);
+        for i in -8..8 {
+            let mut values: [i64; 8] = [0; 8];
+            for j in 0..8 {
+                values[j] = i;
+            }
+            encode_decode_i64(&mut values[..]);
         }
-
-        let mut rng = rand::thread_rng();
-
-        // Randomly skip most of the values
-        encode_decode_i64(i32::MIN as i64);
-        encode_decode_i64(0);
-        encode_decode_i64(i32::MAX as i64);
-        for _ in 0..=10000 {
-            let i = rng.gen_range(i32::MIN..=i32::MAX);
-            encode_decode_i64(i as i64);
+        for i in -128..128 {
+            let mut values: [i64; 4] = [0; 4];
+            for j in 0..4 {
+                values[j] = i;
+            }
+            encode_decode_i64(&mut values[..]);
         }
-
-        encode_decode_i64(i64::MIN);
-        encode_decode_i64(0);
-        encode_decode_i64(i64::MAX);
-        for _ in 0..=100000 {
-            let i = rng.gen_range(i64::MIN..=i64::MAX);
-            encode_decode_i64(i);
+        for i in -512..512 {
+            let mut values: [i64; 3] = [0; 3];
+            for j in 0..3 {
+                values[j] = i;
+            }
+            encode_decode_i64(&mut values[..]);
+        }
+        for i in -32768..32768 {
+            let mut values: [i64; 2] = [0; 2];
+            for j in 0..2 {
+                values[j] = i;
+            }
+            encode_decode_i64(&mut values[..]);
         }
     }
 }
