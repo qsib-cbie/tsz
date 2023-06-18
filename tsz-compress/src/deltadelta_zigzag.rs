@@ -17,18 +17,19 @@ pub fn encode_deltadelta_i8(value: i8, out: &mut BitBuffer) {
         // 5 bits, header 01
         out.push(false);
         out.push(true);
-        let encoded: i8 = (value << 1) ^ (value >> 7);
-        for i in 0..4{
+        let encoded: u8 = ((value << 1) ^ (value >> 7)) as u8;
+        for i in 0..5{
             out.push(encoded & (1 << i) != 0);
         }
     } else {
         // 9 bits, header 10
         out.push(true);
         out.push(false);
-        let encoded: i8 = (value << 1) ^ (value >> 7);
+        let encoded: u8 = ((value << 1) ^ (value >> 7)) as u8;
         for i in 0..8{
             out.push(encoded & (1 << i) != 0);
         }
+        out.push(false);
     }
 }
 
@@ -49,26 +50,26 @@ pub fn encode_deltadelta_i16(value: i16, out: &mut BitBuffer) {
         // 5 bits, header 01
         out.push(false);
         out.push(true);
-        let encoded: i16 = (value << 1) ^ (value >> 7);
-        for i in 0..4{
+        let encoded: u16 = ((value << 1) ^ (value >> 15)) as u16;
+        for i in 0..5{
             out.push(encoded & (1 << i) != 0);
         }
     } else if (-255..255).contains(&value){
         // 9 bits, header 10
         out.push(true);
         out.push(false);
-        let encoded: i16 = (value << 1) ^ (value >> 7);
-        for i in 0..8{
+        let encoded: u16 = ((value << 1) ^ (value >> 15)) as u16;
+        for i in 0..9{
             out.push(encoded & (1 << i) != 0);
         }
     } else {
         // 16 bits, header 110
-        for _ in 0..1 {
+        for _ in 0..2 {
             out.push(true);
         }
         out.push(false);
-        let encoded: i16 = (value << 1) ^ (value >> 15);
-        for i in 0..15{
+        let encoded: u16 = ((value << 1) ^ (value >> 15)) as u16;
+        for i in 0..16{
             out.push(encoded & (1 << i) != 0);
         }
     }
@@ -76,28 +77,104 @@ pub fn encode_deltadelta_i16(value: i16, out: &mut BitBuffer) {
 
 pub fn encode_deltadelta_i32(value: i32, out: &mut BitBuffer) {
     out.push(false);
-    for _ in 0..2 {
-        out.push(true);
-    }
-    for _ in 0..31 {
+    if value == 0 || value == -1 {
+        // 1 bit, header 00
         out.push(false);
-    }
-    let encoded: i32 = (value << 1) ^ (value >> 31);
-    for i in 0..31{
-        out.push(encoded & (1 << i) != 0);
+        out.push(false);
+        if value == 0 {
+            out.push(false);
+        }
+        else {
+            out.push(true);
+        }
+        return;
+    } else if (-15..15).contains(&value){
+        // 5 bits, header 01
+        out.push(false);
+        out.push(true);
+        let encoded: u32 = ((value << 1) ^ (value >> 31)) as u32;
+        for i in 0..5{
+            out.push(encoded & (1 << i) != 0);
+        }
+    } else if (-255..255).contains(&value){
+        // 9 bits, header 10
+        out.push(true);
+        out.push(false);
+        let encoded: u32 = ((value << 1) ^ (value >> 31)) as u32;
+        for i in 0..9{
+            out.push(encoded & (1 << i) != 0);
+        }
+    } else if (-32768..32768).contains(&value){
+        // 16 bits, header 110
+        for _ in 0..2 {
+            out.push(true);
+        }
+        out.push(false);
+        let encoded: u32 = ((value << 1) ^ (value >> 31)) as u32;
+        for i in 0..16{
+            out.push(encoded & (1 << i) != 0);
+        }
+    } else {
+        for _ in 0..3 {
+            out.push(true);
+        }
+        for _ in 0..32 {
+            out.push(false);
+        }
+        let encoded: u32 = ((value << 1) ^ (value >> 31)) as u32;
+        for i in 0..32{
+            out.push(encoded & (1 << i) != 0);
+        }
     }
 }
 
 pub fn encode_deltadelta_i64(value: i64, out: &mut BitBuffer) {
     out.push(false);
-    for _ in 0..2 {
+    if value == 0 || value == -1 {
+        // 1 bit, header 00
+        out.push(false);
+        out.push(false);
+        if value == 0 {
+            out.push(false);
+        }
+        else {
+            out.push(true);
+        }
+        return;
+    } else if (-15..15).contains(&value){
+        // 5 bits, header 01
+        out.push(false);
         out.push(true);
-    }
-    let sign_bit: u64 = ((value >> 63) & 0x01) as u64;
-    let magnitude: u64 = (value.abs() as u64) << 1;
-    let encoded: u64 = magnitude | sign_bit;
-    for i in 0..63{
-        out.push(encoded & (1 << i) != 0);
+        let encoded: u64 = ((value << 1) ^ (value >> 63)) as u64;
+        for i in 0..5{
+            out.push(encoded & (1 << i) != 0);
+        }
+    } else if (-255..255).contains(&value){
+        // 9 bits, header 10
+        out.push(true);
+        out.push(false);
+        let encoded: u64 = ((value << 1) ^ (value >> 63)) as u64;
+        for i in 0..9{
+            out.push(encoded & (1 << i) != 0);
+        }
+    } else if (-32768..32768).contains(&value){
+        // 16 bits, header 110
+        for _ in 0..2 {
+            out.push(true);
+        }
+        out.push(false);
+        let encoded: u64 = ((value << 1) ^ (value >> 63)) as u64;
+        for i in 0..16{
+            out.push(encoded & (1 << i) != 0);
+        }
+    } else {
+        for _ in 0..3 {
+            out.push(true);
+        }
+        let encoded: u64 = ((value << 1) ^ (value >> 63)) as u64;
+        for i in 0..64{
+            out.push(encoded & (1 << i) != 0);
+        }
     }
 }
 
@@ -110,40 +187,53 @@ pub fn decode_deltadelta_i8(
     if bits[0]{
         return Err("Not a delta-delta encoded value");
     }
-    if bits[1] {
-        return Err("Not enough bits to decode");
-    }
     let mut idx = 0;
     let mut value = 0;
-    if !bits[2] {
-        // read 1 bit
-        if !bits[3] {
-            if bits.len() > 4 {
-                return Ok((0, Some(&bits[4..])));
+    let mut result = 0;
+    if !bits[1]{
+        if !bits[2] {
+            // read 1 bit
+            if !bits[3] {
+                if bits.len() > 4 {
+                    return Ok((0, Some(&bits[4..])));
+                } else {
+                    return Ok((0, None));
+                }
             } else {
-                return Ok((0, None));
+                if bits.len() > 4 {
+                    return Ok((-1, Some(&bits[4..])));
+                } else {
+                    return Ok((-1, None));
+                }
             }
         } else {
-            if bits.len() > 4 {
-                return Ok((-1, Some(&bits[4..])));
-            } else {
-                return Ok((-1, None));
+            // read 3 bits
+            idx += 3;
+            // read 5 bits
+            for i in 0..5 {
+                value |= (bits[idx+i] as u8) << i;
             }
+            result += ((value >> 1) as i8) ^ (-((value&1) as i8));
+            idx += 5;
         }
     } else {
-        // read 3 bits
-        idx += 3;
-        // read 5 bits
-        for i in 0..4 {
-            value |= (bits[idx+i] as i8) << i;
+        if bits[2]{
+            return Err ("Exceeds the range");
+        } else {
+            // read 3 bits
+            idx += 3;
+            // read 8 bits
+            for i in 0..8 {
+                value |= (bits[idx+i] as u8) << i;
+            }
+            result += ((value >> 1) as i8) ^ (-((value&1) as i8));
+            idx += 9;
         }
-        value = (value >> 1) ^ (-(4&1));
     }
-
     if bits.len() > idx {
-        Ok((value, Some(&bits[idx..])))
+        Ok((result, Some(&bits[idx..])))
     } else {
-        Ok((value, None))
+        Ok((result, None))
     }
 }
 
@@ -158,6 +248,7 @@ pub fn decode_deltadelta_i16(
     }
     let mut idx = 0;
     let mut value = 0;
+    let mut result = 0;
     if !bits[1] {
         if !bits[2] {
             // read 3 bits
@@ -181,28 +272,37 @@ pub fn decode_deltadelta_i16(
             // read 3 bits
             idx += 3;
             // read 5 bits
-            for i in 0..4 {
-                value |= (bits[idx+i] as i16) << i;
+            for i in 0..5 {
+                value |= (bits[idx+i] as u16) << i;
             }
-            value = (value >> 1) ^ (-(4&1));
+            result += ((value >> 1) as i16) ^ (-((value&1) as i16));
+            idx += 5;
         }
     } else {
         if !bits[2] {
             // read 3 bits
             idx += 3;
             // read 9 bits
-            for i in 0..8 {
-                value |= (bits[idx+i] as i16) << i;
+            for i in 0..9 {
+                value |= (bits[idx+i] as u16) << i;
             }
-            value = (value >> 1) ^ (-(8&1));
+            result += ((value >> 1) as i16) ^ (-((value&1) as i16));
+            idx += 9;
         } else {
-            return Err("Not enough bits to decode");
+            // read 4 bits
+            idx += 4;
+            // read 16 bits
+            for i in 0..16 {
+                value |= (bits[idx+i] as u16) << i;
+            }
+            result += ((value >> 1) as i16) ^ (-((value&1) as i16));
+            idx += 16;
         }
     }
     if bits.len() > idx {
-        Ok((value, Some(&bits[idx..])))
+        Ok((result, Some(&bits[idx..])))
     } else {
-        Ok((value, None))
+        Ok((result, None))
     }
 }
 
@@ -217,6 +317,7 @@ pub fn decode_deltadelta_i32(
     }
     let mut idx = 0;
     let mut value = 0;
+    let mut result = 0;
     if !bits[1] {
         if !bits[2] {
             // read 3 bits
@@ -240,38 +341,48 @@ pub fn decode_deltadelta_i32(
             // read 3 bits
             idx += 3;
             // read 5 bits
-            for i in 0..4 {
-                value |= (bits[idx+i] as i32) << i;
+            for i in 0..5 {
+                value |= (bits[idx+i] as u32) << i;
             }
-            value = (value >> 1) ^ (-(4&1));
+            result += ((value >> 1) as i32) ^ (-((value&1) as i32));
+            idx += 5;
         }
     } else {
         if !bits[2] {
             // read 3 bits
             idx += 3;
             // read 9 bits
-            for i in 0..8 {
-                value |= (bits[idx+i] as i32) << i;
+            for i in 0..9 {
+                value |= (bits[idx+i] as u32) << i;
             }
-            value = (value >> 1) ^ (-(8&1));
+            result += ((value >> 1) as i32) ^ (-((value&1) as i32));
+            idx += 9;
         } else {
-            if !bits[3] {
+            if !bits[3]{
                 // read 4 bits
                 idx += 4;
                 // read 16 bits
-                for i in 0..15 {
-                    value |= (bits[idx+i] as i32) << i;
+                for i in 0..16 {
+                    value |= (bits[idx+i] as u32) << i;
                 }
-                value = (value >> 1) ^ (-(15&1));
+                result += ((value >> 1) as i32) ^ (-((value&1) as i32));
+                idx += 16;
             } else {
-                return Err("Not enough bits to decode");
+                // read 36 bits
+                idx += 36;
+                // read 32 bits
+                for i in 0..32{
+                    value |= (bits[idx+i] as u32) << i;
+                }
+                result += ((value >> 1) as i32) ^ (-((value&1) as i32));
+                idx += 32;
             }
         }
     }
     if bits.len() > idx {
-        Ok((value, Some(&bits[idx..])))
+        Ok((result, Some(&bits[idx..])))
     } else {
-        Ok((value, None))
+        Ok((result, None))
     }
 }
 
@@ -286,6 +397,7 @@ pub fn decode_deltadelta_i64(
     }
     let mut idx = 0;
     let mut value = 0;
+    let mut result = 0;
     if !bits[1] {
         if !bits[2] {
             // read 3 bits
@@ -309,44 +421,48 @@ pub fn decode_deltadelta_i64(
             // read 3 bits
             idx += 3;
             // read 5 bits
-            for i in 0..4 {
-                value |= (bits[idx+i] as i64) << i;
+            for i in 0..5 {
+                value |= (bits[idx+i] as u64) << i;
             }
-            value = (value >> 1) ^ (-(4&1));
+            result += ((value >> 1) as i64) ^ (-((value&1) as i64));
+            idx += 5;
         }
     } else {
         if !bits[2] {
             // read 3 bits
             idx += 3;
             // read 9 bits
-            for i in 0..8 {
-                value |= (bits[idx+i] as i64) << i;
+            for i in 0..9 {
+                value |= (bits[idx+i] as u64) << i;
             }
-            value = (value >> 1) ^ (-(8&1));
+            result += ((value >> 1) as i64) ^ (-((value&1) as i64));
+            idx += 9;
         } else {
-            if !bits[3] {
+            if !bits[3]{
                 // read 4 bits
                 idx += 4;
                 // read 16 bits
-                for i in 0..15 {
-                    value |= (bits[idx+i] as i64) << i;
+                for i in 0..16 {
+                    value |= (bits[idx+i] as u64) << i;
                 }
-                value = (value >> 1) ^ (-(15&1));
+                result += ((value >> 1) as i64) ^ (-((value&1) as i64));
+                idx += 16;
             } else {
                 // read 4 bits
                 idx += 4;
                 // read 64 bits
-                for i in 0..63 {
-                    value |= (bits[idx+i] as i64) << i;
+                for i in 0..64{
+                    value |= (bits[idx+i] as u64) << i;
                 }
-                value = (value >> 1) ^ (-(63&1));
+                result += ((value >> 1) as i64) ^ (-((value&1) as i64));
+                idx += 64;
             }
         }
     }
     if bits.len() > idx {
-        Ok((value, Some(&bits[idx..])))
+        Ok((result, Some(&bits[idx..])))
     } else {
-        Ok((value, None))
+        Ok((result, None))
     }
 }
 
@@ -363,7 +479,9 @@ mod tests {
 
     fn encode_decode_i8(value: i8) {
         let mut bits = BitBuffer::new();
+        // println!("value: {}", value);
         encode_deltadelta_i8(value, &mut bits);
+        // println!("bits: {}", bits);
         let (decoded, remaining) = decode_deltadelta_i8(&bits).unwrap();
         assert_eq!(value, decoded);
         assert!(remaining.is_none());
@@ -371,7 +489,9 @@ mod tests {
 
     fn encode_decode_i16(value: i16) {
         let mut bits = BitBuffer::new();
+        // println!("value: {}", value);
         encode_deltadelta_i16(value, &mut bits);
+        // println!("bits: {}", bits);
         let (decoded, remaining) = decode_deltadelta_i16(&bits).unwrap();
         assert_eq!(value, decoded);
         assert!(remaining.is_none());
@@ -379,8 +499,9 @@ mod tests {
 
     fn encode_decode_i32(value: i32) {
         let mut bits = BitBuffer::new();
+        // println!("value: {}", value);
         encode_deltadelta_i32(value, &mut bits);
-        // println!("{:?}", bits);
+        // println!("bits: {}", bits);
         let (decoded, remaining) = decode_deltadelta_i32(&bits).unwrap();
         assert_eq!(value, decoded);
         assert!(remaining.is_none());
@@ -388,7 +509,9 @@ mod tests {
 
     fn encode_decode_i64(value: i64) {
         let mut bits = BitBuffer::new();
+        // println!("value: {}", value);
         encode_deltadelta_i64(value, &mut bits);
+        // println!("bits: {}", bits);
         let (decoded, remaining) = decode_deltadelta_i64(&bits).unwrap();
         assert_eq!(value, decoded);
         assert!(remaining.is_none());
