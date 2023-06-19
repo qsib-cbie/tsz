@@ -1,54 +1,52 @@
 use crate::prelude::{BitBuffer, BitBufferSlice};
 
 pub fn encode_delta_i8(values: &mut[i8], out: &mut BitBuffer) {
-    if values.len() == 0 {
-        return;
-    }
     if values.len() == 4 {
         // 4 samples of 8 bits
-        for _ in 0..1 {
+        // header is 1100
+        for _ in 0..2 {
             out.push(true);
         }
-        for _ in 0..1 {
+        for _ in 0..2 {
             out.push(false);
         }
-        for i in 0..3 {
+        for i in 0..4 {
             let value = values[i] as i8;
             let encoded = ((value << 1) ^ (value >> 7)) as u8;
-            for j in 0..7 {
+            for j in 0..8 {
                 out.push(encoded & (1 << j) != 0);
             }
         }
     } else if values.len() == 8 {
         // 8 samples of 4 bits
-        for _ in 0..2 {
+        // header is 1110
+        for _ in 0..3 {
             out.push(true);
         }
         out.push(false);
-        for i in 0..7 {
+        for i in 0..8 {
+            let value = values[i] as i8;
+            let encoded = ((value << 1) ^ (value >> 7)) as u8;
+            for j in 0..4 {
+                out.push(encoded & (1 << j) != 0);
+            }
+        }
+    } else if values.len() == 10 {
+        // 10 samples of 3 bits
+        // header is 1111, padded with 00
+        for _ in 0..4 {
+            out.push(true);
+        }
+        for _ in 0..2 {
+            out.push(false);
+        }
+        for i in 0..10 {
             let value = values[i] as i8;
             let encoded = ((value << 1) ^ (value >> 7)) as u8;
             for j in 0..3 {
                 out.push(encoded & (1 << j) != 0);
             }
         }
-    } else if values.len() == 10 {
-        // 10 samples of 3 bits
-        for _ in 0..3 {
-            out.push(true);
-        }
-        for _ in 0..1 {
-            out.push(false);
-        }
-        for i in 0..9 {
-            let value = values[i] as i8;
-            let encoded = ((value << 1) ^ (value >> 7)) as u8;
-            for j in 0..2 {
-                out.push(encoded & (1 << j) != 0);
-            }
-        }
-    } else {
-        return;
     }
 }
 
@@ -59,10 +57,10 @@ pub fn encode_delta_i16(values: &mut[i16], out: &mut BitBuffer) {
         for _ in 0..3 {
             out.push(false);
         }
-        for i in 0..1 {
+        for i in 0..2 {
             let value = values[i] as i16;
             let encoded = ((value << 1) ^ (value >> 15)) as u16;
-            for j in 0..15 {
+            for j in 0..16 {
                 out.push(encoded & (1 << j) != 0);
             }
         }
@@ -71,13 +69,59 @@ pub fn encode_delta_i16(values: &mut[i16], out: &mut BitBuffer) {
         out.push(true);
         out.push(false);
         out.push(true);
+        for _ in 0..3 {
+            out.push(false);
+        }
+        for i in 0..3 {
+            let value = values[i] as i16;
+            let encoded = ((value << 1) ^ (value >> 15)) as u16;
+            for j in 0..10 {
+                out.push(encoded & (1 << j) != 0);
+            }
+        }
+    } else if values.len() == 4 {
+        // 4 samples of 8 bits
+        // header is 1100
+        for _ in 0..2 {
+            out.push(true);
+        }
         for _ in 0..2 {
             out.push(false);
         }
-        for i in 0..2 {
+        for i in 0..4 {
             let value = values[i] as i16;
-            let encoded = ((value << 1) ^ (value >> 15)) as u16;
-            for j in 0..9 {
+            let encoded = ((value << 1) ^ (value >> 7)) as u16;
+            for j in 0..8 {
+                out.push(encoded & (1 << j) != 0);
+            }
+        }
+    } else if values.len() == 8 {
+        // 8 samples of 4 bits
+        // header is 1110
+        for _ in 0..3 {
+            out.push(true);
+        }
+        out.push(false);
+        for i in 0..8 {
+            let value = values[i] as i16;
+            let encoded = ((value << 1) ^ (value >> 7)) as u16;
+            for j in 0..4 {
+                out.push(encoded & (1 << j) != 0);
+            }
+        }
+    } else if values.len() == 10 {
+        // 10 samples of 3 bits
+        // header is 1111, padded with 00
+        for _ in 0..4 {
+            out.push(true);
+        }
+        for _ in 0..2 {
+            out.push(false);
+        }
+        for i in 0..10 {
+            let value = values[i] as i8;
+            let encoded = ((value << 1) ^ (value >> 7)) as u16;
+            for j in 0..3 {
                 out.push(encoded & (1 << j) != 0);
             }
         }
@@ -91,10 +135,10 @@ pub fn encode_delta_i32(values: &mut[i32], out: &mut BitBuffer) {
         for _ in 0..3 {
             out.push(false);
         }
-        for i in 0..1 {
+        for i in 0..2 {
             let value = values[i] as i32;
             let encoded = ((value << 1) ^ (value >> 31)) as u32;
-            for j in 0..15 {
+            for j in 0..16 {
                 out.push(encoded & (1 << j) != 0);
             }
         }
@@ -103,13 +147,59 @@ pub fn encode_delta_i32(values: &mut[i32], out: &mut BitBuffer) {
         out.push(true);
         out.push(false);
         out.push(true);
+        for _ in 0..3 {
+            out.push(false);
+        }
+        for i in 0..3 {
+            let value = values[i] as i32;
+            let encoded = ((value << 1) ^ (value >> 31)) as u32;
+            for j in 0..10 {
+                out.push(encoded & (1 << j) != 0);
+            }
+        }
+    } else if values.len() == 4 {
+        // 4 samples of 8 bits
+        // header is 1100
+        for _ in 0..2 {
+            out.push(true);
+        }
         for _ in 0..2 {
             out.push(false);
         }
-        for i in 0..2 {
+        for i in 0..4 {
             let value = values[i] as i32;
             let encoded = ((value << 1) ^ (value >> 31)) as u32;
-            for j in 0..9 {
+            for j in 0..8 {
+                out.push(encoded & (1 << j) != 0);
+            }
+        }
+    } else if values.len() == 8 {
+        // 8 samples of 4 bits
+        // header is 1110
+        for _ in 0..3 {
+            out.push(true);
+        }
+        out.push(false);
+        for i in 0..8 {
+            let value = values[i] as i32;
+            let encoded = ((value << 1) ^ (value >> 31)) as u32;
+            for j in 0..4 {
+                out.push(encoded & (1 << j) != 0);
+            }
+        }
+    } else if values.len() == 10 {
+        // 10 samples of 3 bits
+        // header is 1111, padded with 00
+        for _ in 0..4 {
+            out.push(true);
+        }
+        for _ in 0..2 {
+            out.push(false);
+        }
+        for i in 0..10 {
+            let value = values[i] as i32;
+            let encoded = ((value << 1) ^ (value >> 31)) as u32;
+            for j in 0..3 {
                 out.push(encoded & (1 << j) != 0);
             }
         }
@@ -123,10 +213,10 @@ pub fn encode_delta_i64(values: &mut[i64], out: &mut BitBuffer) {
         for _ in 0..3 {
             out.push(false);
         }
-        for i in 0..1 {
+        for i in 0..2 {
             let value = values[i] as i64;
             let encoded = ((value << 1) ^ (value >> 63)) as u64;
-            for j in 0..15 {
+            for j in 0..16 {
                 out.push(encoded & (1 << j) != 0);
             }
         }
@@ -135,13 +225,59 @@ pub fn encode_delta_i64(values: &mut[i64], out: &mut BitBuffer) {
         out.push(true);
         out.push(false);
         out.push(true);
+        for _ in 0..3 {
+            out.push(false);
+        }
+        for i in 0..3 {
+            let value = values[i] as i64;
+            let encoded = ((value << 1) ^ (value >> 63)) as u64;
+            for j in 0..10 {
+                out.push(encoded & (1 << j) != 0);
+            }
+        }
+    } else if values.len() == 4 {
+        // 4 samples of 8 bits
+        // header is 1100
+        for _ in 0..2 {
+            out.push(true);
+        }
         for _ in 0..2 {
             out.push(false);
         }
-        for i in 0..2 {
+        for i in 0..4 {
             let value = values[i] as i64;
             let encoded = ((value << 1) ^ (value >> 63)) as u64;
-            for j in 0..9 {
+            for j in 0..8 {
+                out.push(encoded & (1 << j) != 0);
+            }
+        }
+    } else if values.len() == 8 {
+        // 8 samples of 4 bits
+        // header is 1110
+        for _ in 0..3 {
+            out.push(true);
+        }
+        out.push(false);
+        for i in 0..8 {
+            let value = values[i] as i64;
+            let encoded = ((value << 1) ^ (value >> 63)) as u64;
+            for j in 0..4 {
+                out.push(encoded & (1 << j) != 0);
+            }
+        }
+    } else if values.len() == 10 {
+        // 10 samples of 3 bits
+        // header is 1111, padded with 00
+        for _ in 0..4 {
+            out.push(true);
+        }
+        for _ in 0..2 {
+            out.push(false);
+        }
+        for i in 0..10 {
+            let value = values[i] as i64;
+            let encoded = ((value << 1) ^ (value >> 63)) as u64;
+            for j in 0..3 {
                 out.push(encoded & (1 << j) != 0);
             }
         }
@@ -161,17 +297,18 @@ pub fn decode_delta_i8(
     let mut idx = 0;
     let mut nvalues = 0;
     if !bits[2] {
+        // 4 samples of 8 bits
         // read 4 bits
         idx += 4;
-        // for 3 samples
-        for i in 0..3 {
+        // for 4 samples
+        for i in 0..4 {
             let mut value = 0;
             // read 8 bits
-            for j in 0..7 {
-                value |= (bits[idx + j] as i8) << j;
+            for j in 0..8 {
+                value |= (bits[idx + j] as u8) << j;
             }
-            value = (value >> 1) ^ (-(3 & 1));
-            values[i] = value;
+            let result = ((value >> 1) as i8) ^ (-((value & 1) as i8));
+            values[i] = result;
             idx += 8;
         }
         nvalues += 3;
@@ -180,14 +317,14 @@ pub fn decode_delta_i8(
         // read 4 bits
         idx += 4;
         // for 8 samples
-        for i in 0..7 {
+        for i in 0..8 {
             let mut value = 0;
             // read 4 bits
-            for j in 0..3 {
-                value |= (bits[idx + j] as i8) << j;
+            for j in 0..4 {
+                value |= (bits[idx + j] as u8) << j;
             }
-            value = (value >> 1) ^ (-(7 & 1));
-            values[i] = value;
+            let result = ((value >> 1) as i8) ^ (-((value & 1) as i8));
+            values[i] = result;
             idx += 4;
         }
         nvalues += 8;
@@ -196,14 +333,14 @@ pub fn decode_delta_i8(
         // read 6 bits
         idx += 6;
         // for 10 samples
-        for i in 0..9 {
+        for i in 0..10 {
             let mut value = 0;
             // read 3 bits
-            for j in 0..2 {
-                value |= (bits[idx + j] as i8) << j;
+            for j in 0..3 {
+                value |= (bits[idx + j] as u8) << j;
             }
-            value = (value >> 1) ^ (-(9 & 1));
-            values[i] = value;
+            let result = ((value >> 1) as i8) ^ (-((value & 1) as i8));
+            values[i] = result;
             idx += 3;
         }
         nvalues += 10;
@@ -217,28 +354,76 @@ pub fn decode_delta_i8(
 
 pub fn decode_delta_i16(
     bits: &'_ BitBufferSlice,
-) -> Result<([i16; 3], Option<&'_ BitBufferSlice>, i8), &'static str> {
+) -> Result<([i16; 10], Option<&'_ BitBufferSlice>, i8), &'static str> {
     if !bits[0]{
         return Err("Not valid for delta decoding");
     }
     let mut idx = 0;
     let mut nvalues = 0;
-    let mut values = [0i16; 3];
-    if bits[1] {
-        return Err("Not in good use of bits");
+    let mut values = [0i16; 10];
+    if bits[1]{
+        if !bits[2] {
+            // 4 samples of 8 bits
+            // read 4 bits
+            idx += 4;
+            // for 4 samples
+            for i in 0..4 {
+                let mut value = 0;
+                // read 8 bits
+                for j in 0..8 {
+                    value |= (bits[idx + j] as u16) << j;
+                }
+                let result = ((value >> 1) as i16) ^ (-((value & 1) as i16));
+                values[i] = result;
+                idx += 8;
+            }
+            nvalues += 3;
+        } else if !bits[3] {
+            // 8 samples of 4 bits
+            // read 4 bits
+            idx += 4;
+            // for 8 samples
+            for i in 0..8 {
+                let mut value = 0;
+                // read 4 bits
+                for j in 0..4 {
+                    value |= (bits[idx + j] as u16) << j;
+                }
+                let result = ((value >> 1) as i16) ^ (-((value & 1) as i16));
+                values[i] = result;
+                idx += 4;
+            }
+            nvalues += 8;
+        } else {
+            // 10 samples of 3 bits
+            // read 6 bits
+            idx += 6;
+            // for 10 samples
+            for i in 0..10 {
+                let mut value = 0;
+                // read 3 bits
+                for j in 0..3 {
+                    value |= (bits[idx + j] as u16) << j;
+                }
+                let result = ((value >> 1) as i16) ^ (-((value & 1) as i16));
+                values[i] = result;
+                idx += 3;
+            }
+            nvalues += 10;
+        }
     } else if bits[2] {
         // 3 samples of 10 bits
         // read 6 bits
         idx += 6;
         // for 3 samples
-        for i in 0..2 {
+        for i in 0..3 {
             let mut value = 0;
             // read 10 bits
-            for j in 0..9 {
-                value |= (bits[idx+j] as i16) << j; 
+            for j in 0..10 {
+                value |= (bits[idx+j] as u16) << j; 
             }
-            value = (value >> 1) ^ (-(2&1));
-            values[i] = value;
+            let result = ((value >> 1) as i16) ^ (-((value&1) as i16));
+            values[i] = result;
             idx += 10;
         }
         nvalues += 3;
@@ -247,14 +432,14 @@ pub fn decode_delta_i16(
         // read 4 bits
         idx += 4;
         // for 2 samples
-        for i in 0..1 {
+        for i in 0..2 {
             let mut value = 0;
             // read 16 bits
-            for j in 0..15 {
-                value |= (bits[idx+j] as i16) << j; 
+            for j in 0..16 {
+                value |= (bits[idx+j] as u16) << j; 
             }
-            value = (value >> 1) ^ (-(1&1));
-            values[i] = value;
+            let result = ((value >> 1) as i16) ^ (-((value&1) as i16));
+            values[i] = result;
             idx += 16;
         }
         nvalues += 2;
@@ -268,8 +453,8 @@ pub fn decode_delta_i16(
 
 pub fn decode_delta_i32(
     bits: &'_ BitBufferSlice,
-) -> Result<([i32; 2], Option<&'_ BitBufferSlice>, i8), &'static str> {
-    let mut values = [0i32; 2];
+) -> Result<([i32; 10], Option<&'_ BitBufferSlice>, i8), &'static str> {
+    let mut values = [0i32; 10];
     let result = decode_delta_i16(bits);
 
     match result {
@@ -286,8 +471,8 @@ pub fn decode_delta_i32(
 
 pub fn decode_delta_i64(
     bits: &'_ BitBufferSlice,
-) -> Result<([i64; 2], Option<&'_ BitBufferSlice>, i8), &'static str> {
-    let mut values = [0i64; 2];
+) -> Result<([i64; 10], Option<&'_ BitBufferSlice>, i8), &'static str> {
+    let mut values = [0i64; 10];
     let result = decode_delta_i16(bits);
 
     match result {
@@ -316,8 +501,10 @@ mod tests {
     fn encode_decode_i8(values: &mut[i8]) {
         let mut bits = BitBuffer::new();
         encode_delta_i8(values, &mut bits);
+        // println!("Encoded: {}", bits);
         let (decoded, remaining, nvalues) = decode_delta_i8(&bits).unwrap();
         for i in 0..nvalues {
+            // println!("{} {}", values[i as usize], decoded[i as usize]);
             assert_eq!(values[i as usize], decoded[i as usize]);
         }
         assert!(remaining.is_none());
@@ -326,8 +513,10 @@ mod tests {
     fn encode_decode_i16(values: &mut[i16]) {
         let mut bits = BitBuffer::new();
         encode_delta_i16(values, &mut bits);
+        // println!("Encoded: {}", bits);
         let (decoded, remaining, nvalues) = decode_delta_i16(&bits).unwrap();
         for i in 0..nvalues {
+            // println!("{} {}", values[i as usize], decoded[i as usize]);
             assert_eq!(values[i as usize], decoded[i as usize]);
         }
         assert!(remaining.is_none());
