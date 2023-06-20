@@ -3,9 +3,9 @@ use core::ops::Sub;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 // use rand::Rng;
 use tsz_compress::compress::*;
-// use tsz_compress::delta_new::*;
-// use tsz_compress::deltadelta_new::*;
-use tsz_compress::delta::*;
+use tsz_compress::delta_zigzag::*;
+use tsz_compress::deltadelta_zigzag::*;
+// use tsz_compress::delta::*;
 use tsz_compress::svlq::*;
 use tsz_compress::uvlq::*;
 
@@ -113,27 +113,27 @@ impl IntoCompressBits for TestRow {
 impl IntoCompressBits for TestRowDelta {
     fn into_bits(self, out: &mut BitBuffer) {
         if self.ts >= i64::MIN as i128 && self.ts <= i64::MAX as i128 {
-            encode_delta_i64(self.ts as i64, out);
+            encode_deltadelta_i64(self.ts as i64, out);
         } else {
             unimplemented!()
         }
 
-        encode_delta_i16(self.v8, out);
-        encode_delta_i32(self.v16, out);
-        encode_delta_i64(self.v32, out);
+        encode_deltadelta_i16(self.v8, out);
+        encode_deltadelta_i32(self.v16, out);
+        encode_deltadelta_i64(self.v32, out);
 
         if self.v64 >= i128::MIN as i128 && self.v64 <= i128::MAX as i128 {
-            encode_delta_i64(self.v64 as i64, out);
+            encode_deltadelta_i64(self.v64 as i64, out);
         } else {
             unimplemented!()
         }
 
-        encode_delta_i16(self.vi8, out);
-        encode_delta_i32(self.vi16, out);
-        encode_delta_i64(self.vi32, out);
+        encode_deltadelta_i16(self.vi8, out);
+        encode_deltadelta_i32(self.vi16, out);
+        encode_deltadelta_i64(self.vi32, out);
 
         if self.vi64 >= i64::MIN as i128 && self.vi64 <= i64::MAX as i128 {
-            encode_delta_i64(self.vi64 as i64, out);
+            encode_deltadelta_i64(self.vi64 as i64, out);
         } else {
             unimplemented!()
         }
@@ -183,39 +183,39 @@ impl FromCompressBits for TestRow {
 // How to unmarshal a delta from a bit slice
 impl FromCompressBits for TestRowDelta {
     fn from_bits(input: &BitBufferSlice) -> Result<(Self, &BitBufferSlice), &'static str> {
-        let (ts, input) = decode_delta_i64(input)?;
+        let (ts, input) = decode_deltadelta_i64(input)?;
         let Some(input) = input else {
                     return Err("Early EOF");
                 };
-        let (v8, input) = decode_delta_i16(input)?;
+        let (v8, input) = decode_deltadelta_i16(input)?;
         let Some(input) = input else {
                     return Err("Early EOF");
                 };
-        let (v16, input) = decode_delta_i32(input)?;
+        let (v16, input) = decode_deltadelta_i32(input)?;
         let Some(input) = input else {
                     return Err("Early EOF");
                 };
-        let (v32, input) = decode_delta_i64(input)?;
+        let (v32, input) = decode_deltadelta_i64(input)?;
         let Some(input) = input else {
                     return Err("Early EOF");
                 };
-        let (v64, input) = decode_delta_i64(input)?;
+        let (v64, input) = decode_deltadelta_i64(input)?;
         let Some(input) = input else {
                     return Err("Early EOF");
                 };
-        let (vi8, input) = decode_delta_i16(input)?;
+        let (vi8, input) = decode_deltadelta_i16(input)?;
         let Some(input) = input else {
                     return Err("Early EOF");
                 };
-        let (vi16, input) = decode_delta_i32(input)?;
+        let (vi16, input) = decode_deltadelta_i32(input)?;
         let Some(input) = input else {
                     return Err("Early EOF");
                 };
-        let (vi32, input) = decode_delta_i64(input)?;
+        let (vi32, input) = decode_deltadelta_i64(input)?;
         let Some(input) = input else {
                     return Err("Early EOF");
                 };
-        let (vi64, input) = decode_delta_i64(input)?;
+        let (vi64, input) = decode_deltadelta_i64(input)?;
         let input = input.unwrap_or_default();
 
         Ok((
