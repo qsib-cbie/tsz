@@ -1,12 +1,13 @@
 use crate::prelude::{BitBuffer, BitBufferSlice};
+use std::slice::Iter;
 
-enum DeltaI8 {
+pub enum DeltaI8 {
     Four([i8; 4]),
     Eight([i8; 8]),
     Ten([i8; 10]),
 }
 
-enum DeltaI16 {
+pub enum DeltaI16 {
     Two([i16; 2]),
     Three([i16; 3]),
     Four([i16; 4]),
@@ -14,7 +15,7 @@ enum DeltaI16 {
     Ten([i16; 10]),
 }
 
-enum DeltaI32 {
+pub enum DeltaI32 {
     Two([i32; 2]),
     Three([i32; 3]),
     Four([i32; 4]),
@@ -22,7 +23,7 @@ enum DeltaI32 {
     Ten([i32; 10]),
 }
 
-enum DeltaI64 {
+pub enum DeltaI64 {
     Two([i64; 2]),
     Three([i64; 3]),
     Four([i64; 4]),
@@ -31,136 +32,68 @@ enum DeltaI64 {
 }
 
 // IntoIterator on DeltaI8
-impl IntoIterator for DeltaI8 {
-    type Item = i8;
-    match self {
-        DeltaI8::Four(array) => {
-            type IntoIter = std::array::IntoIter<i8, 4>;
-        }
-        DeltaI8::Eight(array) => {
-            type IntoIter = std::array::IntoIter<i8, 8>;
-        }
-        DeltaI8::Ten(array) => {
-            type IntoIter = std::array::IntoIter<i8, 10>;
-        }
-    }
+impl<'a> IntoIterator for & 'a DeltaI8 {
+    type Item = &'a i8;
+    type IntoIter = Iter<'a, i8>;
+
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            DeltaI8::Four(array) => array.into_iter(),
-            DeltaI8::Eight(array) => array.into_iter(),
-            DeltaI8::Ten(array) => array.into_iter(),
+            DeltaI8::Four(array) => array.iter(),
+            DeltaI8::Eight(array) => array.iter(),
+            DeltaI8::Ten(array) => array.iter(),
         }
     }
 }
 
 // IntoIterator on DeltaI16
-impl IntoIterator for DeltaI16 {
-    type Item = i16;
-    match self {
-        DeltaI16::Two(array) => {
-            type IntoIter = std::array::IntoIter<i16, 2>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI16::Three(array) => {
-            type IntoIter = std::array::IntoIter<i16, 3>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI16::Four(array) => {
-            type IntoIter = std::array::IntoIter<i16, 4>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI16::Eight(array) => {
-            type IntoIter = std::array::IntoIter<i16, 8>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI16::Ten(array) => {
-            type IntoIter = std::array::IntoIter<i16, 10>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
+impl<'a> IntoIterator for & 'a DeltaI16 {
+    type Item = &'a i16;
+    type IntoIter = Iter<'a, i16>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            DeltaI16::Two(array) => array.iter(),
+            DeltaI16::Three(array) => array.iter(),
+            DeltaI16::Four(array) => array.iter(),
+            DeltaI16::Eight(array) => array.iter(),
+            DeltaI16::Ten(array) => array.iter(),
+        }
     }
 }
 
 // IntoIterator on DeltaI32
-impl IntoIterator for DeltaI32 {
-    type Item = i32;
-    match self {
-        DeltaI32::Two(array) => {
-            type IntoIter = std::array::IntoIter<i32, 2>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI32::Three(array) => {
-            type IntoIter = std::array::IntoIter<i32, 3>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI32::Four(array) => {
-            type IntoIter = std::array::IntoIter<i32, 4>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI32::Eight(array) => {
-            type IntoIter = std::array::IntoIter<i32, 8>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI32::Ten(array) => {
-            type IntoIter = std::array::IntoIter<i32, 10>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
+impl<'a> IntoIterator for & 'a DeltaI32 {
+    type Item = &'a i32;
+    type IntoIter = Iter<'a, i32>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            DeltaI32::Two(array) => array.iter(),
+            DeltaI32::Three(array) => array.iter(),
+            DeltaI32::Four(array) => array.iter(),
+            DeltaI32::Eight(array) => array.iter(),
+            DeltaI32::Ten(array) => array.iter(),
+        }
     }
 }
 
 // IntoIterator on DeltaI64
-impl IntoIterator for DeltaI64 {
-    type Item = i64;
-    match self {
-        DeltaI64::Two(array) => {
-            type IntoIter = std::array::IntoIter<i64, 2>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI64::Three(array) => {
-            type IntoIter = std::array::IntoIter<i64, 3>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI64::Four(array) => {
-            type IntoIter = std::array::IntoIter<i64, 4>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI64::Eight(array) => {
-            type IntoIter = std::array::IntoIter<i64, 8>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
-        DeltaI64::Ten(array) => {
-            type IntoIter = std::array::IntoIter<i64, 10>;
-            fn into_iter(self) -> Self::IntoIter {
-                array.into_iter()
-            }
-        },
+impl<'a> IntoIterator for & 'a DeltaI64 {
+    type Item = &'a i64;
+    type IntoIter = Iter<'a, i64>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            DeltaI64::Two(array) => array.iter(),
+            DeltaI64::Three(array) => array.iter(),
+            DeltaI64::Four(array) => array.iter(),
+            DeltaI64::Eight(array) => array.iter(),
+            DeltaI64::Ten(array) => array.iter(),
+        }
     }
 }
 
@@ -804,7 +737,7 @@ pub fn decode_delta_i64(
         let output = DeltaI64::Three(values);
     } else {
         // 2 samples of 16 bits
-        let values = [0i64; 2];
+        let mut values = [0i64; 2];
         // read 4 bits
         idx += 4;
         // for 2 samples
@@ -844,8 +777,8 @@ mod tests {
         // println!("Encoded: {}", bits);
         let (decoded, remaining) = decode_delta_i8(&bits).unwrap();
         let mut ind = 0;
-        for de_value in decoded {
-            assert_eq!(values[ind], de_value);
+        for de_value in decoded.into_iter() {
+            assert_eq!(values[ind], *de_value);
             ind += 1;
         }
         assert!(remaining.is_none());
@@ -857,8 +790,8 @@ mod tests {
         // println!("Encoded: {}", bits);
         let (decoded, remaining) = decode_delta_i16(&bits).unwrap();
         let mut ind = 0;
-        for de_value in decoded {
-            assert_eq!(values[ind], de_value);
+        for de_value in decoded.into_iter() {
+            assert_eq!(values[ind], *de_value);
             ind += 1;
         }
         assert!(remaining.is_none());
@@ -869,8 +802,8 @@ mod tests {
         encode_delta_i32(values, &mut bits);
         let (decoded, remaining) = decode_delta_i32(&bits).unwrap();
         let mut ind = 0;
-        for de_value in decoded {
-            assert_eq!(values[ind], de_value);
+        for de_value in decoded.into_iter() {
+            assert_eq!(values[ind], *de_value);
             ind += 1;
         }
         assert!(remaining.is_none());
@@ -881,8 +814,8 @@ mod tests {
         encode_delta_i64(values, &mut bits);
         let (decoded, remaining) = decode_delta_i64(&bits).unwrap();
         let mut ind = 0;
-        for de_value in decoded {
-            assert_eq!(values[ind], de_value);
+        for de_value in decoded.into_iter() {
+            assert_eq!(values[ind], *de_value);
             ind += 1;
         }
         assert!(remaining.is_none());
