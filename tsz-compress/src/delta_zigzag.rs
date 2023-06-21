@@ -1,5 +1,35 @@
 use crate::prelude::{BitBuffer, BitBufferSlice};
 
+enum DeltaI8 {
+    Four([i8; 4]),
+    Eight([i8; 8]),
+    Ten([i8; 10]),
+}
+
+enum DeltaI16 {
+    Two([i16; 2]),
+    Three([i16; 3]),
+    Four([i16; 4]),
+    Eight([i16; 8]),
+    Ten([i16; 10]),
+}
+
+enum DeltaI32 {
+    Two([i32; 2]),
+    Three([i32; 3]),
+    Four([i32; 4]),
+    Eight([i32; 8]),
+    Ten([i32; 10]),
+}
+
+enum DeltaI64 {
+    Two([i64; 2]),
+    Three([i64; 3]),
+    Four([i64; 4]),
+    Eight([i64; 8]),
+    Ten([i64; 10]),
+}
+
 pub fn encode_delta_i8(values: &mut[i8], out: &mut BitBuffer) {
     if values.len() == 4 {
         // 4 samples of 8 bits
