@@ -30,6 +30,131 @@ enum DeltaI64 {
     Ten([i64; 10]),
 }
 
+// IntoIterator on DeltaI8
+impl IntoIterator for DeltaI8 {
+    type Item = i8;
+    type IntoIter = std::array::IntoIter<DeltaI8, 1>; // Choose an appropriate default IntoIter type
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            DeltaI8::Four(array) => array.into_iter(),
+            DeltaI8::Eight(array) => array.into_iter(),
+            DeltaI8::Ten(array) => array.into_iter(),
+        }
+    }
+}
+
+// IntoIterator on DeltaI16
+impl IntoIterator for DeltaI16 {
+    type Item = i16;
+    match self {
+        DeltaI16::Two(array) => {
+            type IntoIter = std::array::IntoIter<i16, 2>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI16::Three(array) => {
+            type IntoIter = std::array::IntoIter<i16, 3>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI16::Four(array) => {
+            type IntoIter = std::array::IntoIter<i16, 4>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI16::Eight(array) => {
+            type IntoIter = std::array::IntoIter<i16, 8>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI16::Ten(array) => {
+            type IntoIter = std::array::IntoIter<i16, 10>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+    }
+}
+
+// IntoIterator on DeltaI32
+impl IntoIterator for DeltaI32 {
+    type Item = i32;
+    match self {
+        DeltaI32::Two(array) => {
+            type IntoIter = std::array::IntoIter<i32, 2>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI32::Three(array) => {
+            type IntoIter = std::array::IntoIter<i32, 3>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI32::Four(array) => {
+            type IntoIter = std::array::IntoIter<i32, 4>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI32::Eight(array) => {
+            type IntoIter = std::array::IntoIter<i32, 8>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI32::Ten(array) => {
+            type IntoIter = std::array::IntoIter<i32, 10>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+    }
+}
+
+// IntoIterator on DeltaI64
+impl IntoIterator for DeltaI64 {
+    type Item = i64;
+    match self {
+        DeltaI64::Two(array) => {
+            type IntoIter = std::array::IntoIter<i64, 2>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI64::Three(array) => {
+            type IntoIter = std::array::IntoIter<i64, 3>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI64::Four(array) => {
+            type IntoIter = std::array::IntoIter<i64, 4>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI64::Eight(array) => {
+            type IntoIter = std::array::IntoIter<i64, 8>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+        DeltaI64::Ten(array) => {
+            type IntoIter = std::array::IntoIter<i64, 10>;
+            fn into_iter(self) -> Self::IntoIter {
+                array.into_iter()
+            }
+        },
+    }
+}
+
 pub fn encode_delta_i8(values: &mut[i8], out: &mut BitBuffer) {
     if values.len() == 4 {
         // 4 samples of 8 bits
@@ -316,18 +441,18 @@ pub fn encode_delta_i64(values: &mut[i64], out: &mut BitBuffer) {
 
 pub fn decode_delta_i8(
     bits: &'_ BitBufferSlice,
-) -> Result<([i8; 10], Option<&'_ BitBufferSlice>, i8), &'static str> {
+) -> Result<(DeltaI8, Option<&'_ BitBufferSlice>), &'static str> {
     if !bits[0] {
         return Err("Not valid for delta decoding");
     }
     if !bits[1] {
         return Err("Not enough bits to decode");
     }
-    let mut values = [0i8; 10];
     let mut idx = 0;
-    let mut nvalues = 0;
+    let output = DeltaI8::Four([0i8; 4]);
     if !bits[2] {
         // 4 samples of 8 bits
+        let mut values = [0i8; 4];
         // read 4 bits
         idx += 4;
         // for 4 samples
@@ -341,9 +466,10 @@ pub fn decode_delta_i8(
             values[i] = result;
             idx += 8;
         }
-        nvalues += 3;
+        let output = DeltaI8::Four(values);
     } else if !bits[3] {
         // 8 samples of 4 bits
+        let mut values = [0i8; 8];
         // read 4 bits
         idx += 4;
         // for 8 samples
@@ -357,9 +483,10 @@ pub fn decode_delta_i8(
             values[i] = result;
             idx += 4;
         }
-        nvalues += 8;
+        let output = DeltaI8::Eight(values);
     } else {
         // 10 samples of 3 bits
+        let mut values = [0i8; 10];
         // read 6 bits
         idx += 6;
         // for 10 samples
@@ -373,27 +500,27 @@ pub fn decode_delta_i8(
             values[i] = result;
             idx += 3;
         }
-        nvalues += 10;
+        let output = DeltaI8::Ten(values);
     }
     if bits.len() > idx {
-        Ok((values, Some(&bits[idx..]), nvalues))
+        Ok((output, Some(&bits[idx..])))
     } else {
-        Ok((values, None, nvalues))
+        Ok((output, None))
     }
 }
 
 pub fn decode_delta_i16(
     bits: &'_ BitBufferSlice,
-) -> Result<([i16; 10], Option<&'_ BitBufferSlice>, i8), &'static str> {
+) -> Result<(DeltaI16, Option<&'_ BitBufferSlice>), &'static str> {
     if !bits[0]{
         return Err("Not valid for delta decoding");
     }
     let mut idx = 0;
-    let mut nvalues = 0;
-    let mut values = [0i16; 10];
+    let output = DeltaI16::Four([0i16; 4]);
     if bits[1]{
         if !bits[2] {
             // 4 samples of 8 bits
+            let mut values = [0i16; 4];
             // read 4 bits
             idx += 4;
             // for 4 samples
@@ -407,9 +534,10 @@ pub fn decode_delta_i16(
                 values[i] = result;
                 idx += 8;
             }
-            nvalues += 3;
+            let output = DeltaI16::Four(values);
         } else if !bits[3] {
             // 8 samples of 4 bits
+            let mut values = [0i16; 8];
             // read 4 bits
             idx += 4;
             // for 8 samples
@@ -423,9 +551,10 @@ pub fn decode_delta_i16(
                 values[i] = result;
                 idx += 4;
             }
-            nvalues += 8;
+            let output = DeltaI16::Eight(values);
         } else {
             // 10 samples of 3 bits
+            let mut values = [0i16; 10];
             // read 6 bits
             idx += 6;
             // for 10 samples
@@ -439,10 +568,11 @@ pub fn decode_delta_i16(
                 values[i] = result;
                 idx += 3;
             }
-            nvalues += 10;
+            let output = DeltaI16::Ten(values);
         }
     } else if bits[2] {
         // 3 samples of 10 bits
+        let mut values = [0i16; 3];
         // read 6 bits
         idx += 6;
         // for 3 samples
@@ -456,9 +586,10 @@ pub fn decode_delta_i16(
             values[i] = result;
             idx += 10;
         }
-        nvalues += 3;
+        let output = DeltaI16::Three(values);
     } else {
         // 2 samples of 16 bits
+        let mut values = [0i16; 2];
         // read 4 bits
         idx += 4;
         // for 2 samples
@@ -472,48 +603,218 @@ pub fn decode_delta_i16(
             values[i] = result;
             idx += 16;
         }
-        nvalues += 2;
+        let output = DeltaI16::Two(values);
     }
     if bits.len() > idx {
-        Ok((values, Some(&bits[idx..]), nvalues))
+        Ok((output, Some(&bits[idx..])))
     } else {
-        Ok((values, None, nvalues))
+        Ok((output, None))
     }
 }
 
 pub fn decode_delta_i32(
     bits: &'_ BitBufferSlice,
-) -> Result<([i32; 10], Option<&'_ BitBufferSlice>, i8), &'static str> {
-    let mut values = [0i32; 10];
-    let result = decode_delta_i16(bits);
-
-    match result {
-        Ok((decoded_values, s, nvalues)) => {
-            // Convert i16 values to i32
-            for (i, value) in decoded_values.iter().enumerate() {
-                values[i] = *value as i32;
+) -> Result<(DeltaI32, Option<&'_ BitBufferSlice>), &'static str> {
+    if !bits[0]{
+        return Err("Not valid for delta decoding");
+    }
+    let mut idx = 0;
+    let output = DeltaI32::Four([0i32; 4]);
+    if bits[1]{
+        if !bits[2] {
+            // 4 samples of 8 bits
+            let mut values = [0i32; 4];
+            // read 4 bits
+            idx += 4;
+            // for 4 samples
+            for i in 0..4 {
+                let mut value = 0;
+                // read 8 bits
+                for j in 0..8 {
+                    value |= (bits[idx + j] as u32) << j;
+                }
+                let result = ((value >> 1) as i32) ^ (-((value & 1) as i32));
+                values[i] = result;
+                idx += 8;
             }
-            Ok((values, s, nvalues))
+            let output = DeltaI32::Four(values);
+        } else if !bits[3] {
+            // 8 samples of 4 bits
+            let mut values = [0i32; 8];
+            // read 4 bits
+            idx += 4;
+            // for 8 samples
+            for i in 0..8 {
+                let mut value = 0;
+                // read 4 bits
+                for j in 0..4 {
+                    value |= (bits[idx + j] as u32) << j;
+                }
+                let result = ((value >> 1) as i32) ^ (-((value & 1) as i32));
+                values[i] = result;
+                idx += 4;
+            }
+            let output = DeltaI32::Eight(values);
+        } else {
+            // 10 samples of 3 bits
+            let mut values = [0i32; 10];
+            // read 6 bits
+            idx += 6;
+            // for 10 samples
+            for i in 0..10 {
+                let mut value = 0;
+                // read 3 bits
+                for j in 0..3 {
+                    value |= (bits[idx + j] as u32) << j;
+                }
+                let result = ((value >> 1) as i32) ^ (-((value & 1) as i32));
+                values[i] = result;
+                idx += 3;
+            }
+            let output = DeltaI32::Ten(values);
         }
-        Err(err) => Err(err),
+    } else if bits[2] {
+        // 3 samples of 10 bits
+        let mut values = [0i32; 3];
+        // read 6 bits
+        idx += 6;
+        // for 3 samples
+        for i in 0..3 {
+            let mut value = 0;
+            // read 10 bits
+            for j in 0..10 {
+                value |= (bits[idx+j] as u32) << j; 
+            }
+            let result = ((value >> 1) as i32) ^ (-((value&1) as i32));
+            values[i] = result;
+            idx += 10;
+        }
+        let output = DeltaI32::Three(values);
+    } else {
+        // 2 samples of 16 bits
+        let mut values = [0i32; 2];
+        // read 4 bits
+        idx += 4;
+        // for 2 samples
+        for i in 0..2 {
+            let mut value = 0;
+            // read 16 bits
+            for j in 0..16 {
+                value |= (bits[idx+j] as u32) << j; 
+            }
+            let result = ((value >> 1) as i32) ^ (-((value&1) as i32));
+            values[i] = result;
+            idx += 16;
+        }
+        let output = DeltaI32::Two(values);
+    }
+    if bits.len() > idx {
+        Ok((output, Some(&bits[idx..])))
+    } else {
+        Ok((output, None))
     }
 }
 
 pub fn decode_delta_i64(
     bits: &'_ BitBufferSlice,
-) -> Result<([i64; 10], Option<&'_ BitBufferSlice>, i8), &'static str> {
-    let mut values = [0i64; 10];
-    let result = decode_delta_i16(bits);
-
-    match result {
-        Ok((decoded_values, s, nvalues)) => {
-            // Convert i16 values to i64
-            for (i, value) in decoded_values.iter().enumerate() {
-                values[i] = *value as i64;
+) -> Result<(DeltaI64, Option<&'_ BitBufferSlice>), &'static str> {
+    if !bits[0]{
+        return Err("Not valid for delta decoding");
+    }
+    let mut idx = 0;
+    let output = DeltaI64::Four([0i64; 4]);
+    if bits[1]{
+        if !bits[2] {
+            // 4 samples of 8 bits
+            let mut values = [0i64; 4];
+            // read 4 bits
+            idx += 4;
+            // for 4 samples
+            for i in 0..4 {
+                let mut value = 0;
+                // read 8 bits
+                for j in 0..8 {
+                    value |= (bits[idx + j] as u64) << j;
+                }
+                let result = ((value >> 1) as i64) ^ (-((value & 1) as i64));
+                values[i] = result;
+                idx += 8;
             }
-            Ok((values, s, nvalues))
+            let output = DeltaI64::Four(values);
+        } else if !bits[3] {
+            // 8 samples of 4 bits
+            let mut values = [0i64; 8];
+            // read 4 bits
+            idx += 4;
+            // for 8 samples
+            for i in 0..8 {
+                let mut value = 0;
+                // read 4 bits
+                for j in 0..4 {
+                    value |= (bits[idx + j] as u64) << j;
+                }
+                let result = ((value >> 1) as i64) ^ (-((value & 1) as i64));
+                values[i] = result;
+                idx += 4;
+            }
+            let output = DeltaI64::Eight(values);
+        } else {
+            // 10 samples of 3 bits
+            let mut values = [0i64; 10];
+            // read 6 bits
+            idx += 6;
+            // for 10 samples
+            for i in 0..10 {
+                let mut value = 0;
+                // read 3 bits
+                for j in 0..3 {
+                    value |= (bits[idx + j] as u64) << j;
+                }
+                let result = ((value >> 1) as i64) ^ (-((value & 1) as i64));
+                values[i] = result;
+                idx += 3;
+            }
+            let output = DeltaI64::Ten(values);
         }
-        Err(err) => Err(err),
+    } else if bits[2] {
+        // 3 samples of 10 bits
+        let mut values = [0i64; 3];
+        // read 6 bits
+        idx += 6;
+        // for 3 samples
+        for i in 0..3 {
+            let mut value = 0;
+            // read 10 bits
+            for j in 0..10 {
+                value |= (bits[idx+j] as u64) << j; 
+            }
+            let result = ((value >> 1) as i64) ^ (-((value&1) as i64));
+            values[i] = result;
+            idx += 10;
+        }
+        let output = DeltaI64::Three(values);
+    } else {
+        // 2 samples of 16 bits
+        let values = [0i64; 2];
+        // read 4 bits
+        idx += 4;
+        // for 2 samples
+        for i in 0..2 {
+            let mut value = 0;
+            // read 16 bits
+            for j in 0..16 {
+                value |= (bits[idx+j] as u64) << j; 
+            }
+            let result = ((value >> 1) as i64) ^ (-((value&1) as i64));
+            values[i] = result;
+            idx += 16;
+        }
+        let output = DeltaI64::Two(values);
+    }
+    if bits.len() > idx {
+        Ok((output, Some(&bits[idx..])))
+    } else {
+        Ok((output, None))
     }
 }
 
@@ -532,10 +833,11 @@ mod tests {
         let mut bits = BitBuffer::new();
         encode_delta_i8(values, &mut bits);
         // println!("Encoded: {}", bits);
-        let (decoded, remaining, nvalues) = decode_delta_i8(&bits).unwrap();
-        for i in 0..nvalues {
-            // println!("{} {}", values[i as usize], decoded[i as usize]);
-            assert_eq!(values[i as usize], decoded[i as usize]);
+        let (decoded, remaining) = decode_delta_i8(&bits).unwrap();
+        let mut ind = 0;
+        for de_value in decoded {
+            assert_eq!(values[ind], de_value);
+            ind += 1;
         }
         assert!(remaining.is_none());
     }
@@ -544,10 +846,11 @@ mod tests {
         let mut bits = BitBuffer::new();
         encode_delta_i16(values, &mut bits);
         // println!("Encoded: {}", bits);
-        let (decoded, remaining, nvalues) = decode_delta_i16(&bits).unwrap();
-        for i in 0..nvalues {
-            // println!("{} {}", values[i as usize], decoded[i as usize]);
-            assert_eq!(values[i as usize], decoded[i as usize]);
+        let (decoded, remaining) = decode_delta_i16(&bits).unwrap();
+        let mut ind = 0;
+        for de_value in decoded {
+            assert_eq!(values[ind], de_value);
+            ind += 1;
         }
         assert!(remaining.is_none());
     }
@@ -555,9 +858,11 @@ mod tests {
     fn encode_decode_i32(values: &mut[i32]) {
         let mut bits = BitBuffer::new();
         encode_delta_i32(values, &mut bits);
-        let (decoded, remaining, nvalues) = decode_delta_i32(&bits).unwrap();
-        for i in 0..nvalues {
-            assert_eq!(values[i as usize], decoded[i as usize]);
+        let (decoded, remaining) = decode_delta_i32(&bits).unwrap();
+        let mut ind = 0;
+        for de_value in decoded {
+            assert_eq!(values[ind], de_value);
+            ind += 1;
         }
         assert!(remaining.is_none());
     }
@@ -565,9 +870,11 @@ mod tests {
     fn encode_decode_i64(values: &mut[i64]) {
         let mut bits = BitBuffer::new();
         encode_delta_i64(values, &mut bits);
-        let (decoded, remaining, nvalues) = decode_delta_i64(&bits).unwrap();
-        for i in 0..nvalues {
-            assert_eq!(values[i as usize], decoded[i as usize]);
+        let (decoded, remaining) = decode_delta_i64(&bits).unwrap();
+        let mut ind = 0;
+        for de_value in decoded {
+            assert_eq!(values[ind], de_value);
+            ind += 1;
         }
         assert!(remaining.is_none());
     }

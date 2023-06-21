@@ -3,9 +3,9 @@ use core::ops::Sub;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 // use rand::Rng;
 use tsz_compress::compress::*;
-use tsz_compress::delta_zigzag::*;
+// use tsz_compress::delta_zigzag::*;
 use tsz_compress::deltadelta_zigzag::*;
-// use tsz_compress::delta::*;
+use tsz_compress::delta::*;
 use tsz_compress::svlq::*;
 use tsz_compress::uvlq::*;
 
@@ -110,6 +110,7 @@ impl IntoCompressBits for TestRow {
 }
 
 // How to bit pack a delta
+// ZigZag Version
 impl IntoCompressBits for TestRowDelta {
     fn into_bits(self, out: &mut BitBuffer) {
         if self.ts >= i64::MIN as i128 && self.ts <= i64::MAX as i128 {
@@ -139,6 +140,38 @@ impl IntoCompressBits for TestRowDelta {
         }
     }
 }
+
+// // How to bit pack a delta
+// // Uvlq Version
+// impl IntoCompressBits for TestRowDelta {
+//     fn into_bits(self, out: &mut BitBuffer) {
+//         if self.ts >= i64::MIN as i128 && self.ts <= i64::MAX as i128 {
+//             encode_delta_i64(self.ts as i64, out);
+//         } else {
+//             unimplemented!()
+//         }
+
+//         encode_delta_i16(self.v8, out);
+//         encode_delta_i32(self.v16, out);
+//         encode_delta_i64(self.v32, out);
+
+//         if self.v64 >= i128::MIN as i128 && self.v64 <= i128::MAX as i128 {
+//             encode_deltadelta_i64(self.v64 as i64, out);
+//         } else {
+//             unimplemented!()
+//         }
+
+//         encode_delta_i16(self.v8, out);
+//         encode_delta_i32(self.v16, out);
+//         encode_delta_i64(self.v32, out);
+
+//         if self.vi64 >= i64::MIN as i128 && self.vi64 <= i64::MAX as i128 {
+//             encode_delta_i64(self.vi64 as i64, out);
+//         } else {
+//             unimplemented!()
+//         }
+//     }
+// }
 
 // How to unmarshal a row from a bit slice
 impl FromCompressBits for TestRow {
@@ -180,7 +213,64 @@ impl FromCompressBits for TestRow {
     }
 }
 
+// // How to unmarshal a delta from a bit slice
+// // Uvlq Version
+// impl FromCompressBits for TestRowDelta {
+//     fn from_bits(input: &BitBufferSlice) -> Result<(Self, &BitBufferSlice), &'static str> {
+//         let (ts, input) = decode_delta_i64(input)?;
+//         let Some(input) = input else {
+//                     return Err("Early EOF");
+//                 };
+//         let (v8, input) = decode_delta_i16(input)?;
+//         let Some(input) = input else {
+//                     return Err("Early EOF");
+//                 };
+//         let (v16, input) = decode_delta_i32(input)?;
+//         let Some(input) = input else {
+//                     return Err("Early EOF");
+//                 };
+//         let (v32, input) = decode_delta_i64(input)?;
+//         let Some(input) = input else {
+//                     return Err("Early EOF");
+//                 };
+//         let (v64, input) = decode_delta_i64(input)?;
+//         let Some(input) = input else {
+//                     return Err("Early EOF");
+//                 };
+//         let (vi8, input) = decode_delta_i16(input)?;
+//         let Some(input) = input else {
+//                     return Err("Early EOF");
+//                 };
+//         let (vi16, input) = decode_delta_i32(input)?;
+//         let Some(input) = input else {
+//                     return Err("Early EOF");
+//                 };
+//         let (vi32, input) = decode_delta_i64(input)?;
+//         let Some(input) = input else {
+//                     return Err("Early EOF");
+//                 };
+//         let (vi64, input) = decode_delta_i64(input)?;
+//         let input = input.unwrap_or_default();
+
+//         Ok((
+//             Self {
+//                 ts: ts as i128,
+//                 v8,
+//                 v16,
+//                 v32,
+//                 v64: v64 as i128,
+//                 vi8,
+//                 vi16,
+//                 vi32,
+//                 vi64: vi64 as i128,
+//             },
+//             input,
+//         ))
+//     }
+// }
+
 // How to unmarshal a delta from a bit slice
+// ZigZag Version
 impl FromCompressBits for TestRowDelta {
     fn from_bits(input: &BitBufferSlice) -> Result<(Self, &BitBufferSlice), &'static str> {
         let (ts, input) = decode_deltadelta_i64(input)?;
