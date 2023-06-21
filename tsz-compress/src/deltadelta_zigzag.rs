@@ -17,7 +17,7 @@ pub fn encode_deltadelta_i8(value: i8, out: &mut BitBuffer) {
         // 5 bits, header 01
         out.push(false);
         out.push(true);
-        let encoded: u8 = ((value << 1) ^ (value >> 7)) as u8;
+        let encoded = ((value << 1) ^ (value >> 7)) as u8;
         for i in 0..5{
             out.push(encoded & (1 << i) != 0);
         }
@@ -25,7 +25,7 @@ pub fn encode_deltadelta_i8(value: i8, out: &mut BitBuffer) {
         // 9 bits, header 10
         out.push(true);
         out.push(false);
-        let encoded: u8 = ((value << 1) ^ (value >> 7)) as u8;
+        let encoded = ((value << 1) ^ (value >> 7)) as u8;
         for i in 0..8{
             out.push(encoded & (1 << i) != 0);
         }
@@ -50,7 +50,7 @@ pub fn encode_deltadelta_i16(value: i16, out: &mut BitBuffer) {
         // 5 bits, header 01
         out.push(false);
         out.push(true);
-        let encoded: u16 = ((value << 1) ^ (value >> 15)) as u16;
+        let encoded = ((value << 1) ^ (value >> 15)) as u16;
         for i in 0..5{
             out.push(encoded & (1 << i) != 0);
         }
@@ -58,7 +58,7 @@ pub fn encode_deltadelta_i16(value: i16, out: &mut BitBuffer) {
         // 9 bits, header 10
         out.push(true);
         out.push(false);
-        let encoded: u16 = ((value << 1) ^ (value >> 15)) as u16;
+        let encoded = ((value << 1) ^ (value >> 15)) as u16;
         for i in 0..9{
             out.push(encoded & (1 << i) != 0);
         }
@@ -68,7 +68,7 @@ pub fn encode_deltadelta_i16(value: i16, out: &mut BitBuffer) {
             out.push(true);
         }
         out.push(false);
-        let encoded: u16 = ((value << 1) ^ (value >> 15)) as u16;
+        let encoded = ((value << 1) ^ (value >> 15)) as u16;
         for i in 0..16{
             out.push(encoded & (1 << i) != 0);
         }
@@ -92,7 +92,7 @@ pub fn encode_deltadelta_i32(value: i32, out: &mut BitBuffer) {
         // 5 bits, header 01
         out.push(false);
         out.push(true);
-        let encoded: u32 = ((value << 1) ^ (value >> 31)) as u32;
+        let encoded = ((value << 1) ^ (value >> 31)) as u32;
         for i in 0..5{
             out.push(encoded & (1 << i) != 0);
         }
@@ -100,7 +100,7 @@ pub fn encode_deltadelta_i32(value: i32, out: &mut BitBuffer) {
         // 9 bits, header 10
         out.push(true);
         out.push(false);
-        let encoded: u32 = ((value << 1) ^ (value >> 31)) as u32;
+        let encoded = ((value << 1) ^ (value >> 31)) as u32;
         for i in 0..9{
             out.push(encoded & (1 << i) != 0);
         }
@@ -110,7 +110,7 @@ pub fn encode_deltadelta_i32(value: i32, out: &mut BitBuffer) {
             out.push(true);
         }
         out.push(false);
-        let encoded: u32 = ((value << 1) ^ (value >> 31)) as u32;
+        let encoded = ((value << 1) ^ (value >> 31)) as u32;
         for i in 0..16{
             out.push(encoded & (1 << i) != 0);
         }
@@ -121,7 +121,7 @@ pub fn encode_deltadelta_i32(value: i32, out: &mut BitBuffer) {
         for _ in 0..32 {
             out.push(false);
         }
-        let encoded: u32 = ((value << 1) ^ (value >> 31)) as u32;
+        let encoded = ((value << 1) ^ (value >> 31)) as u32;
         for i in 0..32{
             out.push(encoded & (1 << i) != 0);
         }
@@ -145,7 +145,7 @@ pub fn encode_deltadelta_i64(value: i64, out: &mut BitBuffer) {
         // 5 bits, header 01
         out.push(false);
         out.push(true);
-        let encoded: u64 = ((value << 1) ^ (value >> 63)) as u64;
+        let encoded = ((value << 1) ^ (value >> 63)) as u64;
         for i in 0..5{
             out.push(encoded & (1 << i) != 0);
         }
@@ -153,7 +153,7 @@ pub fn encode_deltadelta_i64(value: i64, out: &mut BitBuffer) {
         // 9 bits, header 10
         out.push(true);
         out.push(false);
-        let encoded: u64 = ((value << 1) ^ (value >> 63)) as u64;
+        let encoded = ((value << 1) ^ (value >> 63)) as u64;
         for i in 0..9{
             out.push(encoded & (1 << i) != 0);
         }
@@ -163,7 +163,7 @@ pub fn encode_deltadelta_i64(value: i64, out: &mut BitBuffer) {
             out.push(true);
         }
         out.push(false);
-        let encoded: u64 = ((value << 1) ^ (value >> 63)) as u64;
+        let encoded = ((value << 1) ^ (value >> 63)) as u64;
         for i in 0..16{
             out.push(encoded & (1 << i) != 0);
         }
@@ -171,7 +171,7 @@ pub fn encode_deltadelta_i64(value: i64, out: &mut BitBuffer) {
         for _ in 0..3 {
             out.push(true);
         }
-        let encoded: u64 = ((value << 1) ^ (value >> 63)) as u64;
+        let encoded = ((value << 1) ^ (value >> 63)) as u64;
         for i in 0..64{
             out.push(encoded & (1 << i) != 0);
         }
