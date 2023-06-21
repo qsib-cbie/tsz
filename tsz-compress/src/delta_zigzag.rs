@@ -33,8 +33,17 @@ enum DeltaI64 {
 // IntoIterator on DeltaI8
 impl IntoIterator for DeltaI8 {
     type Item = i8;
-    type IntoIter = std::array::IntoIter<DeltaI8, 1>; // Choose an appropriate default IntoIter type
-
+    match self {
+        DeltaI8::Four(array) => {
+            type IntoIter = std::array::IntoIter<i8, 4>;
+        }
+        DeltaI8::Eight(array) => {
+            type IntoIter = std::array::IntoIter<i8, 8>;
+        }
+        DeltaI8::Ten(array) => {
+            type IntoIter = std::array::IntoIter<i8, 10>;
+        }
+    }
     fn into_iter(self) -> Self::IntoIter {
         match self {
             DeltaI8::Four(array) => array.into_iter(),
