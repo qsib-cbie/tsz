@@ -17,13 +17,14 @@ crate-type = ["rlib"]
 [dependencies]
 bitvec = { version = "1.0.1", default-features = false, features = ["alloc", "atomic"] }
 tsz-macro = { workspace = true }
+tempdir = "0.3.7"
 
 [dev-dependencies]
 criterion = "0.4.0"
 rand = "0.8.5"
 
 [[bench]]
-name = "compression"
+name = "real-data-compression"
 harness = false
 
 [[bin]]

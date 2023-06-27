@@ -162,6 +162,7 @@
 #![cfg_attr(test, allow(unused_imports))]
 
 use core::sync::atomic::{AtomicBool, Ordering};
+use tempdir::TempDir;
 
 #[cfg(test)]
 #[macro_use]

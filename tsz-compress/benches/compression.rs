@@ -411,6 +411,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         values.push(row);
     }
 
+    // This part - 5s. choose a batch size. around 10,000.
     c.bench_function("compress monotontic 500", |b| {
         b.iter(|| compress(black_box(values.clone())))
     });
