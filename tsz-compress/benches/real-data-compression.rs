@@ -3,6 +3,8 @@ use tokio::io::{AsyncReadExt, BufReader};
 use tokio::fs::File;
 use async_compression::tokio::bufread::ZstdDecoder;
 
+// TODO: Decompress keys and values separately.
+
 const BATCH_SIZE: usize = 100_000;
 
 async fn decompress_data() -> Result<(), Box<dyn std::error::Error>> {
