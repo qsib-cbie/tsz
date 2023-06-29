@@ -18,6 +18,8 @@ crate-type = ["rlib"]
 bitvec = { version = "1.0.1", default-features = false, features = ["alloc", "atomic"] }
 tsz-macro = { workspace = true }
 tempdir = "0.3.7"
+async-compression = { version = "0.4.0", features = ["zstd", "tokio"] }
+tokio = { version = "1.28.1", features = ["full"] }
 
 [dev-dependencies]
 criterion = "0.4.0"
