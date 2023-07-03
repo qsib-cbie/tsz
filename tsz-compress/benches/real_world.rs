@@ -92,8 +92,18 @@ fn criterion_benchmark(c: &mut Criterion) {
         .into_iter()
         .map(|(k, v)| (k.unwrap(), v.unwrap()));
 
-    let mut infinite_iter = std::iter::repeat(&decompress_iter);
-    c.bench_function("decompress xyz 1k", |b| {
+    let rows = decompress_iter.clone().collect::<Vec<_>>();
+
+    let mut infinite_iter = std::iter::repeat(decompress_iter).flatten();
+    c.bench_function("decompress xyz 10k", |b| {
+        b.iter(|| {
+            black_box(for _ in 0..10_000 {
+                let foo = infinite_iter.next().unwrap();
+                black_box(foo);
+            })
+        })
+    });
+    c.bench_function("decompress xyz 100k", |b| {
         b.iter(|| {
             black_box(for _ in 0..100_000 {
                 let foo = infinite_iter.next().unwrap();
@@ -109,11 +119,38 @@ fn criterion_benchmark(c: &mut Criterion) {
             })
         })
     });
-    c.bench_function("decompress xyz 10M", |b| {
+
+    let mut infinite_iter = std::iter::repeat(rows.iter()).flatten();
+    let mut keys_compressor = Compressor::<PartitionedTimeKey>::new();
+    let mut values_compressor = Compressor::<XyzValue>::new();
+    c.bench_function("compress xyz 10k", |b| {
         b.iter(|| {
-            black_box(for _ in 0..10_000_000 {
-                let foo = infinite_iter.next().unwrap();
-                black_box(foo);
+            black_box(for _ in 0..10_000 {
+                let row = infinite_iter.next().unwrap();
+                keys_compressor.compress(row.0);
+                values_compressor.compress(row.1);
+            })
+        })
+    });
+    let mut keys_compressor = Compressor::<PartitionedTimeKey>::new();
+    let mut values_compressor = Compressor::<XyzValue>::new();
+    c.bench_function("compress xyz 100k", |b| {
+        b.iter(|| {
+            black_box(for _ in 0..100_000 {
+                let row = infinite_iter.next().unwrap();
+                keys_compressor.compress(row.0);
+                values_compressor.compress(row.1);
+            })
+        })
+    });
+    let mut keys_compressor = Compressor::<PartitionedTimeKey>::new();
+    let mut values_compressor = Compressor::<XyzValue>::new();
+    c.bench_function("compress xyz 1M", |b| {
+        b.iter(|| {
+            black_box(for _ in 0..1_000_000 {
+                let row = infinite_iter.next().unwrap();
+                keys_compressor.compress(row.0);
+                values_compressor.compress(row.1);
             })
         })
     });

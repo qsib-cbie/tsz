@@ -184,6 +184,7 @@ impl<'de> Decompressor<'de> {
 ///
 /// An iterator over the decompressed data.
 ///
+#[derive(Clone)]
 pub struct DecompressIter<'a, T> {
     input: &'a BitBufferSlice,
     finished: bool,
