@@ -26,6 +26,11 @@ rand = "0.8.5"
 name = "compression"
 harness = false
 
+[[bench]]
+name = "real_world"
+harness = false
+
+
 [[bin]]
 name = "example"
 path = "bin/example.rs"
