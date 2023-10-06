@@ -11,14 +11,15 @@ pub fn encode_delta_i8(mut value: i8, out: &mut BitBuffer) {
     }
 
     if (-8..8).contains(&value) {
-        // write out 10
-        out.push(true);
-        out.push(false);
-
-        // write out least significant 4 bits
-        for i in 0..4 {
-            out.push(value & (1 << i) != 0);
-        }
+        // write out 10 and least significant 4 bits
+        out.extend([
+            true,
+            false,
+            value & 0b0001 != 0,
+            value & 0b0010 != 0,
+            value & 0b0100 != 0,
+            value & 0b1000 != 0,
+        ])
     } else if (-64..64).contains(&value) {
         // write out 110
         for _ in 0..2 {
