@@ -112,7 +112,7 @@ impl<T: Compress> Compressor<T> {
         };
 
         let Some(row_n1) = self.row_n1.take() else {
-            self.row_n =  Some(row_n);
+            self.row_n = Some(row_n);
             self.row_n1 = Some(row);
 
             // The second row is represented as the difference between the first row and the second row
@@ -169,7 +169,7 @@ impl<'de> Decompressor<'de> {
     ///
     /// Decompress the data into an iterator over the rows.
     ///
-    pub fn decompress<'a, T: Decompress>(&'a mut self) -> DecompressIter<'a, T> {
+    pub fn decompress<T: Decompress>(&mut self) -> DecompressIter<'_, T> {
         DecompressIter {
             input: self.input,
             finished: false,
