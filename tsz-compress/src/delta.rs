@@ -1,52 +1,56 @@
 use crate::prelude::{BitBuffer, BitBufferSlice};
-use alloc::vec::Vec;
+use alloc::boxed::Box;
 
 trait BitVectorOps {
     // In order to reduce unnecessary bitwise operations on value if value is considered i64 when it is i8, i16 and i32
-    fn generate_bit_vector(self, iter_start: i32, iter_end: i32) -> Vec<bool>;
+    fn generate_bit_vector(
+        self,
+        iter_start: usize,
+        iter_end: usize,
+    ) -> Box<dyn Iterator<Item = bool>>;
 }
 
 impl BitVectorOps for i8 {
-    fn generate_bit_vector(self, iter_start: i32, iter_end: i32) -> Vec<bool> {
-        let value = self;
-
-        let bit_vector = (iter_start..iter_end)
-            .map(|x| value & (1 << x) != 0)
-            .collect::<Vec<_>>();
-        bit_vector
+    #[inline]
+    fn generate_bit_vector(
+        self,
+        iter_start: usize,
+        iter_end: usize,
+    ) -> Box<dyn Iterator<Item = bool>> {
+        Box::new((iter_start..iter_end).map(move |x| self & (1 << x) != 0))
     }
 }
 
 impl BitVectorOps for i16 {
-    fn generate_bit_vector(self, iter_start: i32, iter_end: i32) -> Vec<bool> {
-        let value = self;
-
-        let bit_vector = (iter_start..iter_end)
-            .map(|x| value & (1 << x) != 0)
-            .collect::<Vec<_>>();
-        bit_vector
+    #[inline]
+    fn generate_bit_vector(
+        self,
+        iter_start: usize,
+        iter_end: usize,
+    ) -> Box<dyn Iterator<Item = bool>> {
+        Box::new((iter_start..iter_end).map(move |x| self & (1 << x) != 0))
     }
 }
 
 impl BitVectorOps for i32 {
-    fn generate_bit_vector(self, iter_start: i32, iter_end: i32) -> Vec<bool> {
-        let value = self;
-
-        let bit_vector = (iter_start..iter_end)
-            .map(|x| value & (1 << x) != 0)
-            .collect::<Vec<_>>();
-        bit_vector
+    #[inline]
+    fn generate_bit_vector(
+        self,
+        iter_start: usize,
+        iter_end: usize,
+    ) -> Box<dyn Iterator<Item = bool>> {
+        Box::new((iter_start..iter_end).map(move |x| self & (1 << x) != 0))
     }
 }
 
 impl BitVectorOps for i64 {
-    fn generate_bit_vector(self, iter_start: i32, iter_end: i32) -> Vec<bool> {
-        let value = self;
-
-        let bit_vector = (iter_start..iter_end)
-            .map(|x| value & (1 << x) != 0)
-            .collect::<Vec<_>>();
-        bit_vector
+    #[inline]
+    fn generate_bit_vector(
+        self,
+        iter_start: usize,
+        iter_end: usize,
+    ) -> Box<dyn Iterator<Item = bool>> {
+        Box::new((iter_start..iter_end).map(move |x| self & (1 << x) != 0))
     }
 }
 pub fn encode_delta_i8(mut value: i8, out: &mut BitBuffer) {
@@ -64,15 +68,15 @@ pub fn encode_delta_i8(mut value: i8, out: &mut BitBuffer) {
         out.extend([true, false]);
 
         // write out least significant 4 bits
-        let bit_vector = value.generate_bit_vector(0i32, 4);
-        out.extend(&bit_vector);
+        let bit_vector = value.generate_bit_vector(0, 4);
+        out.extend(bit_vector);
     } else if (-64..64).contains(&value) {
         // write out 110
         out.extend([true, true, false]);
 
         // write out 110 and least significant 7 bits
         let bit_vector = value.generate_bit_vector(0, 7);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else {
         // write out 1110
         out.extend([true, true, true, false]);
@@ -80,7 +84,7 @@ pub fn encode_delta_i8(mut value: i8, out: &mut BitBuffer) {
         // write out least significant 9 bits
         let value = value as i16;
         let bit_vector = value.generate_bit_vector(0, 9);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     }
 }
 
@@ -100,35 +104,35 @@ pub fn encode_delta_i16(mut value: i16, out: &mut BitBuffer) {
 
         // write out least significant 4 bits
         let bit_vector = value.generate_bit_vector(0, 4);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-64..64).contains(&value) {
         // write out 110
         out.extend([true, true, false]);
 
         // write out least significant 7 bits
         let bit_vector = value.generate_bit_vector(0, 7);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-256..256).contains(&value) {
         // write out 1110
         out.extend([true, true, true, false]);
 
         // write out least significant 9 bits
         let bit_vector = value.generate_bit_vector(0, 9);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-2048..2048).contains(&value) {
         // write out 11110
         out.extend([true, true, true, true, false]);
 
         // write out least significant 12 bits
         let bit_vector = value.generate_bit_vector(0, 12);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-16384..16384).contains(&value) {
         // write out 111110
         out.extend([true, true, true, true, true, false]);
 
         // write out least significant 15 bits
         let bit_vector = value.generate_bit_vector(0, 15);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else {
         // write out 1111110
         out.extend([true, true, true, true, true, true, false]);
@@ -136,7 +140,7 @@ pub fn encode_delta_i16(mut value: i16, out: &mut BitBuffer) {
         // write out least significant 18 bits
         let value = value as i32;
         let bit_vector = value.generate_bit_vector(0, 18);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     }
 }
 
@@ -156,49 +160,49 @@ pub fn encode_delta_i32(mut value: i32, out: &mut BitBuffer) {
 
         // write out least significant 4 bits
         let bit_vector = value.generate_bit_vector(0, 4);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-64..64).contains(&value) {
         // write out 110
         out.extend([true, true, false]);
 
         // write out least significant 7 bits
         let bit_vector = value.generate_bit_vector(0, 7);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-256..256).contains(&value) {
         // write out 1110
         out.extend([true, true, true, false]);
 
         // write out least significant 9 bits
         let bit_vector = value.generate_bit_vector(0, 9);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-2048..2048).contains(&value) {
         // write out 11110
         out.extend([true, true, true, true, false]);
 
         // write out least significant 12 bits
         let bit_vector = value.generate_bit_vector(0, 12);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-16384..16384).contains(&value) {
         // write out 111110
         out.extend([true, true, true, true, true, false]);
 
         // write out least significant 15 bits
         let bit_vector = value.generate_bit_vector(0, 15);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-131072..131072).contains(&value) {
         // write out 1111110
         out.extend([true, true, true, true, true, true, false]);
 
         // write out least significant 18 bits
         let bit_vector = value.generate_bit_vector(0, 18);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else {
         // write out 11111110
         out.extend([true, true, true, true, true, true, true, false]);
 
         // write out least significant 32 bits
         let bit_vector = value.generate_bit_vector(0, 32);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     }
 }
 
@@ -217,56 +221,56 @@ pub fn encode_delta_i64(mut value: i64, out: &mut BitBuffer) {
         out.extend([true, false]);
         // write out least significant 4 bits
         let bit_vector = value.generate_bit_vector(0, 4);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-64..64).contains(&value) {
         // write out 110
         out.extend([true, true, false]);
 
         // write out least significant 7 bits
         let bit_vector = value.generate_bit_vector(0, 7);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-256..256).contains(&value) {
         // write out 1110
         out.extend([true, true, true, false]);
 
         // write out least significant 9 bits
         let bit_vector = value.generate_bit_vector(0, 9);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-2048..2048).contains(&value) {
         // write out 11110
         out.extend([true, true, true, true, false]);
 
         // write out least significant 12 bits
         let bit_vector = value.generate_bit_vector(0, 12);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-16384..16384).contains(&value) {
         // write out 111110
         out.extend([true, true, true, true, true, false]);
 
         // write out least significant 15 bits
         let bit_vector = value.generate_bit_vector(0, 15);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-131072..131072).contains(&value) {
         // write out 1111110
         out.extend([true, true, true, true, true, true, false]);
 
         // write out least significant 18 bits
         let bit_vector = value.generate_bit_vector(0, 18);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else if (-(1 << 31)..(1 << 31)).contains(&value) {
         // write out 11111110
         out.extend([true, true, true, true, true, true, true, false]);
 
         // write out least significant 32 bits
         let bit_vector = value.generate_bit_vector(0, 32);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     } else {
         // write out 11111111
         out.extend([true, true, true, true, true, true, true, true]);
 
         // write out least significant 64 bits
         let bit_vector = value.generate_bit_vector(0, 64);
-        out.extend(&bit_vector);
+        out.extend(bit_vector);
     }
 }
 
