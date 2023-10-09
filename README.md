@@ -18,7 +18,7 @@ Periodic integral data, like those from embedded sensor data, that changes with 
 
 ✅ `tsz` is designed to emit framed packets that would be considered very small outside of the embedded space, targetting <255 bytes per block.
 
-❌ `tsz` is not designed to handle oscillating change or irregularly event time streams optimally but can encode that information about as well as uncompressed.
+❌ `tsz` is not designed to handle oscillating change or irregular event time streams optimally but can encode that information about as well as uncompressed.
 
 ❌ `tsz` is not designed to prioritize (de)compression rates over memory usage or compression ratio.
 
