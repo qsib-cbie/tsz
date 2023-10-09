@@ -6,37 +6,33 @@ trait BitVectorOps {
     fn extend_bits(self, bit_range: Range<usize>, buf: &mut BitBuffer);
 }
 
-impl BitVectorOps for i8 {
-    #[inline]
-    fn extend_bits(self, bit_range: Range<usize>, buf: &mut BitBuffer) {
-        buf.extend(bit_range.map(move |x| self & (1 << x) != 0));
-    }
+macro_rules! extend_bitsi {
+    ($i:ident) => {
+        impl BitVectorOps for $i {
+            #[inline(always)]
+            fn extend_bits(self, bit_range: Range<usize>, buf: &mut BitBuffer) {
+                bit_range.for_each(|x| buf.push(self & (1 << x) != 0));
+            }
+        }
+    };
 }
 
-impl BitVectorOps for i16 {
-    #[inline]
-    fn extend_bits(self, bit_range: Range<usize>, buf: &mut BitBuffer) {
-        buf.extend(bit_range.map(move |x| self & (1 << x) != 0));
-    }
-}
+extend_bitsi!(i8);
+extend_bitsi!(i16);
+extend_bitsi!(i32);
+extend_bitsi!(i64);
 
-impl BitVectorOps for i32 {
-    #[inline]
-    fn extend_bits(self, bit_range: Range<usize>, buf: &mut BitBuffer) {
-        buf.extend(bit_range.map(move |x| self & (1 << x) != 0));
+#[inline]
+fn push_n<const N: usize>(buf: &mut BitBuffer) {
+    for _ in 0..N - 1 {
+        buf.push(true);
     }
-}
-
-impl BitVectorOps for i64 {
-    #[inline]
-    fn extend_bits(self, bit_range: Range<usize>, buf: &mut BitBuffer) {
-        buf.extend(bit_range.map(move |x| self & (1 << x) != 0));
-    }
+    buf.push(false);
 }
 
 pub fn encode_delta_i8(mut value: i8, out: &mut BitBuffer) {
     if value == 0 {
-        out.extend([false]);
+        push_n::<1>(out);
         return;
     }
 
@@ -46,19 +42,19 @@ pub fn encode_delta_i8(mut value: i8, out: &mut BitBuffer) {
 
     if (-8..8).contains(&value) {
         // write out 10
-        out.extend([true, false]);
+        push_n::<2>(out);
 
         // write out least significant 4 bits
         value.extend_bits(0..4, out);
     } else if (-64..64).contains(&value) {
         // write out 110
-        out.extend([true, true, false]);
+        push_n::<3>(out);
 
         // write out 110 and least significant 7 bits
         value.extend_bits(0..7, out);
     } else {
         // write out 1110
-        out.extend([true, true, true, false]);
+        push_n::<4>(out);
 
         // write out least significant 9 bits
         let value = value as i16;
@@ -68,7 +64,7 @@ pub fn encode_delta_i8(mut value: i8, out: &mut BitBuffer) {
 
 pub fn encode_delta_i16(mut value: i16, out: &mut BitBuffer) {
     if value == 0 {
-        out.extend([false]);
+        push_n::<1>(out);
         return;
     }
 
@@ -78,37 +74,37 @@ pub fn encode_delta_i16(mut value: i16, out: &mut BitBuffer) {
 
     if (-8..8).contains(&value) {
         // write out 10
-        out.extend([true, false]);
+        push_n::<2>(out);
 
         // write out least significant 4 bits
         value.extend_bits(0..4, out);
     } else if (-64..64).contains(&value) {
         // write out 110
-        out.extend([true, true, false]);
+        push_n::<3>(out);
 
         // write out least significant 7 bits
         value.extend_bits(0..7, out);
     } else if (-256..256).contains(&value) {
         // write out 1110
-        out.extend([true, true, true, false]);
+        push_n::<4>(out);
 
         // write out least significant 9 bits
         value.extend_bits(0..9, out);
     } else if (-2048..2048).contains(&value) {
         // write out 11110
-        out.extend([true, true, true, true, false]);
+        push_n::<5>(out);
 
         // write out least significant 12 bits
         value.extend_bits(0..12, out);
     } else if (-16384..16384).contains(&value) {
         // write out 111110
-        out.extend([true, true, true, true, true, false]);
+        push_n::<6>(out);
 
         // write out least significant 15 bits
         value.extend_bits(0..15, out);
     } else {
         // write out 1111110
-        out.extend([true, true, true, true, true, true, false]);
+        push_n::<7>(out);
 
         // write out least significant 18 bits
         let value = value as i32;
@@ -118,7 +114,7 @@ pub fn encode_delta_i16(mut value: i16, out: &mut BitBuffer) {
 
 pub fn encode_delta_i32(mut value: i32, out: &mut BitBuffer) {
     if value == 0 {
-        out.extend([false]);
+        push_n::<1>(out);
         return;
     }
 
@@ -128,43 +124,43 @@ pub fn encode_delta_i32(mut value: i32, out: &mut BitBuffer) {
 
     if (-8..8).contains(&value) {
         // write out 10
-        out.extend([true, false]);
+        push_n::<2>(out);
 
         // write out least significant 4 bits
         value.extend_bits(0..4, out);
     } else if (-64..64).contains(&value) {
         // write out 110
-        out.extend([true, true, false]);
+        push_n::<3>(out);
 
         // write out least significant 7 bits
         value.extend_bits(0..7, out);
     } else if (-256..256).contains(&value) {
         // write out 1110
-        out.extend([true, true, true, false]);
+        push_n::<4>(out);
 
         // write out least significant 9 bits
         value.extend_bits(0..9, out);
     } else if (-2048..2048).contains(&value) {
         // write out 11110
-        out.extend([true, true, true, true, false]);
+        push_n::<5>(out);
 
         // write out least significant 12 bits
         value.extend_bits(0..12, out);
     } else if (-16384..16384).contains(&value) {
         // write out 111110
-        out.extend([true, true, true, true, true, false]);
+        push_n::<6>(out);
 
         // write out least significant 15 bits
         value.extend_bits(0..15, out);
     } else if (-131072..131072).contains(&value) {
         // write out 1111110
-        out.extend([true, true, true, true, true, true, false]);
+        push_n::<7>(out);
 
         // write out least significant 18 bits
         value.extend_bits(0..18, out);
     } else {
         // write out 11111110
-        out.extend([true, true, true, true, true, true, true, false]);
+        push_n::<8>(out);
 
         // write out least significant 32 bits
         value.extend_bits(0..32, out);
@@ -173,7 +169,7 @@ pub fn encode_delta_i32(mut value: i32, out: &mut BitBuffer) {
 
 pub fn encode_delta_i64(mut value: i64, out: &mut BitBuffer) {
     if value == 0 {
-        out.extend([false]);
+        push_n::<1>(out);
         return;
     }
 
@@ -183,48 +179,50 @@ pub fn encode_delta_i64(mut value: i64, out: &mut BitBuffer) {
 
     if (-8..8).contains(&value) {
         // write out 10
-        out.extend([true, false]);
+        push_n::<2>(out);
         // write out least significant 4 bits
         value.extend_bits(0..4, out);
     } else if (-64..64).contains(&value) {
         // write out 110
-        out.extend([true, true, false]);
+        push_n::<3>(out);
 
         // write out least significant 7 bits
         value.extend_bits(0..7, out);
     } else if (-256..256).contains(&value) {
         // write out 1110
-        out.extend([true, true, true, false]);
+        push_n::<4>(out);
 
         // write out least significant 9 bits
         value.extend_bits(0..9, out);
     } else if (-2048..2048).contains(&value) {
         // write out 11110
-        out.extend([true, true, true, true, false]);
+        push_n::<5>(out);
 
         // write out least significant 12 bits
         value.extend_bits(0..12, out);
     } else if (-16384..16384).contains(&value) {
         // write out 111110
-        out.extend([true, true, true, true, true, false]);
+        push_n::<6>(out);
 
         // write out least significant 15 bits
         value.extend_bits(0..15, out);
     } else if (-131072..131072).contains(&value) {
         // write out 1111110
-        out.extend([true, true, true, true, true, true, false]);
+        push_n::<7>(out);
 
         // write out least significant 18 bits
         value.extend_bits(0..18, out);
     } else if (-(1 << 31)..(1 << 31)).contains(&value) {
         // write out 11111110
-        out.extend([true, true, true, true, true, true, true, false]);
+        push_n::<8>(out);
 
         // write out least significant 32 bits
         value.extend_bits(0..32, out);
     } else {
         // write out 11111111
-        out.extend([true, true, true, true, true, true, true, true]);
+        for _ in 0..8 {
+            out.push(true);
+        }
 
         // write out least significant 64 bits
         value.extend_bits(0..64, out);
