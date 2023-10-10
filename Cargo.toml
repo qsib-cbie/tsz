@@ -5,7 +5,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.0.5"
+version = "1.1.0"
 
 [workspace.dependencies]
-tsz-macro = { version = "1.0.3", path = "tsz-macro" }
+tsz-macro = { version = "1.1.0", path = "tsz-macro" }
