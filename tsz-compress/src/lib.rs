@@ -198,6 +198,8 @@ pub unsafe extern "C" fn tsz_init(_heap_start: *mut u8, _heap_size: u32) {
     };
 }
 
+mod v2;
+
 #[cfg(test)]
 mod tests {
     use std::thread::spawn;
