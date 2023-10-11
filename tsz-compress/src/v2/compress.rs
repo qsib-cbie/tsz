@@ -30,11 +30,15 @@ pub trait CompressibleRow {
 pub trait ColumnCompressor {
     /// Consume a value and maybe emit bits
     fn push(&mut self, value: *const u8);
+
+    /// Return the expected number of bits in the compressor
+    fn len(&self) -> usize;
 }
 
 pub struct ColumnCompressorImpl<T> {
     queue: Queue<T, 10>,
     output: BitBuffer,
+    avg_len: f32, // keep track of how large the samples are that haven't been popped yet
 }
 
 impl<T: Debug + Copy + ZigZagBits> ColumnCompressor for ColumnCompressorImpl<T> {
@@ -64,6 +68,10 @@ impl<T: Debug + Copy + ZigZagBits> ColumnCompressor for ColumnCompressorImpl<T> 
             self.queue.pop();
         }
     }
+
+    fn len(&self) -> usize {
+        self.output.len() + (self.avg_len * self.queue.data.len() as f32) as usize
+    }
 }
 
 impl<T> ColumnCompressorImpl<T> {
@@ -71,6 +79,7 @@ impl<T> ColumnCompressorImpl<T> {
         ColumnCompressorImpl {
             queue: Queue::new(),
             output: BitBuffer::new(),
+            avg_len: 1.2,
         }
     }
 }
@@ -88,6 +97,10 @@ impl<T: CompressibleRow> Compressor<T> {
             // Push a copy into the column queue
             self.columns[i].push(row.as_ptr(i));
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.columns.iter().map(|c| c.len()).sum()
     }
 
     pub fn finish(self) -> BitBuffer {
@@ -201,5 +214,16 @@ mod tests {
             compressor.compress(row);
         }
         let _bits = compressor.finish();
+    }
+
+    #[test]
+    fn can_choose_zigzag_bits() {
+        let num_bits = |i: i32| match i {
+            -128..=127 => 8,
+            -32768..=32767 => 16,
+            _ => 32,
+        };
+
+        assert_eq!(num_bits(0), 8);
     }
 }
