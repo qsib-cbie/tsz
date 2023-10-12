@@ -13,6 +13,7 @@ mod tests {
             a: i8,
             b: i16,
             c: i32,
+            d: i64,
         }
     }
 }

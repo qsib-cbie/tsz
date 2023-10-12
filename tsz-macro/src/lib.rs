@@ -507,10 +507,9 @@ fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type)>
 pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
     let input = parse_macro_input!(tokens as syn::DeriveInput);
     let ident = input.ident.clone();
-    println!("ident: {:?}", ident);
 
     // We will define a struct by this name
-    let compressor_ident = format_ident!("{}Compressor", input.ident);
+    let compressor_ident = format_ident!("{}CompressorImpl", input.ident);
 
     // We will compress each of the fields as columns
     let columns = get_fields_of_struct(input);
@@ -519,11 +518,50 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         .iter()
         .map(|ident| format_ident!("{}_compressor", ident))
         .collect_vec();
+    let col_output_idents = col_idents
+        .iter()
+        .map(|ident| format_ident!("{}_output", ident))
+        .collect_vec();
+    let num_columns = col_idents.len();
 
     let compressor_struct = quote! {
-        pub struct #compressor_ident {
-            _phantom: ::core::marker::PhantomData<#ident>,
-            #( #col_comp_idents: ::tsz_compress::prelude::CompressionQueue<#col_tys, 10>),*
+        struct #compressor_ident {
+            #( #col_comp_idents: ::tsz_compress::prelude::CompressionQueue<#col_tys, 10>,)*
+            #( #col_output_idents: ::tsz_compress::prelude::BitBuffer,)*
+            column_values_emitted: usize,
+        }
+
+        impl TszCompressV2 for #compressor_ident {
+            type T = #ident;
+
+            fn compress(&mut self, row: Self::T) {
+                #(
+                    self.#col_comp_idents.push(row.#col_idents);
+                    if self.#col_comp_idents.is_full() {
+                        self.column_values_emitted += emit_bits(&mut self.#col_comp_idents, &mut self.#col_output_idents, false);
+                    }
+                )*
+            }
+
+            fn len(&self) -> usize {
+                let finished_bit_count = (#( self.#col_output_idents.len() )+*);
+                let col_count = (#( self.#col_comp_idents.len() )+*);
+                let col_bit_rate = #num_columns * self.bit_rate();
+                let pending_bit_count = col_count * col_bit_rate;
+                finished_bit_count + pending_bit_count
+            }
+
+            fn bit_rate(&self) -> usize {
+                let finished_bit_count = (#( self.#col_output_idents.len() )+*);
+                finished_bit_count / self.column_values_emitted / #num_columns
+            }
+
+            fn finish(mut self) -> ::tsz_compress::prelude::BitBuffer {
+                #(emit_bits(&mut self.#col_comp_idents, &mut self.#col_output_idents, true);)*
+                let mut output = ::tsz_compress::prelude::BitBuffer::new();
+                #(output.extend(self.#col_output_idents);)*
+                output
+            }
         }
     };
 
