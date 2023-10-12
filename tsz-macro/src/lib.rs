@@ -1,8 +1,4 @@
-#![no_std]
-extern crate alloc;
-use alloc::string::ToString;
-use alloc::vec::Vec;
-
+use itertools::{multiunzip, Itertools};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::parse_macro_input;
@@ -485,4 +481,51 @@ pub fn derive_decompressible(item: TokenStream) -> TokenStream {
         }
     }
     .into()
+}
+
+fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type)> {
+    let fields = match input.data {
+        syn::Data::Struct(syn::DataStruct { fields, .. }) => fields,
+        _ => panic!("Expected fields in derive(Builder) struct"),
+    };
+    let named_fields = match fields {
+        syn::Fields::Named(syn::FieldsNamed { named, .. }) => named,
+        _ => panic!("Expected named fields in derive(Builder) struct"),
+    };
+    named_fields
+        .into_iter()
+        .map(|f| (f.ident.unwrap(), f.ty))
+        .collect::<Vec<_>>()
+}
+
+///
+/// CompressV2 is a procedural macro that will inspect the fields of
+/// a struct and generate a StructCompressor with statically sized columnar
+/// compression for the fields.
+///
+#[proc_macro_derive(CompressV2)]
+pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(tokens as syn::DeriveInput);
+    let ident = input.ident.clone();
+    println!("ident: {:?}", ident);
+
+    // We will define a struct by this name
+    let compressor_ident = format_ident!("{}Compressor", input.ident);
+
+    // We will compress each of the fields as columns
+    let columns = get_fields_of_struct(input);
+    let (col_idents, col_tys): (Vec<_>, Vec<_>) = multiunzip(columns);
+    let col_comp_idents = col_idents
+        .iter()
+        .map(|ident| format_ident!("{}_compressor", ident))
+        .collect_vec();
+
+    let compressor_struct = quote! {
+        pub struct #compressor_ident {
+            _phantom: ::core::marker::PhantomData<#ident>,
+            #( #col_comp_idents: ::tsz_compress::prelude::CompressionQueue<#col_tys, 10>),*
+        }
+    };
+
+    compressor_struct.into()
 }

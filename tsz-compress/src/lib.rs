@@ -176,6 +176,7 @@ pub mod uvlq;
 
 pub mod prelude {
     pub use crate::compress::*;
+    pub use crate::v2::queue::*;
     pub use bitvec::prelude as bv;
 }
 
