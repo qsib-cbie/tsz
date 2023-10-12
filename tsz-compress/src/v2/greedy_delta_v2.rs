@@ -34,11 +34,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test1() {
-        let mut queue: Queue<usize, 10> = Queue::new();
+    fn test_init_push_pop() {
+        const SIZE: usize = 10;
+        let mut queue: Queue<usize, SIZE> = Queue::new();
         let pushed_value = 8;
         queue.push(pushed_value);
         let popped_value = queue.pop().unwrap();
         assert_eq!(pushed_value, popped_value);
+    }
+    #[test]
+    fn test_is_full() {
+        const SIZE: usize = 10;
+        let mut queue: Queue<usize, SIZE> = Queue::new();
+        for value in 0..SIZE {
+            queue.push(value);
+        }
+        assert!(queue.is_full());
+    }
+
+    #[test]
+    fn test_is_not_full() {
+        const SIZE: usize = 10;
+        let mut queue: Queue<usize, SIZE> = Queue::new();
+        for value in 0..SIZE - 1 {
+            queue.push(value);
+        }
+        assert!(!queue.is_full());
     }
 }
