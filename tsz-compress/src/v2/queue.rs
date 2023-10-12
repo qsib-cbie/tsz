@@ -111,6 +111,10 @@ impl<T: Copy, const N: usize> CompressionQueue<T, N> {
     }
 }
 
+///
+/// An iterator over the elements of a CompressionQueue.
+/// The iterator will yield the oldest element first.
+///
 pub struct CompressionQueueIter<'a, T, const N: usize> {
     queue: &'a CompressionQueue<T, N>,
     index: usize,
@@ -126,7 +130,7 @@ impl<'a, T: Copy, const N: usize> Iterator for CompressionQueueIter<'a, T, N> {
 
         let index = (self.queue.front + self.index) % N;
         self.index += 1;
-        Some(unsafe { self.queue.buf[index].assume_init() })
+        Some(unsafe { self.queue.at(index) })
     }
 }
 
