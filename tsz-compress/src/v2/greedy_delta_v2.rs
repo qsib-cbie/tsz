@@ -21,10 +21,16 @@ impl<T, const N: usize> Queue<T, N> {
     }
 
     pub fn push(&mut self, value: T) {
+        if self.data.len() >= N {
+            panic!("Queue overflow: Queue is full. Unable to push new value.");
+        }
         self.data.push_back(value);
     }
 
     pub fn pop(&mut self) -> Option<T> {
+        if self.data.len() <= 0 {
+            panic!("Queue underflow: Queue is empty. Unable to pop a value.");
+        }
         return self.data.pop_front();
     }
 }
@@ -60,5 +66,23 @@ mod tests {
             queue.push(value);
         }
         assert!(!queue.is_full());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_overflow() {
+        const SIZE: usize = 10;
+        let mut queue: Queue<usize, SIZE> = Queue::new();
+        for value in 0..SIZE + 1 {
+            queue.push(value);
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_underflow() {
+        const SIZE: usize = 10;
+        let mut queue: Queue<usize, SIZE> = Queue::new();
+        queue.pop();
     }
 }
