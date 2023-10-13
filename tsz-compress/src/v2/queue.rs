@@ -132,7 +132,14 @@ impl<'a, T: Copy, const N: usize> Iterator for CompressionQueueIter<'a, T, N> {
         self.index += 1;
         Some(unsafe { self.queue.at(index) })
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.queue.len - self.index;
+        (remaining, Some(remaining))
+    }
 }
+
+impl<'a, T: Copy, const N: usize> ExactSizeIterator for CompressionQueueIter<'a, T, N> {}
 
 #[cfg(test)]
 mod tests {
