@@ -134,16 +134,14 @@ impl<'a, T: Copy, const N: usize> Iterator for CompressionQueueIter<'a, T, N> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        return (self.queue.len - self.index, Some(self.queue.len));
+        return (
+            self.queue.len - self.index,
+            Some(self.queue.len - self.index),
+        );
     }
 }
 
-impl<'a, T: Copy, const N: usize> ExactSizeIterator for CompressionQueueIter<'a, T, N> {
-    fn len(&self) -> usize {
-        // Number of elements remaining in the iterator
-        self.queue.len - self.index
-    }
-}
+impl<'a, T: Copy, const N: usize> ExactSizeIterator for CompressionQueueIter<'a, T, N> {}
 
 #[cfg(test)]
 mod tests {
