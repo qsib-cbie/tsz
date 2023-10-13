@@ -134,7 +134,7 @@ impl<'a, T: Copy, const N: usize> Iterator for CompressionQueueIter<'a, T, N> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining: usize = self.queue.len - self.index;
+        let remaining = self.queue.len - self.index;
         (remaining, Some(remaining))
     }
 }
