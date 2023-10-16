@@ -538,7 +538,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 #(
                     self.#col_comp_idents.push(row.#col_idents);
                     if self.#col_comp_idents.is_full() {
-                        self.column_values_emitted += emit_bits(&mut self.#col_comp_idents, &mut self.#col_output_idents, false);
+                        self.column_values_emitted += self.#col_comp_idents.emit_bits(&mut self.#col_output_idents, false);
                     }
                 )*
             }
@@ -557,7 +557,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
             }
 
             fn finish(mut self) -> ::tsz_compress::prelude::BitBuffer {
-                #(emit_bits(&mut self.#col_comp_idents, &mut self.#col_output_idents, true);)*
+                #(self.#col_comp_idents.emit_bits(&mut self.#col_output_idents, true);)*
                 let mut output = ::tsz_compress::prelude::BitBuffer::new();
                 #(output.extend(self.#col_output_idents);)*
                 output
