@@ -1,10 +1,32 @@
 use crate::prelude::*;
+use core::ops::Range;
 
 pub mod queue;
 pub use queue::*;
-pub trait EmitBits<T> {
-    /// Returns the number of elements popped from the queue.
 
+trait BitVectorOps {
+    fn extend_bits(self, bit_range: Range<usize>, buf: &mut BitBuffer);
+}
+
+macro_rules! extend_bitsi {
+    ($i:ident) => {
+        impl BitVectorOps for $i {
+            #[inline(always)]
+            fn extend_bits(self, bit_range: Range<usize>, buf: &mut BitBuffer) {
+                bit_range.for_each(|x| buf.push(self & (1 << x) != 0));
+            }
+        }
+    };
+}
+
+extend_bitsi!(i8);
+extend_bitsi!(i16);
+extend_bitsi!(i32);
+extend_bitsi!(i64);
+
+pub trait EmitBits<T> {
+    /// Emits bits according to the most efficient case of Delta Compression.
+    /// Returns the number of elements popped from the queue.
     fn emit_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize;
 }
 
@@ -47,38 +69,61 @@ impl EmitBits<i64> for CompressionQueue<i64, 10> {
             out.push(false);
             for _ in 0..10 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i64) ^ (value >> 63i64);
-                    return 10;
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..3, out);
                 }
             }
+            return 10;
         } else if four {
+            out.push(true);
+            out.push(true);
+            out.push(true);
+            out.push(false);
             for _ in 0..8 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i64) ^ (value >> 63i64);
-                    return 8;
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..4, out);
                 }
             }
+            return 8;
         } else if eight {
+            out.push(true);
+            out.push(true);
+            out.push(false);
+            out.push(false);
             for _ in 0..4 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i64) ^ (value >> 63i64);
-                    return 4;
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..8, out);
                 }
             }
+            return 4;
         } else if ten {
+            out.push(true);
+            out.push(false);
+            out.push(true);
+            out.push(false);
+            out.push(false);
+            out.push(false);
             for _ in 0..3 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i64) ^ (value >> 63i64);
-                    return 3;
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..10, out);
                 }
             }
+            return 3;
         } else if sixteen {
+            out.push(true);
+            out.push(false);
+            out.push(false);
+            out.push(false);
             for _ in 0..2 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i64) ^ (value >> 63i64);
-                    return 2;
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..16, out);
                 }
             }
+            return 2;
         }
         0
     }
@@ -115,40 +160,69 @@ impl EmitBits<i32> for CompressionQueue<i32, 10> {
         }
 
         if three {
+            out.push(true);
+            out.push(true);
+            out.push(true);
+            out.push(true);
+            out.push(false);
+            out.push(false);
             for _ in 0..10 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i32) ^ (value >> 31i32);
-                    return 10;
+                    let value = (value << 1i32) ^ (value >> 31i32); // ZigZag Encoding
+                    value.extend_bits(0..3, out);
                 }
             }
+            return 10;
         } else if four {
+            out.push(true);
+            out.push(true);
+            out.push(true);
+            out.push(false);
             for _ in 0..8 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i32) ^ (value >> 31i32);
-                    return 8;
+                    let value = (value << 1i32) ^ (value >> 31i32); // ZigZag Encoding
+                    value.extend_bits(0..4, out);
                 }
             }
+            return 8;
         } else if eight {
+            out.push(true);
+            out.push(true);
+            out.push(false);
+            out.push(false);
             for _ in 0..4 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i32) ^ (value >> 31i32);
-                    return 4;
+                    let value = (value << 1i32) ^ (value >> 31i32); // ZigZag Encoding
+                    value.extend_bits(0..8, out);
                 }
             }
+            return 4;
         } else if ten {
+            out.push(true);
+            out.push(false);
+            out.push(true);
+            out.push(false);
+            out.push(false);
+            out.push(false);
             for _ in 0..3 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i32) ^ (value >> 31i32);
-                    return 3;
+                    let value = (value << 1i32) ^ (value >> 31i32); // ZigZag Encoding
+                    value.extend_bits(0..10, out);
                 }
             }
+            return 3;
         } else if sixteen {
+            out.push(true);
+            out.push(false);
+            out.push(false);
+            out.push(false);
             for _ in 0..2 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i32) ^ (value >> 31i32);
-                    return 2;
+                    let value = (value << 1i32) ^ (value >> 31i32); // ZigZag Encoding
+                    value.extend_bits(0..16, out);
                 }
             }
+            return 2;
         }
         0
     }
@@ -190,38 +264,61 @@ impl EmitBits<i16> for CompressionQueue<i16, 10> {
             out.push(false);
             for _ in 0..10 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i16) ^ (value >> 15i16);
-                    return 10;
+                    let value = (value << 1i16) ^ (value >> 15i16); // ZigZag Encoding
+                    value.extend_bits(0..3, out);
                 }
             }
+            return 10;
         } else if four {
+            out.push(true);
+            out.push(true);
+            out.push(true);
+            out.push(false);
             for _ in 0..8 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i16) ^ (value >> 15i16);
-                    return 8;
+                    let value = (value << 1i16) ^ (value >> 15i16); // ZigZag Encoding
+                    value.extend_bits(0..4, out);
                 }
             }
+            return 8;
         } else if eight {
+            out.push(true);
+            out.push(true);
+            out.push(false);
+            out.push(false);
             for _ in 0..4 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i16) ^ (value >> 15i16);
-                    return 4;
+                    let value = (value << 1i16) ^ (value >> 15i16); // ZigZag Encoding
+                    value.extend_bits(0..8, out);
                 }
             }
+            return 4;
         } else if ten {
+            out.push(true);
+            out.push(false);
+            out.push(true);
+            out.push(false);
+            out.push(false);
+            out.push(false);
             for _ in 0..3 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i16) ^ (value >> 15i16);
-                    return 3;
+                    let value = (value << 1i16) ^ (value >> 15i16); // ZigZag Encoding
+                    value.extend_bits(0..10, out);
                 }
             }
+            return 3;
         } else if sixteen {
+            out.push(true);
+            out.push(false);
+            out.push(false);
+            out.push(false);
             for _ in 0..2 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i16) ^ (value >> 15i16);
-                    return 2;
+                    let value = (value << 1i16) ^ (value >> 15i16); // ZigZag Encoding
+                    value.extend_bits(0..16, out);
                 }
             }
+            return 2;
         }
         0
     }
@@ -257,38 +354,61 @@ impl EmitBits<i8> for CompressionQueue<i8, 10> {
             out.push(false);
             for _ in 0..10 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i8) ^ (value >> 7i8);
-                    return 10;
+                    let value = (value << 1i8) ^ (value >> 7i8); // ZigZag Encoding
+                    value.extend_bits(0..3, out);
                 }
             }
+            return 10;
         } else if four {
+            out.push(true);
+            out.push(true);
+            out.push(true);
+            out.push(false);
             for _ in 0..8 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i8) ^ (value >> 7i8);
-                    return 8;
+                    let value = (value << 1i8) ^ (value >> 7i8); // ZigZag Encoding
+                    value.extend_bits(0..4, out);
                 }
             }
+            return 8;
         } else if eight {
+            out.push(true);
+            out.push(true);
+            out.push(false);
+            out.push(false);
             for _ in 0..4 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i8) ^ (value >> 7i8);
-                    return 4;
+                    let value = (value << 1i8) ^ (value >> 7i8); // ZigZag Encoding
+                    value.extend_bits(0..8, out);
                 }
             }
+            return 4;
         } else if ten {
+            out.push(true);
+            out.push(false);
+            out.push(true);
+            out.push(false);
+            out.push(false);
+            out.push(false);
             for _ in 0..3 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i8) ^ (value >> 7i8);
-                    return 3;
+                    let value = (value << 1i8) ^ (value >> 7i8); // ZigZag Encoding
+                    value.extend_bits(0..10, out);
                 }
             }
+            return 3;
         } else if sixteen {
+            out.push(true);
+            out.push(false);
+            out.push(false);
+            out.push(false);
             for _ in 0..2 {
                 if let Some(value) = self.pop() {
-                    let value = (value << 1i8) ^ (value >> 7i8);
-                    return 2;
+                    let value = (value << 1i8) ^ (value >> 7i8); // ZigZag Encoding
+                    value.extend_bits(0..16, out);
                 }
             }
+            return 2;
         }
         0
     }
