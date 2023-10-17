@@ -533,6 +533,90 @@ mod tests {
     use super::*;
 
     #[test]
+    fn can_encode_decode_case1() {
+        // Case 1: Encode and decode 3 samples between [-32768, 32767] in 16 bits
+        let values: [i32; 10] = [-32768, 30000, -512, -128, 511, 80, 7, -2, 2, 3];
+        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(value);
+        }
+
+        let mut bits = BitBuffer::new();
+        let num_emitted_samples = queue.emit_bits(&mut bits, true);
+        let decoded_values = decode_delta(&bits).unwrap();
+        assert_eq!(values[..2], decoded_values[..2]);
+        assert_eq!(num_emitted_samples, 2);
+    }
+    #[test]
+    fn can_encode_decode_case2() {
+        // Case 2: Encode and decode 3 samples between [-512, 511] in 10 bits
+        let values: [i32; 10] = [-3, 499, -512, -128, 511, 80, 7, -2, 2, 3];
+        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(value);
+        }
+        let mut bits = BitBuffer::new();
+        let num_emitted_samples = queue.emit_bits(&mut bits, true);
+        let decoded_values = decode_delta(&bits).unwrap();
+        assert_eq!(values[..3], decoded_values[..3]);
+        assert_eq!(num_emitted_samples, 3);
+    }
+
+    #[test]
+    fn can_encode_decode_case3() {
+        // Case 3: Encode and decode 4 samples between [-128, 127] in 8 bits
+        let values: [i32; 10] = [-3, 100, 0, -128, 127, 80, 7, -2, 2, 3];
+        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(value);
+        }
+
+        let mut bits = BitBuffer::new();
+        let num_emitted_samples = queue.emit_bits(&mut bits, true);
+        let decoded_values = decode_delta(&bits).unwrap();
+        assert_eq!(values[..4], decoded_values[..4]);
+        assert_eq!(num_emitted_samples, 4);
+    }
+
+    #[test]
+    fn can_encode_decode_case4() {
+        // Case 4: Encode and decode 8 samples between [-8, 7] in 4 bits
+        let values: [i32; 10] = [-3, 2, 0, 1, -8, 6, -7, -2, 2, 3];
+        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(value);
+        }
+
+        let mut bits = BitBuffer::new();
+        let num_emitted_samples = queue.emit_bits(&mut bits, true);
+        let decoded_values = decode_delta(&bits).unwrap();
+        assert_eq!(values[..8], decoded_values[..8]);
+        assert_eq!(num_emitted_samples, 8);
+    }
+
+    #[test]
+    fn can_encode_decode_case5() {
+        // Case 5: Encode and decode 10 samples between [-4, 3] in 3 bits
+        let values: [i32; 10] = [-3, 2, 0, 1, 2, -3, -1, -2, -4, -3];
+        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(value);
+        }
+        let mut bits = BitBuffer::new();
+        let num_emitted_samples = queue.emit_bits(&mut bits, true);
+        let decoded_values = decode_delta(&bits).unwrap();
+        assert_eq!(values, decoded_values);
+        assert_eq!(num_emitted_samples, 10)
+    }
+
+    #[test]
+    fn test() {
+        // Edge cases
+        // Test compression interface
+        todo!();
+    }
+
+    #[test]
     fn can_impl_compress() {
         #[derive(Copy, Clone)]
         struct TestRow {
