@@ -21,19 +21,19 @@ impl EmitBits<i64> for CompressionQueue<i64, 10> {
             let remaining = iter.size_hint().0;
             let index = 10 - remaining;
 
-            if (index <= 2 && (value < -32768 || value > 32767)) {
+            if ((0..=2).contains(&index) && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
-            if (index <= 3 && (value < -512 || value > 511)) {
+            if ((0..=3).contains(&index) && !(-512..=511).contains(&value)) {
                 ten = false;
             }
-            if (index <= 4 && (value < -128 || value > 127)) {
+            if ((0..=4).contains(&index) && !(-128..=127).contains(&value)) {
                 eight = false;
             }
-            if (index <= 8 && (value < -8 || value > 7)) {
+            if ((0..=8).contains(&index) && !(-8..=7).contains(&value)) {
                 four = false;
             }
-            if (index <= 10 && (value < -4 || value > 3)) {
+            if ((0..=10).contains(&index) && !(-4..=3).contains(&value)) {
                 three = false;
             }
         }
@@ -97,19 +97,19 @@ impl EmitBits<i32> for CompressionQueue<i32, 10> {
             let remaining = iter.size_hint().0;
             let index = 10 - remaining;
 
-            if (index <= 2 && (value < -32768 || value > 32767)) {
+            if ((0..=2).contains(&index) && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
-            if (index <= 3 && (value < -512 || value > 511)) {
+            if ((0..=3).contains(&index) && !(-512..=511).contains(&value)) {
                 ten = false;
             }
-            if (index <= 4 && (value < -128 || value > 127)) {
+            if ((0..=4).contains(&index) && !(-128..=127).contains(&value)) {
                 eight = false;
             }
-            if (index <= 8 && (value < -8 || value > 7)) {
+            if ((0..=8).contains(&index) && !(-8..=7).contains(&value)) {
                 four = false;
             }
-            if (index <= 10 && (value < -4 || value > 3)) {
+            if ((0..=10).contains(&index) && !(-4..=3).contains(&value)) {
                 three = false;
             }
         }
@@ -167,16 +167,16 @@ impl EmitBits<i16> for CompressionQueue<i16, 10> {
             let remaining = iter.size_hint().0;
             let index = 10 - remaining;
 
-            if (index <= 3 && (value < -512 || value > 511)) {
+            if ((0..=3).contains(&index) && !(-512..=511).contains(&value)) {
                 ten = false;
             }
-            if (index <= 4 && (value < -128 || value > 127)) {
+            if ((0..=4).contains(&index) && !(-128..=127).contains(&value)) {
                 eight = false;
             }
-            if (index <= 8 && (value < -8 || value > 7)) {
+            if ((0..=8).contains(&index) && !(-8..=7).contains(&value)) {
                 four = false;
             }
-            if (index <= 10 && (value < -4 || value > 3)) {
+            if ((0..=10).contains(&index) && !(-4..=3).contains(&value)) {
                 three = false;
             }
         }
@@ -240,10 +240,10 @@ impl EmitBits<i8> for CompressionQueue<i8, 10> {
             let remaining = iter.size_hint().0;
             let index = 10 - remaining;
 
-            if (index <= 8 && (value < -8 || value > 7)) {
+            if ((0..=8).contains(&index) && !(-8..=7).contains(&value)) {
                 four = false;
             }
-            if (index <= 10 && (value < -4 || value > 3)) {
+            if ((0..=10).contains(&index) && !(-4..=3).contains(&value)) {
                 three = false;
             }
         }
