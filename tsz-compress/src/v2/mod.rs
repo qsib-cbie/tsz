@@ -610,13 +610,6 @@ mod tests {
     }
 
     #[test]
-    fn test() {
-        // Edge cases
-        // Test compression interface
-        todo!();
-    }
-
-    #[test]
     fn can_impl_compress() {
         #[derive(Copy, Clone)]
         struct TestRow {
