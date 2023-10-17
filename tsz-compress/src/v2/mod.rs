@@ -414,6 +414,90 @@ impl EmitBits<i8> for CompressionQueue<i8, 10> {
     }
 }
 
+pub fn decode_delta(bits: &'_ BitBufferSlice) -> Result<[i32; 10], &'static str> {
+    if bits.is_empty() {
+        return Err("Not enough bits to decode");
+    }
+    let mut decoded_buffer: [i32; 10] = [0; 10];
+    let mut decoded_buffer_index = 0;
+    let mut value: i32 = 0;
+    if bits[0] {
+        // Case 1: 00
+        if !bits[1] && !bits[2] {
+            // Skipping pad 0
+            for i in (4..36).step_by(16) {
+                for j in 0..16 {
+                    value |= (bits[i + j] as i32) << j;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                decoded_buffer[decoded_buffer_index] = value;
+                decoded_buffer_index += 1;
+                value = 0;
+            }
+        }
+        // Case 2: 01
+        else if !bits[1] && bits[2] {
+            // Skipping pad 000
+            for i in (6..36).step_by(10) {
+                for j in 0..10 {
+                    value |= (bits[i + j] as i32) << j;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                decoded_buffer[decoded_buffer_index] = value;
+                decoded_buffer_index += 1;
+                value = 0;
+            }
+        }
+        // Case 3: 10
+        else if bits[1] && !bits[2] {
+            // Skipping pad 0
+            for i in (4..36).step_by(8) {
+                for j in 0..8 {
+                    value |= (bits[i + j] as i32) << j;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                decoded_buffer[decoded_buffer_index] = value;
+                decoded_buffer_index += 1;
+                value = 0;
+            }
+        }
+        // Case 4: 110
+        else if bits[1] && bits[2] && !bits[3] {
+            for i in (4..36).step_by(4) {
+                for j in 0..4 {
+                    value |= (bits[i + j] as i32) << j;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                decoded_buffer[decoded_buffer_index] = value;
+                decoded_buffer_index += 1;
+                value = 0;
+            }
+        }
+        // Case 5: 111
+        else if bits[1] && bits[2] && bits[3] {
+            // Skipping pad 00
+            for i in (6..36).step_by(3) {
+                for j in 0..3 {
+                    value |= (bits[i + j] as i32) << j;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                decoded_buffer[decoded_buffer_index] = value;
+                decoded_buffer_index += 1;
+                value = 0;
+            }
+        } else {
+            return Err("Invalid encoding");
+        }
+
+        return Ok(decoded_buffer);
+    } else if !bits[0] {
+        // Delta-Delta Decompression
+        todo!()
+    } else {
+        return Err("Invalid encoding for delta or delta-delta compression.");
+    }
+}
+
 ///
 /// High-level interface for compression.
 ///
