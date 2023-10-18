@@ -544,9 +544,9 @@ mod tests {
         let mut bits = BitBuffer::new();
         let num_emitted_samples = queue.emit_bits(&mut bits, true);
         let decoded_values = decode_delta(&bits).unwrap();
-        assert_eq!(values[..2], decoded_values[..2]);
         assert_eq!(num_emitted_samples, 2);
         assert_eq!(queue.len(), 8);
+        assert_eq!(values[..2], decoded_values[..2]);
     }
     #[test]
     fn can_encode_decode_case2() {
@@ -559,9 +559,9 @@ mod tests {
         let mut bits = BitBuffer::new();
         let num_emitted_samples = queue.emit_bits(&mut bits, true);
         let decoded_values = decode_delta(&bits).unwrap();
-        assert_eq!(values[..3], decoded_values[..3]);
         assert_eq!(num_emitted_samples, 3);
         assert_eq!(queue.len(), 7);
+        assert_eq!(values[..3], decoded_values[..3]);
     }
 
     #[test]
@@ -576,9 +576,9 @@ mod tests {
         let mut bits = BitBuffer::new();
         let num_emitted_samples = queue.emit_bits(&mut bits, true);
         let decoded_values = decode_delta(&bits).unwrap();
-        assert_eq!(values[..4], decoded_values[..4]);
         assert_eq!(num_emitted_samples, 4);
         assert_eq!(queue.len(), 6);
+        assert_eq!(values[..4], decoded_values[..4]);
     }
 
     #[test]
@@ -593,9 +593,9 @@ mod tests {
         let mut bits = BitBuffer::new();
         let num_emitted_samples = queue.emit_bits(&mut bits, true);
         let decoded_values = decode_delta(&bits).unwrap();
-        assert_eq!(values[..8], decoded_values[..8]);
         assert_eq!(num_emitted_samples, 8);
         assert_eq!(queue.len(), 2);
+        assert_eq!(values[..8], decoded_values[..8]);
     }
 
     #[test]
@@ -609,9 +609,9 @@ mod tests {
         let mut bits = BitBuffer::new();
         let num_emitted_samples = queue.emit_bits(&mut bits, true);
         let decoded_values = decode_delta(&bits).unwrap();
-        assert_eq!(values, decoded_values);
         assert_eq!(num_emitted_samples, 10);
         assert_eq!(queue.len(), 0);
+        assert_eq!(values, decoded_values);
     }
 
     #[test]
