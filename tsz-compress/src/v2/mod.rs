@@ -531,6 +531,7 @@ pub trait TszCompressV2 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::Rng;
 
     #[test]
     fn can_encode_decode_case1() {
@@ -612,6 +613,118 @@ mod tests {
         assert_eq!(num_emitted_samples, 10);
         assert_eq!(queue.len(), 0);
         assert_eq!(values, decoded_values);
+    }
+
+    fn _can_encode_decode_values(values: &Vec<i32>) -> (usize, [i32; 10]) {
+        // Helper function
+        if values.len() != 10 {
+            println!("Vec size should be 10");
+        }
+        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(*value);
+        }
+        let mut bits = BitBuffer::new();
+        let num_emitted_samples = queue.emit_bits(&mut bits, true);
+        let decoded_values = decode_delta(&bits).unwrap();
+        return (num_emitted_samples, decoded_values);
+    }
+
+    #[test]
+    fn can_encode_decode_all() {
+        for i in (-32768..=32758).step_by(10) {
+            let values: Vec<i32> = (i..i + 10).collect::<Vec<_>>();
+            let (num_emitted_samples, decoded_values) = _can_encode_decode_values(&values);
+            assert_eq!(
+                values[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
+        }
+    }
+
+    #[test]
+    fn can_encode_decode_random_three_bits_values() {
+        // Random values in range of case 5
+        let mut rng = rand::thread_rng();
+        for _ in 0..=100000 {
+            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
+            for _i in 0..10 {
+                random_vec.push(rng.gen_range(-4..=3));
+            }
+            let (num_emitted_samples, decoded_values) = _can_encode_decode_values(&random_vec);
+            assert_eq!(
+                random_vec[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
+        }
+    }
+
+    #[test]
+    fn can_encode_decode_random_four_bits_values() {
+        // Random values in range of case 4 & 5
+        let mut rng = rand::thread_rng();
+        for _ in 0..=100000 {
+            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
+            for _i in 0..10 {
+                random_vec.push(rng.gen_range(-8..=7));
+            }
+            let (num_emitted_samples, decoded_values) = _can_encode_decode_values(&random_vec);
+            assert_eq!(
+                random_vec[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
+        }
+    }
+
+    #[test]
+    fn can_encode_decode_random_eight_bits_values() {
+        // Random values in range of case 3, 4 & 5
+        let mut rng = rand::thread_rng();
+        for _ in 0..=100000 {
+            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
+            for _i in 0..10 {
+                random_vec.push(rng.gen_range(-128..=127));
+            }
+            let (num_emitted_samples, decoded_values) = _can_encode_decode_values(&random_vec);
+            assert_eq!(
+                random_vec[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
+        }
+    }
+
+    #[test]
+    fn can_encode_decode_random_ten_bits_values() {
+        // Random values in range of case 2, 3, 4 & 5
+        let mut rng = rand::thread_rng();
+        for _ in 0..=100000 {
+            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
+            for _i in 0..10 {
+                random_vec.push(rng.gen_range(-512..=511));
+            }
+            let (num_emitted_samples, decoded_values) = _can_encode_decode_values(&random_vec);
+            assert_eq!(
+                random_vec[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
+        }
+    }
+
+    #[test]
+    fn can_encode_decode_random_sixteen_bits_values() {
+        // Random values in range of case 1, 2, 3, 4 & 5
+        let mut rng = rand::thread_rng();
+        for _ in 0..=100000 {
+            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
+            for _i in 0..10 {
+                random_vec.push(rng.gen_range(-32768..=32767));
+            }
+            let (num_emitted_samples, decoded_values) = _can_encode_decode_values(&random_vec);
+            assert_eq!(
+                random_vec[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
+        }
     }
 
     #[test]
