@@ -528,7 +528,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         struct #compressor_ident {
             #( #col_comp_idents: ::tsz_compress::prelude::CompressionQueue<#col_tys, 10>,)*
             #( #col_output_idents: ::tsz_compress::prelude::BitBuffer,)*
-            column_values_emitted: usize,
+            d_column_values_emitted: usize,
+            dd_column_values_emitted: usize,
         }
 
         impl TszCompressV2 for #compressor_ident {
@@ -538,7 +539,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 #(
                     self.#col_comp_idents.push(row.#col_idents);
                     if self.#col_comp_idents.is_full() {
-                        self.column_values_emitted += self.#col_comp_idents.emit_bits(&mut self.#col_output_idents, false);
+                        self.d_column_values_emitted += self.#col_comp_idents.emit_delta_bits(&mut self.#col_output_idents, false);
+                        self.dd_column_values_emitted += self.#col_comp_idents.emit_delta_delta_bits(&mut self.#col_output_idents, false);
                     }
                 )*
             }
@@ -553,11 +555,15 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
 
             fn bit_rate(&self) -> usize {
                 let finished_bit_count = (#( self.#col_output_idents.len() )+*);
-                finished_bit_count / self.column_values_emitted / #num_columns
+                if self.d_column_values_emitted < self.dd_column_values_emitted{
+                    return self.d_column_values_emitted
+                }
+                return self.dd_column_values_emitted
             }
 
             fn finish(mut self) -> ::tsz_compress::prelude::BitBuffer {
-                #(self.#col_comp_idents.emit_bits(&mut self.#col_output_idents, true);)*
+                #(self.#col_comp_idents.emit_delta_bits(&mut self.#col_output_idents, true);)*
+                #(self.#col_comp_idents.emit_delta_delta_bits(&mut self.#col_output_idents, true);)*
                 let mut output = ::tsz_compress::prelude::BitBuffer::new();
                 #(output.extend(self.#col_output_idents);)*
                 output
