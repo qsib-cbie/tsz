@@ -23,6 +23,7 @@ extend_bitsi!(i8);
 extend_bitsi!(i16);
 extend_bitsi!(i32);
 extend_bitsi!(i64);
+extend_bitsi!(i128);
 
 #[inline]
 fn push_header_pad_three_bits(buf: &mut BitBuffer) {
@@ -520,8 +521,10 @@ impl EmitDeltaDeltaBits<i64> for CompressionQueue<i64, 10> {
                     out.push(true);
                     out.push(true);
 
+                    let value = value as i128;
+
                     // ZigZag Encoding
-                    let value: i64 = (value << 1i64) ^ (value >> 63i16);
+                    let value = (value << 1i128) ^ (value >> 127i128);
 
                     // Write out least significant 64 bits
                     value.extend_bits(0..64, out);
@@ -917,11 +920,11 @@ pub fn decode_delta_delta_i64(bits: &'_ BitBufferSlice) -> Result<[i64; 10], &'s
             idx += 16;
         } else if bits[idx + 1] && bits[idx + 2] && bits[idx + 3] {
             idx += 4;
-            let mut value: i64 = 0;
+            let mut value: i128 = 0;
             for i in 0..64 {
-                value |= (bits[idx + i] as i64) << i;
+                value |= (bits[idx + i] as i128) << i;
             }
-            value = (value >> 1) ^ -(value & 1);
+            let value = (value >> 1) ^ -(value & 1);
             decoded_buffer[decoded_buffer_index] = value as i64;
             decoded_buffer_index += 1;
             idx += 64;
@@ -1229,8 +1232,7 @@ mod tests {
     #[test]
     fn can_encode_decode_delta_delta_i64() {
         let values: [i64; 10] = [
-            // -9223372036854775808,
-            -1,
+            -9223372036854775808,
             -4611686018427387904,
             -2305843009213693952,
             -1152921504606846976,
@@ -1239,7 +1241,7 @@ mod tests {
             1152921504606846975,
             2305843009213693951,
             4611686018427387903,
-            1, // 9223372036854775807,
+            9223372036854775807,
         ];
         let mut queue: CompressionQueue<i64, 10> = CompressionQueue::new();
         for value in values {
