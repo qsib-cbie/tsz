@@ -576,15 +576,17 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 )*
             }
 
-            fn len(&mut self) -> usize {
+            fn len(&self) -> usize {
                 let mut finished_bit_count = 0;
                 #(
                     if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
                         finished_bit_count += delta_buffer.len().min(delta_delta_buffer.len());
                     }
-                    else{
-                        self.#col_delta_buf_idents.as_mut().map(|outbuf| finished_bit_count += outbuf.len());
-                        self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| finished_bit_count += outbuf.len());
+                    else if let Some(delta_buffer) = &self.#col_delta_buf_idents{
+                        finished_bit_count += delta_buffer.len()
+                    }
+                    else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents{
+                        finished_bit_count += delta_delta_buffer.len()
                     }
 
                 )*
@@ -594,16 +596,18 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 finished_bit_count + pending_bit_count
             }
 
-            fn bit_rate(&mut self) -> usize {
+            fn bit_rate(&self) -> usize {
                 let mut finished_bit_count = 0;
                 let mut total_col_values_emitted = 0;
                 #(
                     if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
                         finished_bit_count += delta_buffer.len().min(delta_delta_buffer.len());
                     }
-                    else{
-                        self.#col_delta_buf_idents.as_mut().map(|outbuf| finished_bit_count += outbuf.len());
-                        self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| finished_bit_count += outbuf.len());
+                    else if let Some(delta_buffer) = &self.#col_delta_buf_idents{
+                            finished_bit_count += delta_buffer.len()
+                        }
+                    else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents{
+                        finished_bit_count += delta_delta_buffer.len()
                     }
                     // Increment total_col_values_emitted by the sum of values emitted for either delta or delta-delta compression per column. One of them will be 0 for each column.
                     total_col_values_emitted += (self.#col_values_emitted_delta + self.#col_values_emitted_delta_delta);
