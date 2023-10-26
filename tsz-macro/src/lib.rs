@@ -548,10 +548,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         impl TszCompressV2 for #compressor_ident {
             type T = #ident;
 
-
-            /**
-             * Performs compression using either delta or delta-delta compression, selecting the method that yields the smallest compressed values.
-             */
+            /// Performs compression using either delta or delta-delta compression, selecting the method that yields the smallest compressed values.
             fn compress(&mut self, row: Self::T) {
                 const COMPRESSION_SIZE_FACTOR: usize = 5;
                 #(
