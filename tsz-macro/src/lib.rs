@@ -556,8 +556,6 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 const COMPRESSION_SIZE_FACTOR: usize = 5;
                 #(
                     self.#col_comp_queue_idents.push(row.#col_idents);
-                    let mut is_delta_selected = false;
-                    let mut is_delta_delta_selected = false;
                     // Enqueues values until the queue reaches its maximum capacity.
                     if self.#col_comp_queue_idents.is_full() {
                         self.#col_delta_buf_idents.as_mut().map(|outbuf| self.#col_values_emitted_delta += self.#col_comp_queue_idents.emit_delta_bits( outbuf, false));
@@ -567,21 +565,14 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         if let Some(delta_buffer) = &self.#col_delta_buf_idents {
                             if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents{
                                 if delta_buffer.len() > COMPRESSION_SIZE_FACTOR * delta_delta_buffer.len(){
-                                    is_delta_selected = false;
+                                    self.#col_delta_buf_idents = None;
                                     self.#col_values_emitted_delta = 0;
                                 }
                                 else if delta_delta_buffer.len() > COMPRESSION_SIZE_FACTOR * delta_buffer.len(){
-                                    is_delta_delta_selected = false;
+                                    self.#col_delta_delta_buf_idents = None;
                                     self.#col_values_emitted_delta_delta = 0;
                                 }
                             }
-                        }
-
-                        if is_delta_selected{
-                            self.#col_delta_buf_idents = None;
-                        }
-                        if is_delta_delta_selected{
-                            self.#col_delta_delta_buf_idents = None;
                         }
 
                     }
