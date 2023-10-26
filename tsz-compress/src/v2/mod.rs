@@ -955,13 +955,13 @@ pub trait TszCompressV2 {
     /// The number of bits that have been compressed.
     /// This is an estimate, as the last few samples may have been emitted are estimated.
     ///
-    fn len(&self) -> usize;
+    fn len(&mut self) -> usize;
 
     ///
     /// Return an estimate of bits per column value as the number of
     /// compressed bits / count of column values compressed / columns per row.
     ///
-    fn bit_rate(&self) -> usize;
+    fn bit_rate(&mut self) -> usize;
 
     ///
     /// Finish compression and return the compressed data.
@@ -1355,11 +1355,11 @@ mod tests {
                 self.b_queue.push(row.b);
             }
 
-            fn len(&self) -> usize {
+            fn len(&mut self) -> usize {
                 self.a_queue.len() + self.b_queue.len()
             }
 
-            fn bit_rate(&self) -> usize {
+            fn bit_rate(&mut self) -> usize {
                 0
             }
 

@@ -514,58 +514,117 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
     // We will compress each of the fields as columns
     let columns = get_fields_of_struct(input);
     let (col_idents, col_tys): (Vec<_>, Vec<_>) = multiunzip(columns);
-    let col_comp_idents = col_idents
+    let col_comp_queue_idents = col_idents
         .iter()
-        .map(|ident| format_ident!("{}_compressor", ident))
+        .map(|ident| format_ident!("{}_compressor_queue", ident))
         .collect_vec();
-    let col_output_idents = col_idents
+    let col_delta_buf_idents = col_idents
         .iter()
-        .map(|ident| format_ident!("{}_output", ident))
+        .map(|ident| format_ident!("{}_delta_output_buffer", ident))
+        .collect_vec();
+    let col_delta_delta_buf_idents = col_idents
+        .iter()
+        .map(|ident| format_ident!("{}_delta_delta_output_buffer", ident))
         .collect_vec();
     let num_columns = col_idents.len();
-
+    let col_values_emitted_delta = col_idents
+        .iter()
+        .map(|ident| format_ident!("{}_columns_values_emitted_delta_compression", ident))
+        .collect_vec();
+    let col_values_emitted_delta_delta = col_idents
+        .iter()
+        .map(|ident| format_ident!("{}_columns_values_emitted_delta_delta_compression", ident))
+        .collect_vec();
     let compressor_struct = quote! {
         struct #compressor_ident {
-            #( #col_comp_idents: ::tsz_compress::prelude::CompressionQueue<#col_tys, 10>,)*
-            #( #col_output_idents: ::tsz_compress::prelude::BitBuffer,)*
-            d_column_values_emitted: usize,
-            dd_column_values_emitted: usize,
+            #( #col_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#col_tys, 10>,)*
+            #( #col_delta_buf_idents: Option<::tsz_compress::prelude::BitBuffer>,)*
+            #( #col_delta_delta_buf_idents: Option<::tsz_compress::prelude::BitBuffer>,)*
+            #( #col_values_emitted_delta: usize,)*
+            #( #col_values_emitted_delta_delta: usize,)*
+
         }
 
         impl TszCompressV2 for #compressor_ident {
             type T = #ident;
 
+
+            /**
+             * Performs compression using either delta or delta-delta compression, selecting the method that yields the smallest compressed values.
+             */
             fn compress(&mut self, row: Self::T) {
+                const COMPRESSION_SIZE_FACTOR: usize = 5;
                 #(
-                    self.#col_comp_idents.push(row.#col_idents);
-                    if self.#col_comp_idents.is_full() {
-                        self.d_column_values_emitted += self.#col_comp_idents.emit_delta_bits(&mut self.#col_output_idents, false);
-                        self.dd_column_values_emitted += self.#col_comp_idents.emit_delta_delta_bits(&mut self.#col_output_idents, false);
+                    self.#col_comp_queue_idents.push(row.#col_idents);
+                    let mut is_delta_selected = false;
+                    let mut is_delta_delta_selected = false;
+                    // Enqueues values until the queue reaches its maximum capacity.
+                    if self.#col_comp_queue_idents.is_full() {
+                        self.#col_delta_buf_idents.as_mut().map(|outbuf| self.#col_values_emitted_delta += self.#col_comp_queue_idents.emit_delta_bits( outbuf, false));
+                        self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| self.#col_values_emitted_delta_delta += self.#col_comp_queue_idents.emit_delta_delta_bits(outbuf, false));
+
+                        // Chooses the compression algorithm associated with the output buffer that is N times smaller than the other output buffer.
+                        if let Some(delta_buffer) = &self.#col_delta_buf_idents {
+                            if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents{
+                                if delta_buffer.len() > COMPRESSION_SIZE_FACTOR * delta_delta_buffer.len(){
+                                    is_delta_selected = false;
+                                    self.#col_values_emitted_delta = 0;
+                                }
+                                else if delta_delta_buffer.len() > COMPRESSION_SIZE_FACTOR * delta_buffer.len(){
+                                    is_delta_delta_selected = false;
+                                    self.#col_values_emitted_delta_delta = 0;
+                                }
+                            }
+                        }
+
+                        if is_delta_selected{
+                            self.#col_delta_buf_idents = None;
+                        }
+                        if is_delta_delta_selected{
+                            self.#col_delta_delta_buf_idents = None;
+                        }
+
                     }
                 )*
             }
 
-            fn len(&self) -> usize {
-                let finished_bit_count = (#( self.#col_output_idents.len() )+*);
-                let col_count = (#( self.#col_comp_idents.len() )+*);
+            fn len(&mut self) -> usize {
+                let mut finished_bit_count = 0;
+                #(
+                    self.#col_delta_buf_idents.as_mut().map(|outbuf| finished_bit_count += outbuf.len());
+                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| finished_bit_count += outbuf.len());
+                )*
+                let col_count = (#( self.#col_comp_queue_idents.len() )+*);
                 let col_bit_rate = #num_columns * self.bit_rate();
                 let pending_bit_count = col_count * col_bit_rate;
                 finished_bit_count + pending_bit_count
             }
 
-            fn bit_rate(&self) -> usize {
-                let finished_bit_count = (#( self.#col_output_idents.len() )+*);
-                if self.d_column_values_emitted < self.dd_column_values_emitted{
-                    return self.d_column_values_emitted
-                }
-                return self.dd_column_values_emitted
+            fn bit_rate(&mut self) -> usize {
+                let mut finished_bit_count = 0;
+                let mut total_col_values_emitted = 0;
+                #(
+                    self.#col_delta_buf_idents.as_mut().map(|outbuf| finished_bit_count += outbuf.len());
+                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| finished_bit_count += outbuf.len());
+                    total_col_values_emitted += (self.#col_values_emitted_delta + self.#col_values_emitted_delta_delta);
+
+                )*
+                finished_bit_count / total_col_values_emitted / #num_columns
+
             }
 
             fn finish(mut self) -> ::tsz_compress::prelude::BitBuffer {
-                #(self.#col_comp_idents.emit_delta_bits(&mut self.#col_output_idents, true);)*
-                #(self.#col_comp_idents.emit_delta_delta_bits(&mut self.#col_output_idents, true);)*
                 let mut output = ::tsz_compress::prelude::BitBuffer::new();
-                #(output.extend(self.#col_output_idents);)*
+                #(
+                    self.#col_delta_buf_idents.as_mut().map(|outbuf| {
+                        self.#col_comp_queue_idents.emit_delta_bits(outbuf, true);
+                        output.extend(outbuf);
+                    });
+                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                        self.#col_comp_queue_idents.emit_delta_delta_bits( outbuf, true);
+                        output.extend(outbuf);
+                    });
+                )*
                 output
             }
         }
