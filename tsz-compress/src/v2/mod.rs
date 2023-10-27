@@ -83,15 +83,49 @@ pub trait EmitDeltaBits<T> {
 impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
     #[allow(unused)]
     fn emit_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        let mut iter = self.iter();
         let mut three = true;
         let mut four = true;
         let mut eight = true;
         let mut ten = true;
         let mut sixteen = true;
+
+        let queue_length = self.len();
+
+        // Check flush conditions
+        if flush {
+            // Can not emit with any case of delta compression if queue is empty or contains 1 sample.
+            if self.is_empty() || self.len() == 1 {
+                return 0;
+            }
+
+            // Can not emit with case v of delta compression if number of samples < 10
+            if (0..=9).contains(&self.len()) {
+                three = false;
+            }
+
+            // Can not emit with case iv of delta compression if number of samples < 8.
+            if (0..=7).contains(&self.len()) {
+                four = false;
+            }
+
+            // Can not emit with case iii of delta compression if number of samples < 4
+            if (0..=3).contains(&self.len()) {
+                eight = false;
+            }
+            // Can not emit with case ii of delta compression if number of samples < 3
+            if (0..=2).contains(&self.len()) {
+                ten = false;
+            }
+            // Can not emit with case ii of delta compression if number of samples < 2
+            if (0..=1).contains(&self.len()) {
+                sixteen = false;
+            }
+        }
+
+        let mut iter = self.iter();
         while let Some(value) = iter.next() {
             let remaining = iter.size_hint().0;
-            let index = 10 - remaining;
+            let index = queue_length - remaining;
 
             if ((0..=2).contains(&index) && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
@@ -110,6 +144,7 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
             }
         }
 
+        // Emit according to priority of cases
         if three {
             push_header_pad_three_bits(out);
             for _ in 0..10 {
@@ -169,9 +204,43 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
         let mut eight = true;
         let mut ten = true;
         let mut sixteen = true;
+
+        let queue_length = self.len();
+
+        // Check flush conditions
+        if flush {
+            // Can not emit with any case of delta compression if queue is empty or contains 1 sample.
+            if self.is_empty() || self.len() == 1 {
+                return 0;
+            }
+
+            // Can not emit with case v of delta compression if number of samples < 10
+            if (0..=9).contains(&self.len()) {
+                three = false;
+            }
+
+            // Can not emit with case iv of delta compression if number of samples < 8.
+            if (0..=7).contains(&self.len()) {
+                four = false;
+            }
+
+            // Can not emit with case iii of delta compression if number of samples < 4
+            if (0..=3).contains(&self.len()) {
+                eight = false;
+            }
+            // Can not emit with case ii of delta compression if number of samples < 3
+            if (0..=2).contains(&self.len()) {
+                ten = false;
+            }
+            // Can not emit with case ii of delta compression if number of samples < 2
+            if (0..=1).contains(&self.len()) {
+                sixteen = false;
+            }
+        }
+
         while let Some(value) = iter.next() {
             let remaining = iter.size_hint().0;
-            let index = 10 - remaining;
+            let index = queue_length - remaining;
 
             if ((0..=2).contains(&index) && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
@@ -190,6 +259,7 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
             }
         }
 
+        // Emit according to priority of cases
         if three {
             push_header_pad_three_bits(out);
             for _ in 0..10 {
@@ -249,10 +319,48 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
         let mut eight = true;
         let mut ten = true;
         let mut sixteen = true;
+
+        let queue_length = self.len();
+
+        // Check flush conditions
+        if flush {
+            // Can not emit with any case of delta compression if queue is empty or contains 1 sample.
+            if self.is_empty() || self.len() == 1 {
+                return 0;
+            }
+
+            // Can not emit with case v of delta compression if number of samples < 10
+            if (0..=9).contains(&self.len()) {
+                three = false;
+            }
+
+            // Can not emit with case iv of delta compression if number of samples < 8.
+            if (0..=7).contains(&self.len()) {
+                four = false;
+            }
+
+            // Can not emit with case iii of delta compression if number of samples < 4
+            if (0..=3).contains(&self.len()) {
+                eight = false;
+            }
+            // Can not emit with case ii of delta compression if number of samples < 3
+            if (0..=2).contains(&self.len()) {
+                ten = false;
+            }
+            // Can not emit with case ii of delta compression if number of samples < 2
+            if (0..=1).contains(&self.len()) {
+                sixteen = false;
+            }
+        }
+
+        // Check case range conditions
         while let Some(value) = iter.next() {
             let remaining = iter.size_hint().0;
-            let index = 10 - remaining;
+            let index = queue_length - remaining;
 
+            if ((0..=2).contains(&index) && !(-32768..=32767).contains(&value)) {
+                sixteen = false;
+            }
             if ((0..=3).contains(&index) && !(-512..=511).contains(&value)) {
                 ten = false;
             }
@@ -267,6 +375,7 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
             }
         }
 
+        // Emit according to priority of cases
         if three {
             push_header_pad_three_bits(out);
             for _ in 0..10 {
@@ -307,6 +416,7 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
             push_header_pad_sixteen_bits(out);
             for _ in 0..2 {
                 if let Some(value) = self.pop() {
+                    let value = value as i32;
                     let value = (value << 1i16) ^ (value >> 15i16); // ZigZag Encoding
                     value.extend_bits(0..16, out);
                 }
@@ -326,18 +436,65 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
         let mut eight = true;
         let mut ten = true;
         let mut sixteen = true;
-        while let Some(value) = iter.next() {
-            let remaining = iter.size_hint().0;
-            let index = 10 - remaining;
 
-            if ((0..=8).contains(&index) && !(-8..=7).contains(&value)) {
+        let queue_length = self.len();
+
+        // Check flush conditions
+        if flush {
+            // Can not emit with any case of delta compression if queue is empty or contains 1 sample.
+            if self.is_empty() || self.len() == 1 {
+                return 0;
+            }
+            // Can not emit with case v of delta compression if number of samples < 10
+            if (0..=9).contains(&self.len()) {
+                three = false;
+            }
+
+            // Can not emit with case iv of delta compression if number of samples < 8.
+            if (0..=7).contains(&self.len()) {
                 four = false;
             }
-            if ((0..=10).contains(&index) && !(-4..=3).contains(&value)) {
-                three = false;
+
+            // Can not emit with case iii of delta compression if number of samples < 4
+            if (0..=3).contains(&self.len()) {
+                eight = false;
+            }
+
+            // Can not emit with case ii of delta compression if number of samples < 3
+            if (0..=2).contains(&self.len()) {
+                ten = false;
+            }
+
+            // Can not emit with case ii of delta compression if number of samples < 2
+            if (0..=1).contains(&self.len()) {
+                sixteen = false;
             }
         }
 
+        // Check case range conditions
+        while let Some(value) = iter.next() {
+            let remaining = iter.size_hint().0;
+            let index = queue_length - remaining;
+
+            // Can not emit with case iii if a sample between indices [0, 4] contains values out of case iii range [-128, 127]
+            if ((0..=4).contains(&index) && !(-128..=127).contains(&value)) {
+                eight = false;
+            }
+
+            // Can not emit with case iv if a sample between indices [0, 8] contains values out of case iv range [-8, 7]
+            if ((0..=8).contains(&index) && !(-8..=7).contains(&value)) {
+                four = false;
+            }
+
+            // Can not emit with case v if a sample between indices [0, 10] (entire queue) contains values out of case v range [-4, 3]
+            if ((0..=10).contains(&index) && !(-4..=3).contains(&value)) {
+                three = false;
+            }
+
+            // i8 can not have values out of [-128, 127] range, no need to check case i or ii.
+        }
+
+        // Emit according to priority of cases
         if three {
             push_header_pad_three_bits(out);
             for _ in 0..10 {
@@ -360,24 +517,29 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
             push_header_pad_eight_bits(out);
             for _ in 0..4 {
                 if let Some(value) = self.pop() {
+                    let value = value as i16;
                     let value = (value << 1i8) ^ (value >> 7i8); // ZigZag Encoding
                     value.extend_bits(0..8, out);
                 }
             }
             return 4;
+        // If there are only three samples of i8 to emit
         } else if ten {
             push_header_pad_ten_bits(out);
             for _ in 0..3 {
                 if let Some(value) = self.pop() {
+                    let value = value as i16;
                     let value = (value << 1i8) ^ (value >> 7i8); // ZigZag Encoding
                     value.extend_bits(0..10, out);
                 }
             }
             return 3;
+            // If there are only two samples of i8 to emit
         } else if sixteen {
             push_header_pad_sixteen_bits(out);
             for _ in 0..2 {
                 if let Some(value) = self.pop() {
+                    let value = value as i16;
                     let value = (value << 1i8) ^ (value >> 7i8); // ZigZag Encoding
                     value.extend_bits(0..16, out);
                 }
@@ -388,7 +550,88 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
     }
 }
 
-pub fn decode_delta(bits: &'_ BitBufferSlice) -> Result<[i32; 10], &'static str> {
+pub fn decode_delta_i64(bits: &'_ BitBufferSlice) -> Result<[i64; 10], &'static str> {
+    if bits.is_empty() {
+        return Err("Not enough bits to decode");
+    }
+    let mut decoded_buffer: [i64; 10] = [0; 10];
+    let mut decoded_buffer_index = 0;
+    let mut value: i64 = 0;
+
+    if !bits[0] {
+        return Err("Invalid encoding for delta decompression. Use delta-delta decompression.");
+    }
+
+    // Case 1: 00
+    if !bits[1] && !bits[2] {
+        // Skipping pad 0
+        for i in (4..36).step_by(16) {
+            for j in 0..16 {
+                value |= (bits[i + j] as i64) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 2: 01
+    else if !bits[1] && bits[2] {
+        // Skipping pad 000
+        for i in (6..36).step_by(10) {
+            for j in 0..10 {
+                value |= (bits[i + j] as i64) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 3: 10
+    else if bits[1] && !bits[2] {
+        // Skipping pad 0
+        for i in (4..36).step_by(8) {
+            for j in 0..8 {
+                value |= (bits[i + j] as i64) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 4: 110
+    else if bits[1] && bits[2] && !bits[3] {
+        for i in (4..36).step_by(4) {
+            for j in 0..4 {
+                value |= (bits[i + j] as i64) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 5: 111
+    else if bits[1] && bits[2] && bits[3] {
+        // Skipping pad 00
+        for i in (6..36).step_by(3) {
+            for j in 0..3 {
+                value |= (bits[i + j] as i64) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    } else {
+        return Err("Invalid encoding");
+    }
+    return Ok(decoded_buffer);
+}
+
+pub fn decode_delta_i32(bits: &'_ BitBufferSlice) -> Result<[i32; 10], &'static str> {
     if bits.is_empty() {
         return Err("Not enough bits to decode");
     }
@@ -469,6 +712,172 @@ pub fn decode_delta(bits: &'_ BitBufferSlice) -> Result<[i32; 10], &'static str>
     return Ok(decoded_buffer);
 }
 
+pub fn decode_delta_i16(bits: &'_ BitBufferSlice) -> Result<[i16; 10], &'static str> {
+    if bits.is_empty() {
+        return Err("Not enough bits to decode");
+    }
+    let mut decoded_buffer: [i16; 10] = [0; 10];
+    let mut decoded_buffer_index = 0;
+    let mut value: i16 = 0;
+
+    if !bits[0] {
+        return Err("Invalid encoding for delta decompression. Use delta-delta decompression.");
+    }
+
+    // Case 1: 00
+    if !bits[1] && !bits[2] {
+        // Skipping pad
+        let mut value: i32 = value as i32;
+        for i in (4..36).step_by(16) {
+            for j in 0..16 {
+                value |= (bits[i + j] as i32) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value as i16;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 2: 01
+    else if !bits[1] && bits[2] {
+        // Skipping pad 000
+        for i in (6..36).step_by(10) {
+            for j in 0..10 {
+                value |= (bits[i + j] as i16) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 3: 10
+    else if bits[1] && !bits[2] {
+        // Skipping pad 0
+        for i in (4..36).step_by(8) {
+            for j in 0..8 {
+                value |= (bits[i + j] as i16) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 4: 110
+    else if bits[1] && bits[2] && !bits[3] {
+        for i in (4..36).step_by(4) {
+            for j in 0..4 {
+                value |= (bits[i + j] as i16) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 5: 111
+    else if bits[1] && bits[2] && bits[3] {
+        // Skipping pad 00
+        for i in (6..36).step_by(3) {
+            for j in 0..3 {
+                value |= (bits[i + j] as i16) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    } else {
+        return Err("Invalid encoding");
+    }
+    return Ok(decoded_buffer);
+}
+
+pub fn decode_delta_i8(bits: &'_ BitBufferSlice) -> Result<[i8; 10], &'static str> {
+    if bits.is_empty() {
+        return Err("Not enough bits to decode");
+    }
+    let mut decoded_buffer: [i8; 10] = [0; 10];
+    let mut decoded_buffer_index = 0;
+    let mut value: i8 = 0;
+
+    if !bits[0] {
+        return Err("Invalid encoding for delta decompression. Use delta-delta decompression.");
+    }
+
+    // Case 1: 00
+    if !bits[1] && !bits[2] {
+        // Skipping pad 0
+        let mut value = value as i16;
+        for i in (4..36).step_by(16) {
+            for j in 0..16 {
+                value |= (bits[i + j] as i16) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value as i8;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 2: 01
+    else if !bits[1] && bits[2] {
+        // Skipping pad 000
+        let mut value = value as i16;
+        for i in (6..36).step_by(10) {
+            for j in 0..10 {
+                value |= (bits[i + j] as i16) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value as i8;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 3: 10
+    else if bits[1] && !bits[2] {
+        // Skipping pad 0
+        let mut value = value as i16;
+        for i in (4..36).step_by(8) {
+            for j in 0..8 {
+                value |= (bits[i + j] as i16) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value as i8;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 4: 110
+    else if bits[1] && bits[2] && !bits[3] {
+        for i in (4..36).step_by(4) {
+            for j in 0..4 {
+                value |= (bits[i + j] as i8) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    }
+    // Case 5: 111
+    else if bits[1] && bits[2] && bits[3] {
+        // Skipping pad 00
+        for i in (6..36).step_by(3) {
+            for j in 0..3 {
+                value |= (bits[i + j] as i8) << j;
+            }
+            value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+            decoded_buffer[decoded_buffer_index] = value;
+            decoded_buffer_index += 1;
+            value = 0;
+        }
+    } else {
+        return Err("Invalid encoding");
+    }
+    return Ok(decoded_buffer);
+}
+
 /**
 Delta Delta Compression
 */
@@ -480,7 +889,8 @@ pub trait EmitDeltaDeltaBits<T> {
 
 impl EmitDeltaDeltaBits<i64> for CompressionQueue<i64, 10> {
     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        for _ in 0..10 {
+        let num_values = self.len();
+        for _ in 0..num_values {
             if let Some(value) = self.pop() {
                 out.push(false);
                 if value == 0 {
@@ -531,13 +941,14 @@ impl EmitDeltaDeltaBits<i64> for CompressionQueue<i64, 10> {
                 }
             }
         }
-        10
+        num_values
     }
 }
 
 impl EmitDeltaDeltaBits<i32> for CompressionQueue<i32, 10> {
     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        for _ in 0..10 {
+        let num_values = self.len();
+        for _ in 0..num_values {
             if let Some(value) = self.pop() {
                 out.push(false);
                 if value == 0 {
@@ -588,13 +999,14 @@ impl EmitDeltaDeltaBits<i32> for CompressionQueue<i32, 10> {
                 }
             }
         }
-        10
+        num_values
     }
 }
 
 impl EmitDeltaDeltaBits<i16> for CompressionQueue<i16, 10> {
     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        for _ in 0..10 {
+        let num_values = self.len();
+        for _ in 0..num_values {
             if let Some(value) = self.pop() {
                 out.push(false);
                 if value == 0 {
@@ -647,13 +1059,14 @@ impl EmitDeltaDeltaBits<i16> for CompressionQueue<i16, 10> {
                 }
             }
         }
-        10
+        num_values
     }
 }
 
 impl EmitDeltaDeltaBits<i8> for CompressionQueue<i8, 10> {
     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        for _ in 0..10 {
+        let num_values = self.len();
+        for _ in 0..num_values {
             if let Some(value) = self.pop() {
                 out.push(false);
                 if value == 0 {
@@ -683,7 +1096,7 @@ impl EmitDeltaDeltaBits<i8> for CompressionQueue<i8, 10> {
                 }
             }
         }
-        10
+        num_values
     }
 }
 
@@ -970,131 +1383,423 @@ pub trait TszCompressV2 {
 }
 
 #[cfg(test)]
-mod tests {
+mod tests_delta {
 
     use super::*;
     use bitvec::bits;
     use rand::Rng;
 
-    #[test]
-    fn can_encode_decode_delta_case1() {
-        // Case 1: Encode and decode 3 samples between [-32768, 32767] in 16 bits
-        let values: [i32; 10] = [-32768, 30000, -512, -128, 511, 80, 7, -2, 2, 3];
-        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
-        for value in values {
-            queue.push(value);
-        }
-        let mut bits = BitBuffer::new();
-        let num_emitted_samples = queue.emit_delta_bits(&mut bits, true);
-        let decoded_values = decode_delta(&bits).unwrap();
-        assert_eq!(num_emitted_samples, 2);
-        assert_eq!(queue.len(), 8);
-        assert_eq!(values[..2], decoded_values[..2]);
-    }
-    #[test]
-    fn can_encode_decode_delta_case2() {
-        // Case 2: Encode and decode 3 samples between [-512, 511] in 10 bits
-        let values: [i32; 10] = [-3, 499, -512, -128, 511, 80, 7, -2, 2, 3];
-        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
-        for value in values {
-            queue.push(value);
-        }
-        let mut bits = BitBuffer::new();
-        let num_emitted_samples = queue.emit_delta_bits(&mut bits, true);
-        let decoded_values = decode_delta(&bits).unwrap();
-        assert_eq!(num_emitted_samples, 3);
-        assert_eq!(queue.len(), 7);
-        assert_eq!(values[..3], decoded_values[..3]);
-    }
-
-    #[test]
-    fn can_encode_decode_delta_case3() {
-        // Case 3: Encode and decode 4 samples between [-128, 127] in 8 bits
-        let values: [i32; 10] = [-3, 100, 0, -128, 127, 80, 7, -2, 2, 3];
-        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
-        for value in values {
-            queue.push(value);
-        }
-
-        let mut bits = BitBuffer::new();
-        let num_emitted_samples = queue.emit_delta_bits(&mut bits, true);
-        let decoded_values = decode_delta(&bits).unwrap();
-        assert_eq!(num_emitted_samples, 4);
-        assert_eq!(queue.len(), 6);
-        assert_eq!(values[..4], decoded_values[..4]);
-    }
-
-    #[test]
-    fn can_encode_decode_delta_case4() {
-        // Case 4: Encode and decode 8 samples between [-8, 7] in 4 bits
-        let values: [i32; 10] = [-3, 2, 0, 1, -8, 6, -7, -2, 2, 3];
-        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
-        for value in values {
-            queue.push(value);
-        }
-
-        let mut bits = BitBuffer::new();
-        let num_emitted_samples = queue.emit_delta_bits(&mut bits, true);
-        let decoded_values = decode_delta(&bits).unwrap();
-        assert_eq!(num_emitted_samples, 8);
-        assert_eq!(queue.len(), 2);
-        assert_eq!(values[..8], decoded_values[..8]);
-    }
-
-    #[test]
-    fn can_encode_decode_delta_case5() {
+    // Delta i8
+    // Helper function
+    fn _can_encode_decode_delta_values_i8(
+        values: &Vec<i8>,
+        flush: bool,
+    ) -> (usize, usize, Vec<i8>) {
         // Case 5: Encode and decode 10 samples between [-4, 3] in 3 bits
-        let values: [i32; 10] = [-3, 2, 0, 1, 2, -3, -1, -2, -4, -3];
-        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
+        let mut queue: CompressionQueue<i8, 10> = CompressionQueue::new();
         for value in values {
-            queue.push(value);
+            queue.push(*value);
         }
         let mut bits = BitBuffer::new();
-        let num_emitted_samples = queue.emit_delta_bits(&mut bits, true);
-        let decoded_values = decode_delta(&bits).unwrap();
-        assert_eq!(num_emitted_samples, 10);
-        assert_eq!(queue.len(), 0);
-        assert_eq!(values, decoded_values);
+        let num_emitted_samples = queue.emit_delta_bits(&mut bits, flush);
+        let decoded_values = decode_delta_i8(&bits).unwrap().to_vec();
+        return (queue.len(), num_emitted_samples, decoded_values);
     }
 
-    fn _can_encode_decode_delta_values(values: &Vec<i32>) -> (usize, [i32; 10]) {
-        // Helper function
-        if values.len() != 10 {
-            println!("Vec size should be 10");
+    #[test]
+    fn can_encode_decode_delta_i8_sanity1() {
+        // Case 4
+        let values = vec![-3, 2, 0, 1, 2, -3, -1, -2, -4, -3];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i8(&values, false);
+        assert_eq!(num_emitted_samples, 10);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i8_sanity2() {
+        // Case 4, 5
+        let values = vec![-4, 6, -8, 3, 2, -1, 7, 0, -5, 4];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i8(&values, false);
+        assert_eq!(num_emitted_samples, 8);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i8_sanity3() {
+        // Case 3, 4, 5
+        let values = vec![-32, 115, -78, 56, 12, -127, 89, 43, -3, 101];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i8(&values, false);
+        assert_eq!(num_emitted_samples, 4);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_random_i8() {
+        // Random values in i8 range
+        let mut rng = rand::thread_rng();
+        for _ in 0..=100000 {
+            let mut random_vec = Vec::with_capacity(10);
+            for _i in 0..10 {
+                random_vec.push(rng.gen_range(i8::MIN..=i8::MAX));
+            }
+            let (queue_size, num_emitted_samples, decoded_values) =
+                _can_encode_decode_delta_values_i8(&random_vec, true);
+            assert_eq!(queue_size, &random_vec.len() - num_emitted_samples);
+            assert_eq!(
+                random_vec[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
         }
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i8_flush_sanity() {
+        let values = vec![-31, 11, -106, -75];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i8(&values, true);
+        assert_eq!(num_emitted_samples, 4);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i8_flush_sanity2() {
+        let values = vec![93, -127, -100];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i8(&values, true);
+
+        // assert_eq!(num_emitted_samples, 4);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i8_flush_sanity3() {
+        let values = vec![-55, 72];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i8(&values, true);
+
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i8_flush_random() {
+        for _ in 0..100000 {
+            let mut rng = rand::thread_rng();
+            let mut random_vec: Vec<i8> = Vec::with_capacity(10);
+            // Number of samples in flush conditions
+            let end_range = rng.gen_range(1..10);
+
+            for _i in 0..=end_range {
+                random_vec.push(rng.gen_range(i8::MIN..=i8::MAX));
+            }
+            let (queue_size, num_emitted_samples, decoded_values) =
+                _can_encode_decode_delta_values_i8(&random_vec, true);
+
+            assert_eq!(queue_size, random_vec.len() - num_emitted_samples);
+            assert_eq!(
+                random_vec[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
+        }
+    }
+
+    // Delta i16
+    // Helper function
+    fn _can_encode_decode_delta_values_i16(
+        values: &Vec<i16>,
+        flush: bool,
+    ) -> (usize, usize, Vec<i16>) {
+        let mut queue: CompressionQueue<i16, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(*value);
+        }
+        let mut bits = BitBuffer::new();
+        let num_emitted_samples = queue.emit_delta_bits(&mut bits, flush);
+        let decoded_values = decode_delta_i16(&bits).unwrap().to_vec();
+        return (queue.len(), num_emitted_samples, decoded_values);
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i16_sanity1() {
+        // Case 5: Encode and decode 10 samples between [-4, 3] in 3 bits
+        let values = vec![-3, 2, 0, 1, 2, -3, -1, -2, -4, -3];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i16(&values, false);
+        assert_eq!(num_emitted_samples, 10);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i16_sanity2() {
+        // Case 4 and 5: Encode and decode 10 samples between [-8, 7] in 3 bits
+        let values = vec![-4, 6, -8, 3, 2, -1, 7, 0, -5, 4];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i16(&values, false);
+        assert_eq!(num_emitted_samples, 8);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i16_sanity3() {
+        // Case 3, 4, 5
+        let values = vec![-32, 115, -78, 56, 12, -127, 89, 43, -3, 101];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i16(&values, false);
+        assert_eq!(num_emitted_samples, 4);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i16_sanity4() {
+        // Case 2, 3, 4, 5
+        let values = vec![-256, 489, -123, 402, 67, -505, 311, 109, -412, 210];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i16(&values, false);
+        assert_eq!(num_emitted_samples, 3);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i16_sanity5() {
+        // Case 1, 2, 3, 4, 5
+        let values = vec![
+            -32768, 23456, -7891, 16042, 5678, -27600, 9123, 14567, -22222, 7890,
+        ];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i16(&values, false);
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_random_i16() {
+        // Random values in i16 range
+        let mut rng = rand::thread_rng();
+        for _ in 0..=100000 {
+            let mut random_vec = Vec::with_capacity(10);
+            for _i in 0..10 {
+                random_vec.push(rng.gen_range(i16::MIN..=i16::MAX));
+            }
+            let (queue_size, num_emitted_samples, decoded_values) =
+                _can_encode_decode_delta_values_i16(&random_vec, true);
+            assert_eq!(queue_size, &random_vec.len() - num_emitted_samples);
+            assert_eq!(
+                random_vec[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
+        }
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i16_flush_sanity() {
+        let values: Vec<i16> = vec![-8458, -11624, 15294, 27516];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i16(&values, true);
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i16_flush_sanity2() {
+        let values = vec![-8458, -11624, -100];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i16(&values, true);
+
+        // assert_eq!(num_emitted_samples, 4);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i16_flush_sanity3() {
+        let values = vec![-55, 72];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i16(&values, true);
+
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i16_flush_random() {
+        for _ in 0..100000 {
+            let mut rng = rand::thread_rng();
+            let mut random_vec: Vec<i16> = Vec::with_capacity(10);
+            // Number of samples in flush conditions
+            let end_range = rng.gen_range(1..10);
+
+            for _i in 0..=end_range {
+                random_vec.push(rng.gen_range(i16::MIN..=i16::MAX));
+            }
+            let (queue_size, num_emitted_samples, decoded_values) =
+                _can_encode_decode_delta_values_i16(&random_vec, true);
+
+            assert_eq!(queue_size, random_vec.len() - num_emitted_samples);
+            assert_eq!(
+                random_vec[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
+        }
+    }
+
+    // Delta i32
+    // Helper function
+    fn _can_encode_decode_delta_values_i32(
+        values: &Vec<i32>,
+        flush: bool,
+    ) -> (usize, usize, Vec<i32>) {
         let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
         for value in values {
             queue.push(*value);
         }
         let mut bits = BitBuffer::new();
-        let num_emitted_samples = queue.emit_delta_bits(&mut bits, true);
-        let decoded_values = decode_delta(&bits).unwrap();
-        return (num_emitted_samples, decoded_values);
+        let num_emitted_samples = queue.emit_delta_bits(&mut bits, flush);
+        let decoded_values = decode_delta_i32(&bits).unwrap().to_vec();
+        return (queue.len(), num_emitted_samples, decoded_values);
     }
 
     #[test]
-    fn can_encode_decode_delta_all() {
-        for i in (-32768..=32758).step_by(10) {
-            let values: Vec<i32> = (i..i + 10).collect::<Vec<_>>();
-            let (num_emitted_samples, decoded_values) = _can_encode_decode_delta_values(&values);
-            assert_eq!(
-                values[..num_emitted_samples],
-                decoded_values[..num_emitted_samples]
-            );
-        }
+    fn can_encode_decode_delta_i32_sanity1() {
+        // Case 5: Encode and decode 10 samples between [-4, 3] in 3 bits
+        let values = vec![-3, 2, 0, 1, 2, -3, -1, -2, -4, -3];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i32(&values, false);
+        assert_eq!(num_emitted_samples, 10);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
     }
 
     #[test]
-    fn can_encode_decode_delta_random_three_bits_values() {
-        // Random values in range of case 5
+    fn can_encode_decode_delta_i32_sanity2() {
+        // Case 4 and 5: Encode and decode 10 samples between [-8, 7] in 3 bits
+        let values = vec![-4, 6, -8, 3, 2, -1, 7, 0, -5, 4];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i32(&values, false);
+        assert_eq!(num_emitted_samples, 8);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i32_sanity3() {
+        // Case 3, 4, 5
+        let values = vec![-32, 115, -78, 56, 12, -127, 89, 43, -3, 101];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i32(&values, false);
+        assert_eq!(num_emitted_samples, 4);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i32_sanity4() {
+        // Case 2, 3, 4, 5
+        let values = vec![-256, 489, -123, 402, 67, -505, 311, 109, -412, 210];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i32(&values, false);
+        assert_eq!(num_emitted_samples, 3);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i32_sanity5() {
+        // Case 1, 2, 3, 4, 5
+        let values = vec![
+            -32768, 23456, -7891, 16042, 5678, -27600, 9123, 14567, -22222, 7890,
+        ];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i32(&values, false);
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_random_i32() {
+        // Random values in i32 range
         let mut rng = rand::thread_rng();
         for _ in 0..=100000 {
-            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
+            let mut random_vec = Vec::with_capacity(10);
             for _i in 0..10 {
-                random_vec.push(rng.gen_range(-4..=3));
+                random_vec.push(rng.gen_range(i16::MIN as i32..=i16::MAX as i32));
             }
-            let (num_emitted_samples, decoded_values) =
-                _can_encode_decode_delta_values(&random_vec);
+            let (queue_size, num_emitted_samples, decoded_values) =
+                _can_encode_decode_delta_values_i32(&random_vec, true);
+            assert_eq!(queue_size, &random_vec.len() - num_emitted_samples);
             assert_eq!(
                 random_vec[..num_emitted_samples],
                 decoded_values[..num_emitted_samples]
@@ -1103,16 +1808,168 @@ mod tests {
     }
 
     #[test]
-    fn can_encode_decode_delta_random_four_bits_values() {
-        // Random values in range of case 4 & 5
+    fn can_encode_decode_delta_i32_flush_sanity() {
+        let values: Vec<i32> = vec![-8458, -11624, 15294, 27516];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i32(&values, true);
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i32_flush_sanity2() {
+        let values = vec![-8458, -11624, -100];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i32(&values, true);
+
+        // assert_eq!(num_emitted_samples, 4);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i32_flush_sanity3() {
+        let values = vec![-55, 72];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i32(&values, true);
+
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i32_flush_random() {
+        for _ in 0..100000 {
+            let mut rng = rand::thread_rng();
+            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
+            // Number of samples in flush conditions
+            let end_range = rng.gen_range(1..10);
+
+            for _i in 0..=end_range {
+                random_vec.push(rng.gen_range(i16::MIN as i32..=i16::MAX as i32));
+            }
+            let (queue_size, num_emitted_samples, decoded_values) =
+                _can_encode_decode_delta_values_i32(&random_vec, true);
+
+            assert_eq!(queue_size, random_vec.len() - num_emitted_samples);
+            assert_eq!(
+                random_vec[..num_emitted_samples],
+                decoded_values[..num_emitted_samples]
+            );
+        }
+    }
+
+    // Delta i64
+    // Helper function
+    fn _can_encode_decode_delta_values_i64(
+        values: &Vec<i64>,
+        flush: bool,
+    ) -> (usize, usize, Vec<i64>) {
+        let mut queue: CompressionQueue<i64, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(*value);
+        }
+        let mut bits = BitBuffer::new();
+        let num_emitted_samples = queue.emit_delta_bits(&mut bits, flush);
+        let decoded_values = decode_delta_i64(&bits).unwrap().to_vec();
+        return (queue.len(), num_emitted_samples, decoded_values);
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i64_sanity1() {
+        // Case 5: Encode and decode 10 samples between [-4, 3] in 3 bits
+        let values = vec![-3, 2, 0, 1, 2, -3, -1, -2, -4, -3];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i64(&values, false);
+        assert_eq!(num_emitted_samples, 10);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i64_sanity2() {
+        // Case 4 and 5: Encode and decode 10 samples between [-8, 7] in 3 bits
+        let values = vec![-4, 6, -8, 3, 2, -1, 7, 0, -5, 4];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i64(&values, false);
+        assert_eq!(num_emitted_samples, 8);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i64_sanity3() {
+        // Case 3, 4, 5
+        let values = vec![-32, 115, -78, 56, 12, -127, 89, 43, -3, 101];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i64(&values, false);
+        assert_eq!(num_emitted_samples, 4);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i64_sanity4() {
+        // Case 2, 3, 4, 5
+        let values = vec![-256, 489, -123, 402, 67, -505, 311, 109, -412, 210];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i64(&values, false);
+        assert_eq!(num_emitted_samples, 3);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i64_sanity5() {
+        // Case 1, 2, 3, 4, 5
+        let values = vec![
+            -32768, 23456, -7891, 16042, 5678, -27600, 9123, 14567, -22222, 7890,
+        ];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i64(&values, false);
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_random_i64() {
+        // Random values in i64 range
         let mut rng = rand::thread_rng();
         for _ in 0..=100000 {
-            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
+            let mut random_vec = Vec::with_capacity(10);
             for _i in 0..10 {
-                random_vec.push(rng.gen_range(-8..=7));
+                random_vec.push(rng.gen_range(i16::MIN as i64..=i16::MAX as i64));
             }
-            let (num_emitted_samples, decoded_values) =
-                _can_encode_decode_delta_values(&random_vec);
+            let (queue_size, num_emitted_samples, decoded_values) =
+                _can_encode_decode_delta_values_i64(&random_vec, true);
+            assert_eq!(queue_size, &random_vec.len() - num_emitted_samples);
             assert_eq!(
                 random_vec[..num_emitted_samples],
                 decoded_values[..num_emitted_samples]
@@ -1121,58 +1978,75 @@ mod tests {
     }
 
     #[test]
-    fn can_encode_decode_delta_random_eight_bits_values() {
-        // Random values in range of case 3, 4 & 5
-        let mut rng = rand::thread_rng();
-        for _ in 0..=100000 {
-            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
-            for _i in 0..10 {
-                random_vec.push(rng.gen_range(-128..=127));
-            }
-            let (num_emitted_samples, decoded_values) =
-                _can_encode_decode_delta_values(&random_vec);
-            assert_eq!(
-                random_vec[..num_emitted_samples],
-                decoded_values[..num_emitted_samples]
-            );
-        }
+    fn can_encode_decode_delta_i64_flush_sanity() {
+        let values: Vec<i64> = vec![-8458, -11624, 15294, 27516];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i64(&values, true);
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
     }
 
     #[test]
-    fn can_encode_decode_delta_random_ten_bits_values() {
-        // Random values in range of case 2, 3, 4 & 5
-        let mut rng = rand::thread_rng();
-        for _ in 0..=100000 {
-            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
-            for _i in 0..10 {
-                random_vec.push(rng.gen_range(-512..=511));
-            }
-            let (num_emitted_samples, decoded_values) =
-                _can_encode_decode_delta_values(&random_vec);
-            assert_eq!(
-                random_vec[..num_emitted_samples],
-                decoded_values[..num_emitted_samples]
-            );
-        }
+    fn can_encode_decode_delta_i64_flush_sanity2() {
+        let values = vec![-8458, -11624, -100];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i64(&values, true);
+
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
     }
 
     #[test]
-    fn can_encode_decode_delta_random_sixteen_bits_values() {
-        // Random values in range of case 1, 2, 3, 4 & 5
-        let mut rng = rand::thread_rng();
-        for _ in 0..=100000 {
-            let mut random_vec: Vec<i32> = Vec::with_capacity(10);
-            for _i in 0..10 {
-                random_vec.push(rng.gen_range(-32768..=32767));
+    fn can_encode_decode_delta_i64_flush_sanity3() {
+        let values = vec![-55, 72];
+        let (queue_size, num_emitted_samples, decoded_values) =
+            _can_encode_decode_delta_values_i64(&values, true);
+
+        assert_eq!(num_emitted_samples, 2);
+        assert_eq!(queue_size, values.len() - num_emitted_samples);
+        assert_eq!(
+            values[..num_emitted_samples],
+            decoded_values[..num_emitted_samples]
+        );
+    }
+
+    #[test]
+    fn can_encode_decode_delta_i64_flush_random() {
+        for _ in 0..100000 {
+            let mut rng = rand::thread_rng();
+            let mut random_vec: Vec<i64> = Vec::with_capacity(10);
+            // Number of samples in flush conditions
+            let end_range = rng.gen_range(1..10);
+
+            for _i in 0..=end_range {
+                random_vec.push(rng.gen_range(i16::MIN as i64..=i16::MAX as i64));
             }
-            let (num_emitted_samples, decoded_values) =
-                _can_encode_decode_delta_values(&random_vec);
+            let (queue_size, num_emitted_samples, decoded_values) =
+                _can_encode_decode_delta_values_i64(&random_vec, true);
+
+            assert_eq!(queue_size, random_vec.len() - num_emitted_samples);
             assert_eq!(
                 random_vec[..num_emitted_samples],
                 decoded_values[..num_emitted_samples]
             );
         }
     }
+}
+
+#[cfg(test)]
+mod test_delta_delta {
+
+    use super::*;
+    use bitvec::bits;
+    use rand::Rng;
 
     #[test]
     fn can_encode_decode_delta_delta_i8() {
