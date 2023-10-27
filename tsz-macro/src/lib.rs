@@ -614,17 +614,63 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
             }
 
             fn finish(mut self) -> ::tsz_compress::prelude::BitBuffer {
-                let mut output = ::tsz_compress::prelude::BitBuffer::new();
+                // Only use one encoding mechanism
+                #(
+                    if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                        if delta_buffer.len() > delta_delta_buffer.len() {
+                            self.#col_delta_buf_idents = None;
+                        } else {
+                            self.#col_delta_delta_buf_idents = None;
+                        }
+                    }
+                )*
+
+                let mut final_capacity = 0;
                 #(
                     self.#col_delta_buf_idents.as_mut().map(|outbuf| {
                         self.#col_comp_queue_idents.emit_delta_bits(outbuf, true);
-                        output.extend(outbuf);
+                        final_capacity += 4 + outbuf.len();
                     });
                     self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
                         self.#col_comp_queue_idents.emit_delta_delta_bits( outbuf, true);
+                        final_capacity += 4 + outbuf.len();
+                    });
+                )*
+
+                // End on the byte alignment
+                if final_capacity % 8 == 4 {
+                    final_capacity += 4;
+                }
+
+                // All of the bits are concatenated with a 1001 tag indicating the start of a new column
+                let mut output = ::tsz_compress::prelude::BitBuffer::with_capacity(final_capacity);
+
+                // Extend bits to final output column by column
+                #(
+                    self.#col_delta_buf_idents.as_mut().map(|outbuf| {
+                        output.push(true);
+                        output.push(false);
+                        output.push(false);
+                        output.push(true);
+                        output.extend(outbuf);
+                    });
+                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                        output.push(true);
+                        output.push(false);
+                        output.push(false);
+                        output.push(true);
                         output.extend(outbuf);
                     });
                 )*
+
+                // Pad with 1011 as garbage for byte-alignment
+                if output.len() % 8 == 4 {
+                    output.push(true);
+                    output.push(false);
+                    output.push(true);
+                    output.push(true);
+                }
+
                 output
             }
         }
