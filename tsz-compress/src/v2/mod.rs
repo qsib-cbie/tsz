@@ -99,25 +99,25 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
             }
 
             // Can not emit with case v of delta compression if number of samples < 10
-            if (0..=9).contains(&self.len()) {
+            if self.len() < 10 {
                 three = false;
             }
 
             // Can not emit with case iv of delta compression if number of samples < 8.
-            if (0..=7).contains(&self.len()) {
+            if self.len() < 8 {
                 four = false;
             }
 
             // Can not emit with case iii of delta compression if number of samples < 4
-            if (0..=3).contains(&self.len()) {
+            if self.len() < 4 {
                 eight = false;
             }
             // Can not emit with case ii of delta compression if number of samples < 3
-            if (0..=2).contains(&self.len()) {
+            if self.len() < 3 {
                 ten = false;
             }
             // Can not emit with case ii of delta compression if number of samples < 2
-            if (0..=1).contains(&self.len()) {
+            if self.len() < 2 {
                 sixteen = false;
             }
         }
@@ -127,19 +127,19 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
             let remaining = iter.size_hint().0;
             let index = queue_length - remaining;
 
-            if ((0..=2).contains(&index) && !(-32768..=32767).contains(&value)) {
+            if (index <= 2 && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
-            if ((0..=3).contains(&index) && !(-512..=511).contains(&value)) {
+            if (index <= 3 && !(-512..=511).contains(&value)) {
                 ten = false;
             }
-            if ((0..=4).contains(&index) && !(-128..=127).contains(&value)) {
+            if (index <= 4 && !(-128..=127).contains(&value)) {
                 eight = false;
             }
-            if ((0..=8).contains(&index) && !(-8..=7).contains(&value)) {
+            if (index <= 8 && !(-8..=7).contains(&value)) {
                 four = false;
             }
-            if ((0..=10).contains(&index) && !(-4..=3).contains(&value)) {
+            if (index <= 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
         }
@@ -215,25 +215,25 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
             }
 
             // Can not emit with case v of delta compression if number of samples < 10
-            if (0..=9).contains(&self.len()) {
+            if self.len() < 10 {
                 three = false;
             }
 
             // Can not emit with case iv of delta compression if number of samples < 8.
-            if (0..=7).contains(&self.len()) {
+            if self.len() < 8 {
                 four = false;
             }
 
             // Can not emit with case iii of delta compression if number of samples < 4
-            if (0..=3).contains(&self.len()) {
+            if self.len() < 4 {
                 eight = false;
             }
             // Can not emit with case ii of delta compression if number of samples < 3
-            if (0..=2).contains(&self.len()) {
+            if self.len() < 3 {
                 ten = false;
             }
             // Can not emit with case ii of delta compression if number of samples < 2
-            if (0..=1).contains(&self.len()) {
+            if self.len() < 2 {
                 sixteen = false;
             }
         }
@@ -242,19 +242,19 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
             let remaining = iter.size_hint().0;
             let index = queue_length - remaining;
 
-            if ((0..=2).contains(&index) && !(-32768..=32767).contains(&value)) {
+            if (index <= 2 && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
-            if ((0..=3).contains(&index) && !(-512..=511).contains(&value)) {
+            if (index <= 3 && !(-512..=511).contains(&value)) {
                 ten = false;
             }
-            if ((0..=4).contains(&index) && !(-128..=127).contains(&value)) {
+            if (index <= 4 && !(-128..=127).contains(&value)) {
                 eight = false;
             }
-            if ((0..=8).contains(&index) && !(-8..=7).contains(&value)) {
+            if (index <= 8 && !(-8..=7).contains(&value)) {
                 four = false;
             }
-            if ((0..=10).contains(&index) && !(-4..=3).contains(&value)) {
+            if (index <= 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
         }
@@ -330,25 +330,25 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
             }
 
             // Can not emit with case v of delta compression if number of samples < 10
-            if (0..=9).contains(&self.len()) {
+            if self.len() < 10 {
                 three = false;
             }
 
             // Can not emit with case iv of delta compression if number of samples < 8.
-            if (0..=7).contains(&self.len()) {
+            if self.len() < 8 {
                 four = false;
             }
 
             // Can not emit with case iii of delta compression if number of samples < 4
-            if (0..=3).contains(&self.len()) {
+            if self.len() < 4 {
                 eight = false;
             }
             // Can not emit with case ii of delta compression if number of samples < 3
-            if (0..=2).contains(&self.len()) {
+            if self.len() < 3 {
                 ten = false;
             }
             // Can not emit with case ii of delta compression if number of samples < 2
-            if (0..=1).contains(&self.len()) {
+            if self.len() < 2 {
                 sixteen = false;
             }
         }
@@ -358,19 +358,19 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
             let remaining = iter.size_hint().0;
             let index = queue_length - remaining;
 
-            if ((0..=2).contains(&index) && !(-32768..=32767).contains(&value)) {
+            if (index <= 2 && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
-            if ((0..=3).contains(&index) && !(-512..=511).contains(&value)) {
+            if (index <= 3 && !(-512..=511).contains(&value)) {
                 ten = false;
             }
-            if ((0..=4).contains(&index) && !(-128..=127).contains(&value)) {
+            if (index <= 4 && !(-128..=127).contains(&value)) {
                 eight = false;
             }
-            if ((0..=8).contains(&index) && !(-8..=7).contains(&value)) {
+            if (index <= 8 && !(-8..=7).contains(&value)) {
                 four = false;
             }
-            if ((0..=10).contains(&index) && !(-4..=3).contains(&value)) {
+            if (index <= 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
         }
@@ -446,27 +446,27 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
                 return 0;
             }
             // Can not emit with case v of delta compression if number of samples < 10
-            if (0..=9).contains(&self.len()) {
+            if self.len() < 10 {
                 three = false;
             }
 
             // Can not emit with case iv of delta compression if number of samples < 8.
-            if (0..=7).contains(&self.len()) {
+            if self.len() < 8 {
                 four = false;
             }
 
             // Can not emit with case iii of delta compression if number of samples < 4
-            if (0..=3).contains(&self.len()) {
+            if self.len() < 4 {
                 eight = false;
             }
 
             // Can not emit with case ii of delta compression if number of samples < 3
-            if (0..=2).contains(&self.len()) {
+            if self.len() < 3 {
                 ten = false;
             }
 
             // Can not emit with case ii of delta compression if number of samples < 2
-            if (0..=1).contains(&self.len()) {
+            if self.len() < 2 {
                 sixteen = false;
             }
         }
@@ -477,17 +477,17 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
             let index = queue_length - remaining;
 
             // Can not emit with case iii if a sample between indices [0, 4] contains values out of case iii range [-128, 127]
-            if ((0..=4).contains(&index) && !(-128..=127).contains(&value)) {
+            if (index <= 4 && !(-128..=127).contains(&value)) {
                 eight = false;
             }
 
             // Can not emit with case iv if a sample between indices [0, 8] contains values out of case iv range [-8, 7]
-            if ((0..=8).contains(&index) && !(-8..=7).contains(&value)) {
+            if (index <= 8 && !(-8..=7).contains(&value)) {
                 four = false;
             }
 
             // Can not emit with case v if a sample between indices [0, 10] (entire queue) contains values out of case v range [-4, 3]
-            if ((0..=10).contains(&index) && !(-4..=3).contains(&value)) {
+            if (index <= 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
 
