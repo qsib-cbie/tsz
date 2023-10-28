@@ -122,11 +122,7 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
             }
         }
 
-        let mut iter = self.iter();
-        while let Some(value) = iter.next() {
-            let remaining = iter.size_hint().0;
-            let index = queue_length - remaining;
-
+        self.iter().enumerate().for_each(|(index, value)| {
             if (index <= 2 && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
@@ -142,7 +138,7 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
             if (index <= 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
-        }
+        });
 
         // Emit according to priority of cases
         if three {
@@ -198,7 +194,6 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
 impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
     #[allow(unused)]
     fn emit_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        let mut iter = self.iter();
         let mut three = true;
         let mut four = true;
         let mut eight = true;
@@ -238,10 +233,7 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
             }
         }
 
-        while let Some(value) = iter.next() {
-            let remaining = iter.size_hint().0;
-            let index = queue_length - remaining;
-
+        self.iter().enumerate().for_each(|(index, value)| {
             if (index <= 2 && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
@@ -257,7 +249,7 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
             if (index <= 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
-        }
+        });
 
         // Emit according to priority of cases
         if three {
@@ -313,7 +305,6 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
 impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
     #[allow(unused)]
     fn emit_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        let mut iter = self.iter();
         let mut three = true;
         let mut four = true;
         let mut eight = true;
@@ -354,10 +345,7 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
         }
 
         // Check case range conditions
-        while let Some(value) = iter.next() {
-            let remaining = iter.size_hint().0;
-            let index = queue_length - remaining;
-
+        self.iter().enumerate().for_each(|(index, value)| {
             if (index <= 2 && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
@@ -373,7 +361,7 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
             if (index <= 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
-        }
+        });
 
         // Emit according to priority of cases
         if three {
@@ -430,7 +418,6 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
 impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
     #[allow(unused)]
     fn emit_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        let mut iter = self.iter();
         let mut three = true;
         let mut four = true;
         let mut eight = true;
@@ -472,10 +459,8 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
         }
 
         // Check case range conditions
-        while let Some(value) = iter.next() {
-            let remaining = iter.size_hint().0;
-            let index = queue_length - remaining;
 
+        self.iter().enumerate().for_each(|(index, value)| {
             // Can not emit with case iii if a sample between indices [0, 4] contains values out of case iii range [-128, 127]
             if (index <= 4 && !(-128..=127).contains(&value)) {
                 eight = false;
@@ -492,7 +477,7 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
             }
 
             // i8 can not have values out of [-128, 127] range, no need to check case i or ii.
-        }
+        });
 
         // Emit according to priority of cases
         if three {
