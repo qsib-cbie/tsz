@@ -4,6 +4,12 @@ use core::ops::Range;
 pub mod queue;
 pub use queue::*;
 
+#[derive(Debug)]
+pub enum CodingError {
+    NotEnoughBits,
+    InvalidBits,
+}
+
 trait BitVectorOps {
     fn extend_bits(self, bit_range: Range<usize>, buf: &mut BitBuffer);
 }
@@ -535,16 +541,16 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
     }
 }
 
-pub fn decode_delta_i64(bits: &'_ BitBufferSlice) -> Result<[i64; 10], &'static str> {
+pub fn decode_delta_i64(bits: &'_ BitBufferSlice) -> Result<[i64; 10], CodingError> {
     if bits.is_empty() {
-        return Err("Not enough bits to decode");
+        return Err(CodingError::NotEnoughBits);
     }
     let mut decoded_buffer: [i64; 10] = [0; 10];
     let mut decoded_buffer_index = 0;
     let mut value: i64 = 0;
 
     if !bits[0] {
-        return Err("Invalid encoding for delta decompression. Use delta-delta decompression.");
+        return Err(CodingError::InvalidBits);
     }
 
     // Case 1: 00
@@ -611,21 +617,21 @@ pub fn decode_delta_i64(bits: &'_ BitBufferSlice) -> Result<[i64; 10], &'static 
             value = 0;
         }
     } else {
-        return Err("Invalid encoding");
+        return Err(CodingError::InvalidBits);
     }
     return Ok(decoded_buffer);
 }
 
-pub fn decode_delta_i32(bits: &'_ BitBufferSlice) -> Result<[i32; 10], &'static str> {
+pub fn decode_delta_i32(bits: &'_ BitBufferSlice) -> Result<[i32; 10], CodingError> {
     if bits.is_empty() {
-        return Err("Not enough bits to decode");
+        return Err(CodingError::NotEnoughBits);
     }
     let mut decoded_buffer: [i32; 10] = [0; 10];
     let mut decoded_buffer_index = 0;
     let mut value: i32 = 0;
 
     if !bits[0] {
-        return Err("Invalid encoding for delta decompression. Use delta-delta decompression.");
+        return Err(CodingError::InvalidBits);
     }
 
     // Case 1: 00
@@ -692,21 +698,21 @@ pub fn decode_delta_i32(bits: &'_ BitBufferSlice) -> Result<[i32; 10], &'static 
             value = 0;
         }
     } else {
-        return Err("Invalid encoding");
+        return Err(CodingError::InvalidBits);
     }
     return Ok(decoded_buffer);
 }
 
-pub fn decode_delta_i16(bits: &'_ BitBufferSlice) -> Result<[i16; 10], &'static str> {
+pub fn decode_delta_i16(bits: &'_ BitBufferSlice) -> Result<[i16; 10], CodingError> {
     if bits.is_empty() {
-        return Err("Not enough bits to decode");
+        return Err(CodingError::NotEnoughBits);
     }
     let mut decoded_buffer: [i16; 10] = [0; 10];
     let mut decoded_buffer_index = 0;
     let mut value: i16 = 0;
 
     if !bits[0] {
-        return Err("Invalid encoding for delta decompression. Use delta-delta decompression.");
+        return Err(CodingError::InvalidBits);
     }
 
     // Case 1: 00
@@ -774,21 +780,21 @@ pub fn decode_delta_i16(bits: &'_ BitBufferSlice) -> Result<[i16; 10], &'static 
             value = 0;
         }
     } else {
-        return Err("Invalid encoding");
+        return Err(CodingError::InvalidBits);
     }
     return Ok(decoded_buffer);
 }
 
-pub fn decode_delta_i8(bits: &'_ BitBufferSlice) -> Result<[i8; 10], &'static str> {
+pub fn decode_delta_i8(bits: &'_ BitBufferSlice) -> Result<[i8; 10], CodingError> {
     if bits.is_empty() {
-        return Err("Not enough bits to decode");
+        return Err(CodingError::NotEnoughBits);
     }
     let mut decoded_buffer: [i8; 10] = [0; 10];
     let mut decoded_buffer_index = 0;
     let mut value: i8 = 0;
 
     if !bits[0] {
-        return Err("Invalid encoding for delta decompression. Use delta-delta decompression.");
+        return Err(CodingError::InvalidBits);
     }
 
     // Case 1: 00
@@ -858,7 +864,7 @@ pub fn decode_delta_i8(bits: &'_ BitBufferSlice) -> Result<[i8; 10], &'static st
             value = 0;
         }
     } else {
-        return Err("Invalid encoding");
+        return Err(CodingError::InvalidBits);
     }
     return Ok(decoded_buffer);
 }
@@ -1085,16 +1091,16 @@ impl EmitDeltaDeltaBits<i8> for CompressionQueue<i8, 10> {
     }
 }
 
-pub fn decode_delta_delta_i8(bits: &'_ BitBufferSlice) -> Result<[i8; 10], &'static str> {
+pub fn decode_delta_delta_i8(bits: &'_ BitBufferSlice) -> Result<[i8; 10], CodingError> {
     if bits.is_empty() {
-        return Err("Not enough bits to decode");
+        return Err(CodingError::NotEnoughBits);
     }
     let mut decoded_buffer: [i8; 10] = [0; 10];
     let mut decoded_buffer_index = 0;
     let mut idx = 0;
     while idx < bits.len() {
         if bits[idx] {
-            return Err("Not in delta-delta compressed. Decode with delta decoding.");
+            return Err(CodingError::InvalidBits);
         }
         let mut value = 0;
         if !bits[idx + 1] && !bits[idx + 2] {
@@ -1126,26 +1132,22 @@ pub fn decode_delta_delta_i8(bits: &'_ BitBufferSlice) -> Result<[i8; 10], &'sta
             decoded_buffer_index += 1;
             idx += 9;
         } else {
-            return Err("Invalid encoding for i8");
+            return Err(CodingError::InvalidBits);
         }
     }
-    if idx == bits.len() {
-        Ok(decoded_buffer)
-    } else {
-        return Err("Some value remains to be decoded.");
-    }
+    Ok(decoded_buffer)
 }
 
-pub fn decode_delta_delta_i16(bits: &'_ BitBufferSlice) -> Result<[i16; 10], &'static str> {
+pub fn decode_delta_delta_i16(bits: &'_ BitBufferSlice) -> Result<[i16; 10], CodingError> {
     if bits.is_empty() {
-        return Err("Not enough bits to decode");
+        return Err(CodingError::NotEnoughBits);
     }
     let mut decoded_buffer: [i16; 10] = [0; 10];
     let mut decoded_buffer_index = 0;
     let mut idx = 0;
     while idx < bits.len() {
         if bits[idx] {
-            return Err("Not in delta-delta compressed. Decode with delta decoding.");
+            return Err(CodingError::InvalidBits);
         }
         let mut value = 0;
         if !bits[idx + 1] && !bits[idx + 2] {
@@ -1193,26 +1195,23 @@ pub fn decode_delta_delta_i16(bits: &'_ BitBufferSlice) -> Result<[i16; 10], &'s
             decoded_buffer_index += 1;
             idx += 64;
         } else {
-            return Err("Invalid encoding for i16");
+            return Err(CodingError::InvalidBits);
         }
     }
-    if idx == bits.len() {
-        Ok(decoded_buffer)
-    } else {
-        return Err("Some value remains to be decoded.");
-    }
+
+    Ok(decoded_buffer)
 }
 
-pub fn decode_delta_delta_i32(bits: &'_ BitBufferSlice) -> Result<[i32; 10], &'static str> {
+pub fn decode_delta_delta_i32(bits: &'_ BitBufferSlice) -> Result<[i32; 10], CodingError> {
     if bits.is_empty() {
-        return Err("Not enough bits to decode");
+        return Err(CodingError::NotEnoughBits);
     }
     let mut decoded_buffer: [i32; 10] = [0; 10];
     let mut decoded_buffer_index = 0;
     let mut idx = 0;
     while idx < bits.len() {
         if bits[idx] {
-            return Err("Not in delta-delta compressed. Decode with delta decoding.");
+            return Err(CodingError::InvalidBits);
         }
         let mut value = 0;
         if !bits[idx + 1] && !bits[idx + 2] {
@@ -1260,26 +1259,23 @@ pub fn decode_delta_delta_i32(bits: &'_ BitBufferSlice) -> Result<[i32; 10], &'s
             decoded_buffer_index += 1;
             idx += 64;
         } else {
-            return Err("Invalid encoding for i32");
+            return Err(CodingError::InvalidBits);
         }
     }
-    if idx == bits.len() {
-        Ok(decoded_buffer)
-    } else {
-        return Err("Some value remains to be decoded.");
-    }
+
+    Ok(decoded_buffer)
 }
 
-pub fn decode_delta_delta_i64(bits: &'_ BitBufferSlice) -> Result<[i64; 10], &'static str> {
+pub fn decode_delta_delta_i64(bits: &'_ BitBufferSlice) -> Result<[i64; 10], CodingError> {
     if bits.is_empty() {
-        return Err("Not enough bits to decode");
+        return Err(CodingError::NotEnoughBits);
     }
     let mut decoded_buffer: [i64; 10] = [0; 10];
     let mut decoded_buffer_index = 0;
     let mut idx = 0;
     while idx < bits.len() {
         if bits[idx] {
-            return Err("Not in delta-delta compressed. Decode with delta decoding.");
+            return Err(CodingError::InvalidBits);
         }
         let mut value = 0;
         if !bits[idx + 1] && !bits[idx + 2] {
@@ -1327,14 +1323,10 @@ pub fn decode_delta_delta_i64(bits: &'_ BitBufferSlice) -> Result<[i64; 10], &'s
             decoded_buffer_index += 1;
             idx += 64;
         } else {
-            return Err("Invalid encoding for i64");
+            return Err(CodingError::InvalidBits);
         }
     }
-    if idx == bits.len() {
-        Ok(decoded_buffer)
-    } else {
-        return Err("Some value remains to be decoded.");
-    }
+    Ok(decoded_buffer)
 }
 
 ///
