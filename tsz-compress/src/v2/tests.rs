@@ -23,7 +23,7 @@ mod tests_delta {
         }
         let mut bits = BitBuffer::new();
         let num_emitted_samples = queue.emit_delta_bits(&mut bits, flush);
-        let (decoded_values, decoded_size) = decode_delta_i8(&bits).unwrap();
+        let (decoded_values, decoded_size) = decode_i8(&bits).unwrap();
         let decoded_values = decoded_values.to_vec();
         return (
             queue.len(),
@@ -169,7 +169,7 @@ mod tests_delta {
         }
         let mut bits = BitBuffer::new();
         let num_emitted_samples = queue.emit_delta_bits(&mut bits, flush);
-        let (decoded_values, decoded_size) = decode_delta_i16(&bits).unwrap();
+        let (decoded_values, decoded_size) = decode_i16(&bits).unwrap();
         let decoded_values = decoded_values.to_vec();
         return (
             queue.len(),
@@ -345,7 +345,7 @@ mod tests_delta {
         }
         let mut bits = BitBuffer::new();
         let num_emitted_samples = queue.emit_delta_bits(&mut bits, flush);
-        let (decoded_values, decoded_size) = decode_delta_i32(&bits).unwrap();
+        let (decoded_values, decoded_size) = decode_i32(&bits).unwrap();
         let decoded_values = decoded_values.to_vec();
         return (
             queue.len(),
@@ -521,7 +521,7 @@ mod tests_delta {
         }
         let mut bits = BitBuffer::new();
         let num_emitted_samples = queue.emit_delta_bits(&mut bits, flush);
-        let (decoded_values, decoded_size) = decode_delta_i64(&bits).unwrap();
+        let (decoded_values, decoded_size) = decode_i64(&bits).unwrap();
         let decoded_values = decoded_values.to_vec();
         return (
             queue.len(),
@@ -703,7 +703,7 @@ mod test_delta_delta {
         let mut bits = BitBuffer::new();
         let out = &mut bits;
         let num_emitted_values = queue.emit_delta_delta_bits(out, false);
-        let (decoded_values, decoded_size) = decode_delta_delta_i8(out).unwrap();
+        let (decoded_values, decoded_size) = decode_i8(out).unwrap();
         assert_eq!(values[..num_emitted_values], decoded_values[..decoded_size]);
     }
 
@@ -719,7 +719,7 @@ mod test_delta_delta {
         let mut bits = BitBuffer::new();
         let out = &mut bits;
         let num_emitted_values = queue.emit_delta_delta_bits(out, false);
-        let (decoded_values, decoded_size) = decode_delta_delta_i16(out).unwrap();
+        let (decoded_values, decoded_size) = decode_i16(out).unwrap();
         assert_eq!(values[..num_emitted_values], decoded_values[..decoded_size]);
     }
 
@@ -744,7 +744,7 @@ mod test_delta_delta {
         let mut bits = BitBuffer::new();
         let out = &mut bits;
         let num_emitted_values = queue.emit_delta_delta_bits(out, false);
-        let (decoded_values, decoded_size) = decode_delta_delta_i32(out).unwrap();
+        let (decoded_values, decoded_size) = decode_i32(out).unwrap();
         assert_eq!(values[..num_emitted_values], decoded_values[..decoded_size]);
     }
 
@@ -769,7 +769,7 @@ mod test_delta_delta {
         let mut bits = BitBuffer::new();
         let out = &mut bits;
         let num_emitted_values = queue.emit_delta_delta_bits(out, false);
-        let (decoded_values, decoded_size) = decode_delta_delta_i64(out).unwrap();
+        let (decoded_values, decoded_size) = decode_i64(out).unwrap();
         assert_eq!(values[..num_emitted_values], decoded_values[..decoded_size]);
     }
 
@@ -789,7 +789,7 @@ mod test_delta_delta {
             let mut bits = BitBuffer::new();
             let out = &mut bits;
             let num_emitted_values = queue.emit_delta_delta_bits(out, false);
-            let (decoded_values, decoded_size) = decode_delta_delta_i8(out).unwrap();
+            let (decoded_values, decoded_size) = decode_i8(out).unwrap();
             assert_eq!(
                 random_vec[..num_emitted_values],
                 decoded_values[..decoded_size]
@@ -813,7 +813,7 @@ mod test_delta_delta {
             let mut bits = BitBuffer::new();
             let out = &mut bits;
             let num_emitted_values = queue.emit_delta_delta_bits(out, false);
-            let (decoded_values, decoded_size) = decode_delta_delta_i16(out).unwrap();
+            let (decoded_values, decoded_size) = decode_i16(out).unwrap();
             assert_eq!(
                 random_vec[..num_emitted_values],
                 decoded_values[..decoded_size]
@@ -836,7 +836,7 @@ mod test_delta_delta {
             let mut bits = BitBuffer::new();
             let out = &mut bits;
             let num_emitted_values = queue.emit_delta_delta_bits(out, false);
-            let (decoded_values, decoded_size) = decode_delta_delta_i32(out).unwrap();
+            let (decoded_values, decoded_size) = decode_i32(out).unwrap();
             assert_eq!(
                 random_vec[..num_emitted_values],
                 decoded_values[..decoded_size]
@@ -859,7 +859,7 @@ mod test_delta_delta {
             let mut bits = BitBuffer::new();
             let out = &mut bits;
             let num_emitted_values = queue.emit_delta_delta_bits(out, false);
-            let (decoded_values, decoded_size) = decode_delta_delta_i64(out).unwrap();
+            let (decoded_values, decoded_size) = decode_i64(out).unwrap();
             assert_eq!(
                 random_vec[..num_emitted_values],
                 decoded_values[..decoded_size]
