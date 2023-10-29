@@ -15,8 +15,13 @@ version = { workspace = true }
 crate-type = ["rlib"]
 
 [dependencies]
-bitvec = { version = "1.0.1", default-features = false, features = ["alloc", "atomic"] }
+bitvec = { version = "1.0.1", default-features = false, features = [
+    "alloc",
+    "atomic",
+] }
 tsz-macro = { workspace = true }
+config = "0.13.1"
+
 
 [dev-dependencies]
 criterion = "0.4.0"
