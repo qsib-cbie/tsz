@@ -719,7 +719,6 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
 #[proc_macro_derive(DecompressV2)]
 pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
     let input = parse_macro_input!(tokens as syn::DeriveInput);
-    let ident = input.ident.clone();
 
     // We will define a struct by this name
     let decompressor_ident = format_ident!("{}DecompressorImpl", input.ident);
@@ -732,7 +731,6 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
         .map(|ident| format_ident!("{}_col_vec", ident))
         .collect_vec();
 
-    let num_columns = col_idents.len();
     let decode_idents = col_tys
         .iter()
         .map(|ty| match ty {
