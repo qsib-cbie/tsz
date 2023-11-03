@@ -48,3 +48,18 @@ pub trait TszCompressV2 {
     ///
     fn finish(self) -> BitBuffer;
 }
+
+///
+/// High-level interface for decompression.
+///
+pub trait TszDecompressV2 {
+    ///
+    /// Initializes a new instance of the Decompressor.
+    ///
+    fn new() -> Self;
+
+    ///
+    /// Decompress a row.
+    ///
+    fn decompress(&mut self, bits: &BitBufferSlice);
+}

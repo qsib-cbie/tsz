@@ -710,3 +710,80 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
 
     compressor_struct.into()
 }
+
+#[proc_macro_derive(DecompressV2)]
+pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(tokens as syn::DeriveInput);
+    let ident = input.ident.clone();
+
+    // We will define a struct by this name
+    let decompressor_ident = format_ident!("{}DecompressorImpl", input.ident);
+
+    let columns = get_fields_of_struct(input);
+    let (col_idents, col_tys): (Vec<_>, Vec<_>) = multiunzip(columns);
+
+    let col_vec_idents = col_idents
+        .iter()
+        .map(|ident| format_ident!("{}_col_vec", ident))
+        .collect_vec();
+
+    let num_columns = col_idents.len();
+    let decode_idents = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { decode_i8 },
+                    "i16" => quote! { decode_i16 },
+                    "i32" => quote! { decode_i32 },
+                    "i64" => quote! { decode_i64 },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+
+    let decompressor_struct = quote! {
+        struct #decompressor_ident {
+            #( #col_vec_idents: Vec<#col_tys>,)*
+            bits_length: usize,
+            index: Option<usize>
+        }
+
+        impl TszDecompressV2 for #decompressor_ident {
+            /// Performs compression using either delta or delta-delta compression, selecting the method that yields the smallest compressed values.
+            fn new() -> Self {
+                #decompressor_ident {
+                    #( #col_vec_idents: Vec::new(),)*
+                    bits_length: 0,
+                    index: Some(0),
+                }
+            }
+
+            fn decompress(
+                &mut self,
+                bits: & tsz_compress::prelude::BitBufferSlice){
+
+                self.index = Some(0);
+                self.bits_length = bits.len();
+
+                #(
+                    if let Some(index) = self.index{
+                        self.index = #decode_idents(& bits, index, &mut self.#col_vec_idents).unwrap();
+                    }
+                )*
+
+                if let Some(index) = self.index{
+                    if (index < self.bits_length) && !(bits[index] && !(bits[index] && bits[index + 1] && !bits[index + 2]  && bits[index + 3])) {
+                        // Todo!
+                        panic!("Invalid bits.");
+                    }
+                }
+            }
+        }
+    };
+    decompressor_struct.into()
+}
