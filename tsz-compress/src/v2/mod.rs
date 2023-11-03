@@ -22,6 +22,11 @@ pub trait TszCompressV2 {
     type T: Copy;
 
     ///
+    /// Initializes a new instance of the Compressor.
+    ///
+    fn new() -> Self;
+
+    ///
     /// Lazily compress a row.
     ///
     fn compress(&mut self, row: Self::T);

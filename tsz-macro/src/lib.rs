@@ -553,6 +553,20 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         impl TszCompressV2 for #compressor_ident {
             type T = #ident;
 
+            /// Sets up two compression queues: one for delta compression and one for delta-delta compression, along with their respective output buffers.
+            /// Initializes counters for the number of column values emitted during the delta and delta-delta compression processes.
+            fn new() -> Self {
+                #compressor_ident {
+                    #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#col_tys, 10>::new(),)*
+                    #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#col_tys, 10>::new(),)*
+                    #( #col_delta_buf_idents: Some(::tsz_compress::prelude::BitBuffer::new()),)*
+                    #( #col_delta_delta_buf_idents: Some(::tsz_compress::prelude::BitBuffer::new()),)*
+                    #( #col_values_emitted_delta: 0,)*
+                    #( #col_values_emitted_delta_delta: 0,)*
+                }
+            }
+
+
             /// Performs compression using either delta or delta-delta compression, selecting the method that yields the smallest compressed values.
             fn compress(&mut self, row: Self::T) {
 
