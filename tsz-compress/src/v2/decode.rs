@@ -1,528 +1,675 @@
 use crate::prelude::*;
+use alloc::vec::Vec;
 
-// Delta Decoding
-
-pub fn decode_i8(bits: &'_ BitBufferSlice) -> Result<([i8; 10], usize), CodingError> {
+pub fn decode_i8<'a>(
+    bits: &'a BitBufferSlice,
+    idx: usize,
+    output: &mut Vec<i8>,
+) -> Result<Option<usize>, CodingError> {
     if bits.is_empty() {
         return Err(CodingError::NotEnoughBits);
     }
-    let mut decoded_buffer: [i8; 10] = [0; 10];
-    let mut decoded_buffer_index = 0;
-    let mut value: i8 = 0;
 
-    if bits[0] {
-        // Case 1: 00
-        if !bits[1] && !bits[2] {
-            // Skipping pad 0
-            let mut value = value as i16;
-            for i in (4..36).step_by(16) {
-                for j in 0..16 {
-                    value |= (bits[i + j] as i16) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value as i8;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 2: 01
-        else if !bits[1] && bits[2] {
-            // Skipping pad 000
-            let mut value = value as i16;
-            for i in (6..36).step_by(10) {
-                for j in 0..10 {
-                    value |= (bits[i + j] as i16) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value as i8;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 3: 10
-        else if bits[1] && !bits[2] {
-            // Skipping pad 0
-            let mut value = value as i16;
-            for i in (4..36).step_by(8) {
-                for j in 0..8 {
-                    value |= (bits[i + j] as i16) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value as i8;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 4: 110
-        else if bits[1] && bits[2] && !bits[3] {
-            for i in (4..36).step_by(4) {
-                for j in 0..4 {
-                    value |= (bits[i + j] as i8) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 5: 111
-        else if bits[1] && bits[2] && bits[3] {
-            // Skipping pad 00
-            for i in (6..36).step_by(3) {
-                for j in 0..3 {
-                    value |= (bits[i + j] as i8) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        } else {
-            return Err(CodingError::InvalidBits);
-        }
-        return Ok((decoded_buffer, decoded_buffer_index));
+    let mut idx = idx;
+
+    // TODO: Optimize with bit operations
+    if !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3]) {
+        return Err(CodingError::InvalidBits);
     }
 
-    // Decode Delta-delta
-    let mut idx = 0;
-    while idx < bits.len() {
-        let mut value = 0;
-        if !bits[idx + 1] && !bits[idx + 2] {
-            idx += 3;
-            value = bits[idx] as i8;
-            let value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
+    // Skip 1001
+    idx += 4;
+
+    // Loops until we get next header 1001 or end of columns 1011
+    // TODO: Optimize with bit operations
+    while (idx < bits.len())
+        && !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3])
+        && !(bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+    {
+        // Delta Decoding
+        if bits[idx] {
+            // Todo: Optimize addition operations in bits
+            // Skipping 1
             idx += 1;
-        } else if !bits[idx + 1] && bits[idx + 2] {
-            idx += 3;
-            for i in 0..5 {
-                value |= (bits[idx + i] as i8) << i;
+            let mut value: i8 = 0;
+            // Case 1: 00
+            if !bits[idx] && !bits[idx + 1] {
+                // Skipping 00 and pad 0
+                idx += 3;
+                let mut value = value as i16;
+                for i in (idx..idx + 32).step_by(16) {
+                    for j in 0..16 {
+                        value |= (bits[i + j] as i16) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value as i8);
+                    value = 0;
+                }
+                idx += 32;
             }
-            let value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
-            idx += 5;
-        } else if bits[idx + 1] && !bits[idx + 2] {
-            idx += 3;
+            // Case 2: 01
+            else if !bits[idx] && bits[idx + 1] {
+                // Skipping 01 and pad 000
+                idx += 5;
+                let mut value = value as i16;
+                for i in (idx..idx + 30).step_by(10) {
+                    for j in 0..10 {
+                        value |= (bits[i + j] as i16) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value as i8);
+                    value = 0;
+                }
+                idx += 30;
+            }
+            // Case 3: 10
+            else if bits[idx] && !bits[idx + 1] {
+                // Skipping 10 and pad 0
+                idx += 3;
+                let mut value = value as i16;
+                for i in (idx..idx + 32).step_by(8) {
+                    for j in 0..8 {
+                        value |= (bits[i + j] as i16) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value as i8);
+                    value = 0;
+                }
+                idx += 32;
+            }
+            // Case 4: 110
+            else if bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skipping 110
+                idx += 3;
+                for i in (idx..idx + 32).step_by(4) {
+                    for j in 0..4 {
+                        value |= (bits[i + j] as i8) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 32;
+            }
+            // Case 5: 111
+            else if bits[idx] && bits[idx + 1] && bits[idx + 2] {
+                // Skipping 111 and pad 00
+                idx += 5;
+
+                for i in (idx..idx + 30).step_by(3) {
+                    for j in 0..3 {
+                        value |= (bits[i + j] as i8) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 30;
+            } else {
+                return Err(CodingError::InvalidBits);
+            }
+        } else {
+            // Decode Delta-delta
+
+            // Skipping 0
+            idx += 1;
+
+            let mut value = 0;
+            if !bits[idx] && !bits[idx + 1] {
+                // Skip 00
+                idx += 2;
+
+                value = bits[idx] as i8;
+                let value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 1;
+            } else if !bits[idx] && bits[idx + 1] {
+                // Skip 01
+                idx += 2;
+
+                for i in 0..5 {
+                    value |= (bits[idx + i] as i8) << i;
+                }
+                let value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 5;
+            } else if bits[idx] && !bits[idx + 1] {
+                // Skip 10
+                idx += 2;
+
+                let mut value: i16 = 0;
+                for i in 0..9 {
+                    value |= (bits[idx + i] as i16) << i;
+                }
+                // ZigZag decoding
+                let value = (value >> 1) ^ -(value & 1);
+
+                output.push(value as i8);
+                idx += 9;
+            } else {
+                return Err(CodingError::InvalidBits);
+            }
+        }
+    }
+    return Ok(Some(idx));
+}
+
+pub fn decode_i16(
+    bits: &'_ BitBufferSlice,
+    idx: usize,
+    output: &mut Vec<i16>,
+) -> Result<Option<usize>, CodingError> {
+    if bits.is_empty() {
+        return Err(CodingError::NotEnoughBits);
+    }
+
+    let mut idx = idx;
+
+    // TODO: Optimize with bit operations
+    if !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3]) {
+        return Err(CodingError::InvalidBits);
+    }
+
+    // Skip 1001
+    idx += 4;
+
+    // Loops until we get next header 1001
+    // TODO: Optimize with bit operations
+
+    while (idx < bits.len())
+        && !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3])
+        && !(bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+    {
+        // Decode delta
+        if bits[idx] {
+            // Todo: Optimize addition operations in bits
+            // Skipping 1
+            idx += 1;
+
             let mut value: i16 = 0;
-            for i in 0..9 {
-                value |= (bits[idx + i] as i16) << i;
-            }
-            // ZigZag decoding
-            let value = (value >> 1) ^ -(value & 1);
 
-            decoded_buffer[decoded_buffer_index] = value as i8;
-            decoded_buffer_index += 1;
-            idx += 9;
-        } else {
-            return Err(CodingError::InvalidBits);
-        }
-    }
-    return Ok((decoded_buffer, decoded_buffer_index));
-}
+            // Case 1: 00
+            if !bits[idx] && !bits[idx + 1] {
+                // Skipping 00 and pad 0
+                idx += 3;
 
-pub fn decode_i16(bits: &'_ BitBufferSlice) -> Result<([i16; 10], usize), CodingError> {
-    if bits.is_empty() {
-        return Err(CodingError::NotEnoughBits);
-    }
-    let mut decoded_buffer: [i16; 10] = [0; 10];
-    let mut decoded_buffer_index = 0;
-    let mut value: i16 = 0;
+                let mut value: i32 = value as i32;
 
-    // Decode delta
-    if bits[0] {
-        // Case 1: 00
-        if !bits[1] && !bits[2] {
-            // Skipping pad
-            let mut value: i32 = value as i32;
-            for i in (4..36).step_by(16) {
-                for j in 0..16 {
-                    value |= (bits[i + j] as i32) << j;
+                for i in (idx..idx + 32).step_by(16) {
+                    for j in 0..16 {
+                        value |= (bits[i + j] as i32) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value as i16);
+                    value = 0;
                 }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value as i16;
-                decoded_buffer_index += 1;
-                value = 0;
+                idx += 32;
             }
-        }
-        // Case 2: 01
-        else if !bits[1] && bits[2] {
-            // Skipping pad 000
-            for i in (6..36).step_by(10) {
-                for j in 0..10 {
-                    value |= (bits[i + j] as i16) << j;
+            // Case 2: 01
+            else if !bits[idx] && bits[idx + 1] {
+                // Skipping 01 and pad 000
+                idx += 5;
+
+                for i in (idx..idx + 30).step_by(10) {
+                    for j in 0..10 {
+                        value |= (bits[i + j] as i16) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
                 }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
+                idx += 30;
             }
-        }
-        // Case 3: 10
-        else if bits[1] && !bits[2] {
-            // Skipping pad 0
-            for i in (4..36).step_by(8) {
-                for j in 0..8 {
-                    value |= (bits[i + j] as i16) << j;
+            // Case 3: 10
+            else if bits[idx] && !bits[idx + 1] {
+                // Skipping 10 and pad 0
+                idx += 3;
+
+                for i in (idx..idx + 32).step_by(8) {
+                    for j in 0..8 {
+                        value |= (bits[i + j] as i16) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
                 }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
+                idx += 32;
             }
-        }
-        // Case 4: 110
-        else if bits[1] && bits[2] && !bits[3] {
-            for i in (4..36).step_by(4) {
-                for j in 0..4 {
-                    value |= (bits[i + j] as i16) << j;
+            // Case 4: 110
+            else if bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skipping 110
+                idx += 3;
+                for i in (idx..idx + 32).step_by(4) {
+                    for j in 0..4 {
+                        value |= (bits[i + j] as i16) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
                 }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
+                idx += 32;
             }
-        }
-        // Case 5: 111
-        else if bits[1] && bits[2] && bits[3] {
-            // Skipping pad 00
-            for i in (6..36).step_by(3) {
-                for j in 0..3 {
-                    value |= (bits[i + j] as i16) << j;
+            // Case 5: 111
+            else if bits[idx] && bits[idx + 1] && bits[idx + 2] {
+                // Skipping 111 and pad 00
+                idx += 5;
+
+                for i in (idx..idx + 30).step_by(3) {
+                    for j in 0..3 {
+                        value |= (bits[i + j] as i16) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
                 }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
+                idx += 30;
+            } else {
+                return Err(CodingError::InvalidBits);
             }
         } else {
-            return Err(CodingError::InvalidBits);
-        }
-        return Ok((decoded_buffer, decoded_buffer_index));
-    }
+            // Decode delta-delta
 
-    // Decode delta-delta
-    let mut idx = 0;
-    while idx < bits.len() {
-        let mut value = 0;
-        if !bits[idx + 1] && !bits[idx + 2] {
-            idx += 3;
-            value = bits[idx] as i16;
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
+            // Skipping 0
             idx += 1;
-        } else if !bits[idx + 1] && bits[idx + 2] {
-            idx += 3;
-            for i in 0..5 {
-                value |= (bits[idx + i] as i16) << i;
+
+            let mut value = 0;
+
+            if !bits[idx] && !bits[idx + 1] {
+                // Skip 00
+                idx += 2;
+
+                value = bits[idx] as i16;
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 1;
+            } else if !bits[idx] && bits[idx + 1] {
+                // Skip 01
+                idx += 2;
+
+                for i in 0..5 {
+                    value |= (bits[idx + i] as i16) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 5;
+            } else if bits[idx] && !bits[idx + 1] {
+                // Skip 10
+                idx += 2;
+
+                for i in 0..9 {
+                    value |= (bits[idx + i] as i16) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 9;
+            } else if bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skip 110
+                idx += 3;
+
+                for i in 0..16 {
+                    value |= (bits[idx + i] as i16) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 16;
+            } else if bits[idx] && bits[idx + 1] && bits[idx + 2] {
+                // Skip 111
+                idx += 3;
+
+                let mut value: i64 = 0;
+                for i in 0..64 {
+                    value |= (bits[idx + i] as i64) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value as i16);
+                idx += 64;
+            } else {
+                return Err(CodingError::InvalidBits);
             }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
-            idx += 5;
-        } else if bits[idx + 1] && !bits[idx + 2] {
-            idx += 3;
-            for i in 0..9 {
-                value |= (bits[idx + i] as i16) << i;
-            }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
-            idx += 9;
-        } else if bits[idx + 1] && bits[idx + 2] && !bits[idx + 3] {
-            idx += 4;
-            for i in 0..16 {
-                value |= (bits[idx + i] as i16) << i;
-            }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
-            idx += 16;
-        } else if bits[idx + 1] && bits[idx + 2] && bits[idx + 3] {
-            idx += 4;
-            let mut value: i64 = 0;
-            for i in 0..64 {
-                value |= (bits[idx + i] as i64) << i;
-            }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value as i16;
-            decoded_buffer_index += 1;
-            idx += 64;
-        } else {
-            return Err(CodingError::InvalidBits);
         }
     }
-
-    return Ok((decoded_buffer, decoded_buffer_index));
+    return Ok(Some(idx));
 }
 
-pub fn decode_i32(bits: &'_ BitBufferSlice) -> Result<([i32; 10], usize), CodingError> {
+pub fn decode_i32(
+    bits: &'_ BitBufferSlice,
+    idx: usize,
+    output: &mut Vec<i32>,
+) -> Result<Option<usize>, CodingError> {
     if bits.is_empty() {
         return Err(CodingError::NotEnoughBits);
     }
-    let mut decoded_buffer: [i32; 10] = [0; 10];
-    let mut decoded_buffer_index = 0;
-    let mut value: i32 = 0;
 
-    if bits[0] {
-        // Case 1: 00
-        if !bits[1] && !bits[2] {
-            // Skipping pad 0
-            for i in (4..36).step_by(16) {
-                for j in 0..16 {
-                    value |= (bits[i + j] as i32) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 2: 01
-        else if !bits[1] && bits[2] {
-            // Skipping pad 000
-            for i in (6..36).step_by(10) {
-                for j in 0..10 {
-                    value |= (bits[i + j] as i32) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 3: 10
-        else if bits[1] && !bits[2] {
-            // Skipping pad 0
-            for i in (4..36).step_by(8) {
-                for j in 0..8 {
-                    value |= (bits[i + j] as i32) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 4: 110
-        else if bits[1] && bits[2] && !bits[3] {
-            for i in (4..36).step_by(4) {
-                for j in 0..4 {
-                    value |= (bits[i + j] as i32) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 5: 111
-        else if bits[1] && bits[2] && bits[3] {
-            // Skipping pad 00
-            for i in (6..36).step_by(3) {
-                for j in 0..3 {
-                    value |= (bits[i + j] as i32) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        } else {
-            return Err(CodingError::InvalidBits);
-        }
-        return Ok((decoded_buffer, decoded_buffer_index));
+    let mut idx = idx;
+
+    // TODO: Optimize with bit operations
+    if !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3]) {
+        return Err(CodingError::InvalidBits);
     }
-    let mut idx = 0;
-    while idx < bits.len() {
+
+    // Skip 1001
+    idx += 4;
+
+    // Loops until we get next header 1001
+    // TODO: Optimize with bit operations
+
+    while (idx < bits.len())
+        && !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3])
+        && !(bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+    {
+        // Decode Delta
         if bits[idx] {
-            return Err(CodingError::InvalidBits);
-        }
-        let mut value = 0;
-        if !bits[idx + 1] && !bits[idx + 2] {
-            idx += 3;
-            value = bits[idx] as i32;
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
+            // Todo: Optimize addition operations in bits
+            // Skipping 1
             idx += 1;
-        } else if !bits[idx + 1] && bits[idx + 2] {
-            idx += 3;
-            for i in 0..5 {
-                value |= (bits[idx + i] as i32) << i;
+
+            let mut value: i32 = 0;
+
+            // Case 1: 00
+            if !bits[idx] && !bits[idx + 1] {
+                // Skipping 00 and pad 0
+                idx += 3;
+
+                for i in (idx..idx + 32).step_by(16) {
+                    for j in 0..16 {
+                        value |= (bits[i + j] as i32) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 32;
             }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
-            idx += 5;
-        } else if bits[idx + 1] && !bits[idx + 2] {
-            idx += 3;
-            for i in 0..9 {
-                value |= (bits[idx + i] as i32) << i;
+            // Case 2: 01
+            else if !bits[idx] && bits[idx + 1] {
+                // Skipping 01 and pad 000
+                idx += 5;
+
+                for i in (idx..idx + 30).step_by(10) {
+                    for j in 0..10 {
+                        value |= (bits[i + j] as i32) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 30;
             }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
-            idx += 9;
-        } else if bits[idx + 1] && bits[idx + 2] && !bits[idx + 3] {
-            idx += 4;
-            for i in 0..16 {
-                value |= (bits[idx + i] as i32) << i;
+            // Case 3: 10
+            else if bits[idx] && !bits[idx + 1] {
+                // Skipping 10 and pad 0
+                idx += 3;
+
+                for i in (idx..idx + 32).step_by(8) {
+                    for j in 0..8 {
+                        value |= (bits[i + j] as i32) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 32;
             }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
-            idx += 16;
-        } else if bits[idx + 1] && bits[idx + 2] && bits[idx + 3] {
-            idx += 4;
-            let mut value: i64 = 0;
-            for i in 0..64 {
-                value |= (bits[idx + i] as i64) << i;
+            // Case 4: 110
+            else if bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skipping 110
+                idx += 3;
+
+                for i in (idx..idx + 32).step_by(4) {
+                    for j in 0..4 {
+                        value |= (bits[i + j] as i32) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 32;
             }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value as i32;
-            decoded_buffer_index += 1;
-            idx += 64;
+            // Case 5: 111
+            else if bits[idx] && bits[idx + 1] && bits[idx + 2] {
+                // Skipping 111 and pad 00
+                idx += 5;
+
+                for i in (idx..idx + 30).step_by(3) {
+                    for j in 0..3 {
+                        value |= (bits[i + j] as i32) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 30;
+            } else {
+                return Err(CodingError::InvalidBits);
+            }
         } else {
-            return Err(CodingError::InvalidBits);
+            // Decode delta-delta
+
+            // Skipping 0
+            idx += 1;
+
+            let mut value = 0;
+
+            if !bits[idx] && !bits[idx + 1] {
+                // Skip 00
+                idx += 2;
+
+                value = bits[idx] as i32;
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 1;
+            } else if !bits[idx] && bits[idx + 1] {
+                // Skip 01
+                idx += 2;
+                for i in 0..5 {
+                    value |= (bits[idx + i] as i32) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 5;
+            } else if bits[idx] && !bits[idx + 1] {
+                // Skip 10
+                idx += 2;
+                for i in 0..9 {
+                    value |= (bits[idx + i] as i32) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 9;
+            } else if bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skip 110
+                idx += 3;
+                for i in 0..16 {
+                    value |= (bits[idx + i] as i32) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 16;
+            } else if bits[idx] && bits[idx + 1] && bits[idx + 2] {
+                // Skip 111
+                idx += 3;
+
+                let mut value: i64 = 0;
+                for i in 0..64 {
+                    value |= (bits[idx + i] as i64) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value as i32);
+                idx += 64;
+            } else {
+                return Err(CodingError::InvalidBits);
+            }
         }
     }
-
-    return Ok((decoded_buffer, decoded_buffer_index));
+    return Ok(Some(idx));
 }
 
-pub fn decode_i64(bits: &'_ BitBufferSlice) -> Result<([i64; 10], usize), CodingError> {
+pub fn decode_i64(
+    bits: &'_ BitBufferSlice,
+    idx: usize,
+    output: &mut Vec<i64>,
+) -> Result<Option<usize>, CodingError> {
     if bits.is_empty() {
         return Err(CodingError::NotEnoughBits);
     }
-    let mut decoded_buffer: [i64; 10] = [0; 10];
-    let mut decoded_buffer_index = 0;
-    let mut value: i64 = 0;
 
-    if bits[0] {
-        // Case 1: 00
-        if !bits[1] && !bits[2] {
-            // Skipping pad 0
-            for i in (4..36).step_by(16) {
-                for j in 0..16 {
-                    value |= (bits[i + j] as i64) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 2: 01
-        else if !bits[1] && bits[2] {
-            // Skipping pad 000
-            for i in (6..36).step_by(10) {
-                for j in 0..10 {
-                    value |= (bits[i + j] as i64) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 3: 10
-        else if bits[1] && !bits[2] {
-            // Skipping pad 0
-            for i in (4..36).step_by(8) {
-                for j in 0..8 {
-                    value |= (bits[i + j] as i64) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 4: 110
-        else if bits[1] && bits[2] && !bits[3] {
-            for i in (4..36).step_by(4) {
-                for j in 0..4 {
-                    value |= (bits[i + j] as i64) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        }
-        // Case 5: 111
-        else if bits[1] && bits[2] && bits[3] {
-            // Skipping pad 00
-            for i in (6..36).step_by(3) {
-                for j in 0..3 {
-                    value |= (bits[i + j] as i64) << j;
-                }
-                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                decoded_buffer[decoded_buffer_index] = value;
-                decoded_buffer_index += 1;
-                value = 0;
-            }
-        } else {
-            return Err(CodingError::InvalidBits);
-        }
-        return Ok((decoded_buffer, decoded_buffer_index));
+    let mut idx = idx;
+
+    // TODO: Optimize with bit operations
+    if !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3]) {
+        return Err(CodingError::InvalidBits);
     }
-    let mut idx = 0;
-    while idx < bits.len() {
+
+    // Skip 1001
+    idx += 4;
+
+    // Loops until we get next header 1001
+    // TODO: Optimize with bit operations
+
+    while (idx < bits.len())
+        && !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3])
+        && !(bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+    {
+        // Decode Delta
         if bits[idx] {
-            return Err(CodingError::InvalidBits);
-        }
-        let mut value = 0;
-        if !bits[idx + 1] && !bits[idx + 2] {
-            idx += 3;
-            value = bits[idx] as i64;
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
+            // Todo: Optimize addition operations in bits
+            // Skipping 1
             idx += 1;
-        } else if !bits[idx + 1] && bits[idx + 2] {
-            idx += 3;
-            for i in 0..5 {
-                value |= (bits[idx + i] as i64) << i;
+
+            let mut value: i64 = 0;
+
+            // Case 1: 00
+            if !bits[idx] && !bits[idx + 1] {
+                // Skipping 00 and pad 0
+                idx += 3;
+
+                for i in (idx..idx + 32).step_by(16) {
+                    for j in 0..16 {
+                        value |= (bits[i + j] as i64) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 32;
             }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
-            idx += 5;
-        } else if bits[idx + 1] && !bits[idx + 2] {
-            idx += 3;
-            for i in 0..9 {
-                value |= (bits[idx + i] as i64) << i;
+            // Case 2: 01
+            else if !bits[idx] && bits[idx + 1] {
+                // Skipping 01 and pad 000
+                idx += 5;
+
+                for i in (idx..idx + 30).step_by(10) {
+                    for j in 0..10 {
+                        value |= (bits[i + j] as i64) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 30;
             }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
-            idx += 9;
-        } else if bits[idx + 1] && bits[idx + 2] && !bits[idx + 3] {
-            idx += 4;
-            for i in 0..16 {
-                value |= (bits[idx + i] as i64) << i;
+            // Case 3: 10
+            else if bits[idx] && !bits[idx + 1] {
+                // Skipping 10 and pad 0
+                idx += 3;
+
+                for i in (idx..idx + 32).step_by(8) {
+                    for j in 0..8 {
+                        value |= (bits[i + j] as i64) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 32;
+            } else if bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skipping 110
+                idx += 3;
+
+                for i in (idx..idx + 32).step_by(4) {
+                    for j in 0..4 {
+                        value |= (bits[i + j] as i64) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 32;
             }
-            value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value;
-            decoded_buffer_index += 1;
-            idx += 16;
-        } else if bits[idx + 1] && bits[idx + 2] && bits[idx + 3] {
-            idx += 4;
-            let mut value: i128 = 0;
-            for i in 0..64 {
-                value |= (bits[idx + i] as i128) << i;
+            // Case 5: 111
+            else if bits[idx] && bits[idx + 1] && bits[idx + 2] {
+                // Skipping 111 and pad 00
+                idx += 5;
+
+                for i in (idx..idx + 30).step_by(3) {
+                    for j in 0..3 {
+                        value |= (bits[i + j] as i64) << j;
+                    }
+                    value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                    output.push(value);
+                    value = 0;
+                }
+                idx += 30;
+            } else {
+                return Err(CodingError::InvalidBits);
             }
-            let value = (value >> 1) ^ -(value & 1);
-            decoded_buffer[decoded_buffer_index] = value as i64;
-            decoded_buffer_index += 1;
-            idx += 64;
         } else {
-            return Err(CodingError::InvalidBits);
+            // Decode delta-delta
+
+            // Skipping 0
+            idx += 1;
+
+            let mut value = 0;
+
+            if !bits[idx] && !bits[idx + 1] {
+                // Skip 00
+                idx += 2;
+                value = bits[idx] as i64;
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 1;
+            } else if !bits[idx] && bits[idx + 1] {
+                // Skip 01
+                idx += 2;
+                for i in 0..5 {
+                    value |= (bits[idx + i] as i64) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 5;
+            } else if bits[idx] && !bits[idx + 1] {
+                // Skip 10
+                idx += 2;
+                for i in 0..9 {
+                    value |= (bits[idx + i] as i64) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 9;
+            } else if bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skip 110
+                idx += 3;
+                for i in 0..16 {
+                    value |= (bits[idx + i] as i64) << i;
+                }
+                value = (value >> 1) ^ -(value & 1);
+                output.push(value);
+                idx += 16;
+            } else if bits[idx] && bits[idx + 1] && bits[idx + 2] {
+                // Skip 111
+                idx += 3;
+                let mut value: i128 = 0;
+                for i in 0..64 {
+                    value |= (bits[idx + i] as i128) << i;
+                }
+                let value = (value >> 1) ^ -(value & 1);
+                output.push(value as i64);
+                idx += 64;
+            } else {
+                return Err(CodingError::InvalidBits);
+            }
         }
     }
-    return Ok((decoded_buffer, decoded_buffer_index));
+
+    return Ok(Some(idx));
 }
