@@ -737,6 +737,74 @@ mod test_delta_delta {
     }
 
     #[test]
+    fn can_encode_decode_delta_delta_flush_i8() {
+        let values: [i8; 5] = [-128, -64, -32, -16, -8];
+        let mut queue: CompressionQueue<i8, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(value);
+        }
+        let mut bits: bitvec::vec::BitVec<u8> = BitBuffer::new();
+
+        // Header
+        bits.push(true);
+        bits.push(false);
+        bits.push(false);
+        bits.push(true);
+
+        // Encode
+        let num_emitted_values = queue.emit_delta_delta_bits(&mut bits, true);
+        let bits_length = bits.len();
+
+        // Decode
+        // TODO: better way
+        let mut decoded_values: Vec<i8> = vec![];
+        let index = decode_i8(&mut bits, 0, &mut decoded_values).unwrap();
+
+        assert_eq!(Some(bits_length), index);
+        assert_eq!(values[..num_emitted_values], decoded_values);
+    }
+
+    #[test]
+    fn can_encode_decode_delta_delta_flush_random_i8() {
+        // Random values in i8 range
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..=1000 {
+            let mut values: Vec<i8> = Vec::with_capacity(10);
+
+            for _i in 0..rng.gen_range(0..10) {
+                values.push(rng.gen_range(i8::MIN..i8::MAX));
+            }
+
+            let mut queue: CompressionQueue<i8, 10> = CompressionQueue::new();
+
+            for value in &values {
+                queue.push(*value);
+            }
+
+            let mut bits = BitBuffer::new();
+
+            // Header
+            bits.push(true);
+            bits.push(false);
+            bits.push(false);
+            bits.push(true);
+
+            // Encode
+            let num_emitted_values = queue.emit_delta_delta_bits(&mut bits, true);
+            let bits_length = bits.len();
+
+            // Decode
+            // TODO: better way
+            let mut decoded_values: Vec<i8> = vec![];
+            let index = decode_i8(&mut bits, 0, &mut decoded_values).unwrap();
+
+            assert_eq!(Some(bits_length), index);
+            assert_eq!(values[..num_emitted_values], decoded_values);
+        }
+    }
+
+    #[test]
     fn can_encode_decode_delta_delta_i16() {
         let values: [i16; 10] = [
             -32768, -16384, -8192, -4096, -2048, 2047, 4095, 8191, 16383, 32767,
@@ -795,6 +863,74 @@ mod test_delta_delta {
             // TODO: better way
             let mut decoded_values: Vec<i16> = vec![];
 
+            let index = decode_i16(&mut bits, 0, &mut decoded_values).unwrap();
+
+            assert_eq!(Some(bits_length), index);
+            assert_eq!(values[..num_emitted_values], decoded_values);
+        }
+    }
+
+    #[test]
+    fn can_encode_decode_delta_delta_flush_i16() {
+        let values: [i16; 5] = [-32768, -16384, -8192, 16383, 32767];
+        let mut queue: CompressionQueue<i16, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(value);
+        }
+        let mut bits: bitvec::vec::BitVec<u8> = BitBuffer::new();
+
+        // Header
+        bits.push(true);
+        bits.push(false);
+        bits.push(false);
+        bits.push(true);
+
+        // Encode
+        let num_emitted_values = queue.emit_delta_delta_bits(&mut bits, true);
+        let bits_length = bits.len();
+
+        // Decode
+        // TODO: better way
+        let mut decoded_values: Vec<i16> = vec![];
+        let index = decode_i16(&mut bits, 0, &mut decoded_values).unwrap();
+
+        assert_eq!(Some(bits_length), index);
+        assert_eq!(values[..num_emitted_values], decoded_values);
+    }
+
+    #[test]
+    fn can_encode_decode_delta_delta_flush_random_i16() {
+        // Random values in i16 range
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..=1000 {
+            let mut values: Vec<i16> = Vec::with_capacity(10);
+
+            for _i in 0..rng.gen_range(0..10) {
+                values.push(rng.gen_range(i16::MIN..i16::MAX));
+            }
+
+            let mut queue: CompressionQueue<i16, 10> = CompressionQueue::new();
+
+            for value in &values {
+                queue.push(*value);
+            }
+
+            let mut bits = BitBuffer::new();
+
+            // Header
+            bits.push(true);
+            bits.push(false);
+            bits.push(false);
+            bits.push(true);
+
+            // Encode
+            let num_emitted_values = queue.emit_delta_delta_bits(&mut bits, true);
+            let bits_length = bits.len();
+
+            // Decode
+            // TODO: better way
+            let mut decoded_values: Vec<i16> = vec![];
             let index = decode_i16(&mut bits, 0, &mut decoded_values).unwrap();
 
             assert_eq!(Some(bits_length), index);
@@ -879,6 +1015,74 @@ mod test_delta_delta {
     }
 
     #[test]
+    fn can_encode_decode_delta_delta_flush_i32() {
+        let values: [i32; 5] = [-2147483648, -1073741824, -536870912, 1073741823, 2147483647];
+        let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(value);
+        }
+        let mut bits: bitvec::vec::BitVec<u8> = BitBuffer::new();
+
+        // Header
+        bits.push(true);
+        bits.push(false);
+        bits.push(false);
+        bits.push(true);
+
+        // Encode
+        let num_emitted_values = queue.emit_delta_delta_bits(&mut bits, true);
+        let bits_length = bits.len();
+
+        // Decode
+        // TODO: better way
+        let mut decoded_values: Vec<i32> = vec![];
+        let index = decode_i32(&mut bits, 0, &mut decoded_values).unwrap();
+
+        assert_eq!(Some(bits_length), index);
+        assert_eq!(values[..num_emitted_values], decoded_values);
+    }
+
+    #[test]
+    fn can_encode_decode_delta_delta_flush_random_i32() {
+        // Random values in i32 range
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..=1000 {
+            let mut values: Vec<i32> = Vec::with_capacity(10);
+
+            for _i in 0..rng.gen_range(0..10) {
+                values.push(rng.gen_range(i32::MIN..i32::MAX));
+            }
+
+            let mut queue: CompressionQueue<i32, 10> = CompressionQueue::new();
+
+            for value in &values {
+                queue.push(*value);
+            }
+
+            let mut bits = BitBuffer::new();
+
+            // Header
+            bits.push(true);
+            bits.push(false);
+            bits.push(false);
+            bits.push(true);
+
+            // Encode
+            let num_emitted_values = queue.emit_delta_delta_bits(&mut bits, true);
+            let bits_length = bits.len();
+
+            // Decode
+            // TODO: better way
+            let mut decoded_values: Vec<i32> = vec![];
+            let index = decode_i32(&mut bits, 0, &mut decoded_values).unwrap();
+
+            assert_eq!(Some(bits_length), index);
+            assert_eq!(values[..num_emitted_values], decoded_values);
+        }
+    }
+
+    #[test]
     fn can_encode_decode_delta_delta_i64() {
         let values: [i64; 10] = [
             -9223372036854775808,
@@ -940,6 +1144,80 @@ mod test_delta_delta {
 
             // Encode
             let num_emitted_values = queue.emit_delta_delta_bits(&mut bits, false);
+            let bits_length = bits.len();
+
+            // Decode
+            // TODO: better way
+            let mut decoded_values: Vec<i64> = vec![];
+            let index = decode_i64(&mut bits, 0, &mut decoded_values).unwrap();
+
+            assert_eq!(Some(bits_length), index);
+            assert_eq!(values[..num_emitted_values], decoded_values);
+        }
+    }
+
+    #[test]
+    fn can_encode_decode_delta_delta_flush_i64() {
+        let values: [i64; 5] = [
+            -9223372036854775808,
+            -4611686018427387904,
+            -2305843009213693952,
+            4611686018427387903,
+            9223372036854775807,
+        ];
+        let mut queue: CompressionQueue<i64, 10> = CompressionQueue::new();
+        for value in values {
+            queue.push(value);
+        }
+        let mut bits: bitvec::vec::BitVec<u8> = BitBuffer::new();
+
+        // Header
+        bits.push(true);
+        bits.push(false);
+        bits.push(false);
+        bits.push(true);
+
+        // Encode
+        let num_emitted_values = queue.emit_delta_delta_bits(&mut bits, true);
+        let bits_length = bits.len();
+
+        // Decode
+        // TODO: better way
+        let mut decoded_values: Vec<i64> = vec![];
+        let index = decode_i64(&mut bits, 0, &mut decoded_values).unwrap();
+
+        assert_eq!(Some(bits_length), index);
+        assert_eq!(values[..num_emitted_values], decoded_values);
+    }
+
+    #[test]
+    fn can_encode_decode_delta_delta_flush_random_i64() {
+        // Random values in i64 range
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..=1000 {
+            let mut values: Vec<i64> = Vec::with_capacity(10);
+
+            for _i in 0..rng.gen_range(0..10) {
+                values.push(rng.gen_range(i64::MIN..i64::MAX));
+            }
+
+            let mut queue: CompressionQueue<i64, 10> = CompressionQueue::new();
+
+            for value in &values {
+                queue.push(*value);
+            }
+
+            let mut bits = BitBuffer::new();
+
+            // Header
+            bits.push(true);
+            bits.push(false);
+            bits.push(false);
+            bits.push(true);
+
+            // Encode
+            let num_emitted_values = queue.emit_delta_delta_bits(&mut bits, true);
             let bits_length = bits.len();
 
             // Decode

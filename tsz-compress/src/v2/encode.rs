@@ -539,7 +539,7 @@ pub trait EmitDeltaDeltaBits<T> {
 
 impl EmitDeltaDeltaBits<i64> for CompressionQueue<i64, 10> {
     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        let num_values = self.len();
+        let num_values = if flush { self.len() } else { 10 };
         for _ in 0..num_values {
             if let Some(value) = self.pop() {
                 out.push(false);
@@ -597,7 +597,7 @@ impl EmitDeltaDeltaBits<i64> for CompressionQueue<i64, 10> {
 
 impl EmitDeltaDeltaBits<i32> for CompressionQueue<i32, 10> {
     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        let num_values = self.len();
+        let num_values = if flush { self.len() } else { 10 };
         for _ in 0..num_values {
             if let Some(value) = self.pop() {
                 out.push(false);
@@ -655,7 +655,7 @@ impl EmitDeltaDeltaBits<i32> for CompressionQueue<i32, 10> {
 
 impl EmitDeltaDeltaBits<i16> for CompressionQueue<i16, 10> {
     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        let num_values = self.len();
+        let num_values = if flush { self.len() } else { 10 };
         for _ in 0..num_values {
             if let Some(value) = self.pop() {
                 out.push(false);
@@ -715,7 +715,7 @@ impl EmitDeltaDeltaBits<i16> for CompressionQueue<i16, 10> {
 
 impl EmitDeltaDeltaBits<i8> for CompressionQueue<i8, 10> {
     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-        let num_values = self.len();
+        let num_values = if flush { self.len() } else { 10 };
         for _ in 0..num_values {
             if let Some(value) = self.pop() {
                 out.push(false);
