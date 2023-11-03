@@ -86,10 +86,15 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
 
         let queue_length = self.len();
 
+        if queue_length == 1 {
+            let num_emitted = self.emit_delta_delta_bits(out, flush);
+            return num_emitted;
+        }
+
         // Check flush conditions
         if flush {
-            // Can not emit with any case of delta compression if queue is empty or contains 1 sample.
-            if self.is_empty() || self.len() == 1 {
+            // Can not emit with any case of delta compression if queue is empty
+            if self.is_empty() {
                 return 0;
             }
 
@@ -181,6 +186,9 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
                 }
             }
             return 2;
+        } else {
+            let num_emitted = self.emit_delta_delta_bits(out, flush);
+            return num_emitted;
         }
         0
     }
@@ -197,10 +205,15 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
 
         let queue_length = self.len();
 
+        if queue_length == 1 {
+            let num_emitted = self.emit_delta_delta_bits(out, flush);
+            return num_emitted;
+        }
+
         // Check flush conditions
         if flush {
-            // Can not emit with any case of delta compression if queue is empty or contains 1 sample.
-            if self.is_empty() || self.len() == 1 {
+            // Can not emit with any case of delta compression if queue is empty
+            if self.is_empty() {
                 return 0;
             }
 
@@ -292,6 +305,9 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
                 }
             }
             return 2;
+        } else {
+            let num_emitted = self.emit_delta_delta_bits(out, flush);
+            return num_emitted;
         }
         0
     }
@@ -308,10 +324,15 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
 
         let queue_length = self.len();
 
+        if queue_length == 1 {
+            let num_emitted = self.emit_delta_delta_bits(out, flush);
+            return num_emitted;
+        }
+
         // Check flush conditions
         if flush {
-            // Can not emit with any case of delta compression if queue is empty or contains 1 sample.
-            if self.is_empty() || self.len() == 1 {
+            // Can not emit with any case of delta compression if queue is empty.
+            if self.is_empty() {
                 return 0;
             }
 
@@ -405,6 +426,9 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
                 }
             }
             return 2;
+        } else {
+            let num_emitted = self.emit_delta_delta_bits(out, flush);
+            return num_emitted;
         }
         0
     }
@@ -421,10 +445,18 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
 
         let queue_length = self.len();
 
+        extern crate std;
+        use std::{print, println};
+
+        if queue_length == 1 {
+            let num_emitted = self.emit_delta_delta_bits(out, flush);
+            return num_emitted;
+        }
+
         // Check flush conditions
         if flush {
-            // Can not emit with any case of delta compression if queue is empty or contains 1 sample.
-            if self.is_empty() || self.len() == 1 {
+            // Can not emit with any case of delta compression if queue is empty
+            if self.is_empty() {
                 return 0;
             }
             // Can not emit with case v of delta compression if number of samples < 10
@@ -525,6 +557,9 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
                 }
             }
             return 2;
+        } else {
+            let num_emitted = self.emit_delta_delta_bits(out, flush);
+            return num_emitted;
         }
         0
     }
