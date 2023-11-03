@@ -540,6 +540,7 @@ mod tests_delta {
         assert_eq!(num_emitted_samples, 8);
         assert_eq!(queue_size, values.len() - num_emitted_samples);
         assert_eq!(values[..num_emitted_samples], decoded_values);
+        assert_eq!(Some(bits_length), index);
     }
 
     #[test]
