@@ -562,14 +562,18 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 let COMPRESSION_SIZE_FACTOR: usize = settings.get("COMPRESSION_SIZE_FACTOR").unwrap_or(100);
 
                 #(
+                    // Enqueues values until the delta queue reaches its maximum capacity.
                     self.#col_delta_comp_queue_idents.push(row.#col_idents);
-                    self.#col_delta_delta_comp_queue_idents.push(row.#col_idents);
-                    // Enqueues values until the queue reaches its maximum capacity.
                     if self.#col_delta_comp_queue_idents.is_full() {
-                        self.#col_delta_buf_idents.as_mut().map(|outbuf| self.#col_values_emitted_delta += self.#col_delta_comp_queue_idents.emit_delta_bits( outbuf, false));}
-
+                        self.#col_delta_buf_idents.as_mut().map(|outbuf| self.#col_values_emitted_delta += self.#col_delta_comp_queue_idents.emit_delta_bits( outbuf, false));
+                        self.#col_delta_comp_queue_idents.iter().enumerate().for_each(|(index, value)| {
+                        });
+                    }
+                    // Enqueues values until the delta-delta queue reaches its maximum capacity
+                    self.#col_delta_delta_comp_queue_idents.push(row.#col_idents);
                     if self.#col_delta_delta_comp_queue_idents.is_full() {
-                        self.#col_delta_buf_idents.as_mut().map(|outbuf| self.#col_values_emitted_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_bits( outbuf, false));}
+                        self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits( outbuf, false));}
+
 
                     // Chooses the compression algorithm associated with the output buffer that is N times smaller than the other output buffer.
                     if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
