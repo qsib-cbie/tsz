@@ -123,19 +123,19 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
         }
 
         self.iter().enumerate().for_each(|(index, value)| {
-            if (index <= 2 && !(-32768..=32767).contains(&value)) {
+            if (index < 2 && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
-            if (index <= 3 && !(-512..=511).contains(&value)) {
+            if (index < 3 && !(-512..=511).contains(&value)) {
                 ten = false;
             }
-            if (index <= 4 && !(-128..=127).contains(&value)) {
+            if (index < 4 && !(-128..=127).contains(&value)) {
                 eight = false;
             }
-            if (index <= 8 && !(-8..=7).contains(&value)) {
+            if (index < 8 && !(-8..=7).contains(&value)) {
                 four = false;
             }
-            if (index <= 10 && !(-4..=3).contains(&value)) {
+            if (index < 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
         });
@@ -242,19 +242,19 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
         }
 
         self.iter().enumerate().for_each(|(index, value)| {
-            if (index <= 2 && !(-32768..=32767).contains(&value)) {
+            if (index < 2 && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
-            if (index <= 3 && !(-512..=511).contains(&value)) {
+            if (index < 3 && !(-512..=511).contains(&value)) {
                 ten = false;
             }
-            if (index <= 4 && !(-128..=127).contains(&value)) {
+            if (index < 4 && !(-128..=127).contains(&value)) {
                 eight = false;
             }
-            if (index <= 8 && !(-8..=7).contains(&value)) {
+            if (index < 8 && !(-8..=7).contains(&value)) {
                 four = false;
             }
-            if (index <= 10 && !(-4..=3).contains(&value)) {
+            if (index < 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
         });
@@ -362,19 +362,19 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
 
         // Check case range conditions
         self.iter().enumerate().for_each(|(index, value)| {
-            if (index <= 2 && !(-32768..=32767).contains(&value)) {
+            if (index < 2 && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
-            if (index <= 3 && !(-512..=511).contains(&value)) {
+            if (index < 3 && !(-512..=511).contains(&value)) {
                 ten = false;
             }
-            if (index <= 4 && !(-128..=127).contains(&value)) {
+            if (index < 4 && !(-128..=127).contains(&value)) {
                 eight = false;
             }
-            if (index <= 8 && !(-8..=7).contains(&value)) {
+            if (index < 8 && !(-8..=7).contains(&value)) {
                 four = false;
             }
-            if (index <= 10 && !(-4..=3).contains(&value)) {
+            if (index < 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
         });
@@ -489,17 +489,17 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
 
         self.iter().enumerate().for_each(|(index, value)| {
             // Can not emit with case iii if a sample between indices [0, 4] contains values out of case iii range [-128, 127]
-            if (index <= 4 && !(-128..=127).contains(&value)) {
+            if (index < 4 && !(-128..=127).contains(&value)) {
                 eight = false;
             }
 
             // Can not emit with case iv if a sample between indices [0, 8] contains values out of case iv range [-8, 7]
-            if (index <= 8 && !(-8..=7).contains(&value)) {
+            if (index < 8 && !(-8..=7).contains(&value)) {
                 four = false;
             }
 
             // Can not emit with case v if a sample between indices [0, 10] (entire queue) contains values out of case v range [-4, 3]
-            if (index <= 10 && !(-4..=3).contains(&value)) {
+            if (index < 10 && !(-4..=3).contains(&value)) {
                 three = false;
             }
 
