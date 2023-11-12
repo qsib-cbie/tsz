@@ -20,11 +20,16 @@ pub fn decode_i8<'a>(
     // Skip 1001
     idx += 4;
 
+    if idx >= bits.len() {
+        return Err(CodingError::NotEnoughBits);
+    }
+
     // Loops until we get next header 1001 or end of columns 1011
     // TODO: Optimize with bit operations
     while (idx < bits.len())
         && !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3])
-        && !(bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+        && !((bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+            && idx + 4 >= bits.len())
     {
         // Delta Decoding
         if bits[idx] {
@@ -47,9 +52,9 @@ pub fn decode_i8<'a>(
                 }
                 idx += 32;
             }
-            // Case 2: 01
-            else if !bits[idx] && bits[idx + 1] {
-                // Skipping 01 and pad 000
+            // Case 2: 010
+            else if !bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skipping 010 and pad 00
                 idx += 5;
                 let mut value = value as i16;
                 for i in (idx..idx + 30).step_by(10) {
@@ -173,12 +178,17 @@ pub fn decode_i16(
     // Skip 1001
     idx += 4;
 
+    if idx >= bits.len() {
+        return Err(CodingError::NotEnoughBits);
+    }
+
     // Loops until we get next header 1001
     // TODO: Optimize with bit operations
 
     while (idx < bits.len())
         && !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3])
-        && !(bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+        && !((bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+            && idx + 4 >= bits.len())
     {
         // Decode delta
         if bits[idx] {
@@ -350,12 +360,17 @@ pub fn decode_i32(
     // Skip 1001
     idx += 4;
 
+    if idx >= bits.len() {
+        return Err(CodingError::NotEnoughBits);
+    }
+
     // Loops until we get next header 1001
     // TODO: Optimize with bit operations
 
     while (idx < bits.len())
         && !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3])
-        && !(bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+        && !((bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+            && idx + 4 >= bits.len())
     {
         // Decode Delta
         if bits[idx] {
@@ -523,12 +538,17 @@ pub fn decode_i64(
     // Skip 1001
     idx += 4;
 
+    if idx >= bits.len() {
+        return Err(CodingError::NotEnoughBits);
+    }
+
     // Loops until we get next header 1001
     // TODO: Optimize with bit operations
 
     while (idx < bits.len())
         && !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3])
-        && !(bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+        && !((bits[idx] && !bits[idx + 1] && bits[idx + 2] && bits[idx + 3])
+            && idx + 4 >= bits.len())
     {
         // Decode Delta
         if bits[idx] {
