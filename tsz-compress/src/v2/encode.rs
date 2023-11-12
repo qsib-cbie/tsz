@@ -94,6 +94,142 @@ pub trait EmitDeltaBits<T> {
     fn emit_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize;
 }
 
+impl EmitDeltaBits<i128> for CompressionQueue<i128, 10> {
+    #[allow(unused)]
+    fn emit_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
+        let mut three = true;
+        let mut four = true;
+        let mut eight = true;
+        let mut ten = true;
+        let mut sixteen = true;
+        let mut thirty_two = true;
+        let mut sixty_five = true;
+
+        let queue_length = self.len();
+
+        // Check flush conditions
+        if flush {
+            // Can not emit with any case of delta compression if queue is empty
+            if self.is_empty() {
+                return 0;
+            }
+
+            // Can not emit with case v of delta compression if number of samples < 10
+            if self.len() < 10 {
+                three = false;
+            }
+
+            // Can not emit with case iv of delta compression if number of samples < 8.
+            if self.len() < 8 {
+                four = false;
+            }
+
+            // Can not emit with case iii of delta compression if number of samples < 4
+            if self.len() < 4 {
+                eight = false;
+            }
+            // Can not emit with case ii of delta compression if number of samples < 3
+            if self.len() < 3 {
+                ten = false;
+            }
+            // Can not emit with case ii of delta compression if number of samples < 2
+            if self.len() < 2 {
+                sixteen = false;
+            }
+        }
+
+        self.iter().enumerate().for_each(|(index, value)| {
+            if (index <= 1 && !(i32::MIN as i128..=i32::MAX as i128).contains(&value)) {
+                thirty_two = false;
+            }
+            if (index < 2 && !(-32768..=32767).contains(&value)) {
+                sixteen = false;
+            }
+            if (index < 3 && !(-512..=511).contains(&value)) {
+                ten = false;
+            }
+            if (index < 4 && !(-128..=127).contains(&value)) {
+                eight = false;
+            }
+            if (index < 8 && !(-8..=7).contains(&value)) {
+                four = false;
+            }
+            if (index < 10 && !(-4..=3).contains(&value)) {
+                three = false;
+            }
+        });
+
+        // Emit according to priority of cases
+        if three {
+            push_header_pad_three_bits(out);
+            for _ in 0..10 {
+                if let Some(value) = self.pop() {
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..3, out);
+                }
+            }
+            return 10;
+        } else if four {
+            push_header_pad_four_bits(out);
+            for _ in 0..8 {
+                if let Some(value) = self.pop() {
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..4, out);
+                }
+            }
+            return 8;
+        } else if eight {
+            push_header_pad_eight_bits(out);
+            for _ in 0..4 {
+                if let Some(value) = self.pop() {
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..8, out);
+                }
+            }
+            return 4;
+        } else if ten {
+            push_header_pad_ten_bits(out);
+            for _ in 0..3 {
+                if let Some(value) = self.pop() {
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..10, out);
+                }
+            }
+            return 3;
+        } else if sixteen {
+            push_header_pad_sixteen_bits(out);
+            for _ in 0..2 {
+                if let Some(value) = self.pop() {
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..16, out);
+                }
+            }
+            return 2;
+        } else if thirty_two {
+            push_header_pad_thirty_two_bits(out);
+            for _ in 0..1 {
+                if let Some(value) = self.pop() {
+                    let value = value as i64;
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..32, out);
+                }
+            }
+            return 1;
+        } else if sixty_five {
+            push_header_pad_sixty_five_bits(out);
+            for _ in 0..1 {
+                if let Some(value) = self.pop() {
+                    let value = value as i128;
+                    let value = (value << 1i128) ^ (value >> 127i128); // ZigZag Encoding
+                    value.extend_bits(0..65, out);
+                }
+            }
+            return 1;
+        }
+        0
+    }
+}
+
 impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
     #[allow(unused)]
     fn emit_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
@@ -614,6 +750,63 @@ pub trait EmitDeltaDeltaBits<T> {
     /// Emits bits according to the most efficient case of Delta Compression.
     /// Returns the number of elements popped from the queue.
     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize;
+}
+
+impl EmitDeltaDeltaBits<i128> for CompressionQueue<i128, 10> {
+    fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
+        let num_values = if flush { self.len() } else { 10 };
+        for _ in 0..num_values {
+            if let Some(value) = self.pop() {
+                out.push(false);
+                if value == 0 {
+                    // Write out 00
+                    out.push(false);
+                    out.push(false);
+
+                    let value = (value << 1i64) ^ (value >> 63i64);
+                    out.push(value & (1 << 0) != 0);
+                } else if (-16..16).contains(&value) {
+                    // Write out 01
+                    out.push(false);
+                    out.push(true);
+                    let value = (value << 1i64) ^ (value >> 63i64);
+                    value.extend_bits(0..5, out);
+                } else if (-256..=255).contains(&value) {
+                    // Write out 10
+                    out.push(true);
+                    out.push(false);
+
+                    // ZigZag encoding
+                    let value = (value << 1i64) ^ (value >> 63i64);
+                    value.extend_bits(0..9, out);
+                } else if (-16384..=16383).contains(&value) {
+                    // Write out 110
+                    out.push(true);
+                    out.push(true);
+                    out.push(false);
+
+                    // ZigZag encoding
+                    let value = (value << 1i64) ^ (value >> 63i64);
+
+                    value.extend_bits(0..16, out);
+                } else {
+                    // Write out 111
+                    out.push(true);
+                    out.push(true);
+                    out.push(true);
+
+                    let value = value as i128;
+
+                    // ZigZag Encoding
+                    let value = (value << 1i128) ^ (value >> 127i128);
+
+                    // Write out least significant 64 bits
+                    value.extend_bits(0..64, out);
+                }
+            }
+        }
+        num_values
+    }
 }
 
 impl EmitDeltaDeltaBits<i64> for CompressionQueue<i64, 10> {

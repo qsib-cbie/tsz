@@ -3,14 +3,16 @@ use alloc::vec::Vec;
 
 pub fn decode_i8<'a>(
     bits: &'a BitBufferSlice,
-    idx: usize,
+    index: usize,
     output: &mut Vec<i8>,
-) -> Result<Option<usize>, CodingError> {
+) -> Result<(Option<usize>, bool), CodingError> {
     if bits.is_empty() {
         return Err(CodingError::NotEnoughBits);
     }
 
-    let mut idx = idx;
+    let mut delta = true;
+
+    let mut idx = index;
 
     // TODO: Optimize with bit operations
     if !(bits[idx] && !bits[idx + 1] && !bits[idx + 2] && bits[idx + 3]) {
@@ -128,6 +130,7 @@ pub fn decode_i8<'a>(
             } else {
                 return Err(CodingError::InvalidBits);
             }
+            delta = true;
         } else {
             // Decode Delta-delta
 
@@ -169,19 +172,22 @@ pub fn decode_i8<'a>(
             } else {
                 return Err(CodingError::InvalidBits);
             }
+            delta = false;
         }
     }
-    return Ok(Some(idx));
+    return Ok((Some(idx), delta));
 }
 
 pub fn decode_i16(
     bits: &'_ BitBufferSlice,
     idx: usize,
     output: &mut Vec<i16>,
-) -> Result<Option<usize>, CodingError> {
+) -> Result<(Option<usize>, bool), CodingError> {
     if bits.is_empty() {
         return Err(CodingError::NotEnoughBits);
     }
+
+    let mut delta = true;
 
     let mut idx = idx;
 
@@ -307,6 +313,7 @@ pub fn decode_i16(
             } else {
                 return Err(CodingError::InvalidBits);
             }
+            delta = true;
         } else {
             // Decode delta-delta
 
@@ -341,7 +348,9 @@ pub fn decode_i16(
                     value |= (bits[idx + i] as i16) << i;
                 }
                 value = (value >> 1) ^ -(value & 1);
+
                 output.push(value);
+
                 idx += 9;
             } else if bits[idx] && bits[idx + 1] && !bits[idx + 2] {
                 // Skip 110
@@ -367,19 +376,22 @@ pub fn decode_i16(
             } else {
                 return Err(CodingError::InvalidBits);
             }
+            delta = false;
         }
     }
-    return Ok(Some(idx));
+    return Ok((Some(idx), delta));
 }
 
 pub fn decode_i32(
     bits: &'_ BitBufferSlice,
     idx: usize,
     output: &mut Vec<i32>,
-) -> Result<Option<usize>, CodingError> {
+) -> Result<(Option<usize>, bool), CodingError> {
     if bits.is_empty() {
         return Err(CodingError::NotEnoughBits);
     }
+
+    let mut delta = true;
 
     let mut idx = idx;
 
@@ -516,6 +528,7 @@ pub fn decode_i32(
             } else {
                 return Err(CodingError::InvalidBits);
             }
+            delta = true;
         } else {
             // Decode delta-delta
 
@@ -573,19 +586,22 @@ pub fn decode_i32(
             } else {
                 return Err(CodingError::InvalidBits);
             }
+            delta = false;
         }
     }
-    return Ok(Some(idx));
+    return Ok((Some(idx), delta));
 }
 
 pub fn decode_i64(
     bits: &'_ BitBufferSlice,
     idx: usize,
     output: &mut Vec<i64>,
-) -> Result<Option<usize>, CodingError> {
+) -> Result<(Option<usize>, bool), CodingError> {
     if bits.is_empty() {
         return Err(CodingError::NotEnoughBits);
     }
+
+    let mut delta = true;
 
     let mut idx = idx;
 
@@ -720,6 +736,7 @@ pub fn decode_i64(
             } else {
                 return Err(CodingError::InvalidBits);
             }
+            delta = true;
         } else {
             // Decode delta-delta
 
@@ -769,14 +786,97 @@ pub fn decode_i64(
                 for i in 0..64 {
                     value |= (bits[idx + i] as i128) << i;
                 }
-                let value = (value >> 1) ^ -(value & 1);
+
+                let value = (value >> 1) ^ -(value & 1); // ZigZag decoding
                 output.push(value as i64);
                 idx += 64;
             } else {
                 return Err(CodingError::InvalidBits);
             }
+            delta = false;
         }
     }
+    return Ok((Some(idx), delta));
+}
 
-    return Ok(Some(idx));
+// Get Values from Delta
+
+pub fn values_from_delta_i8(vector: &mut Vec<i8>) {
+    if vector.len() <= 1 {
+        return;
+    }
+    for i in 1..vector.len() {
+        vector[i] = (vector[i - 1] as i16 - vector[i] as i16) as i8;
+    }
+}
+pub fn values_from_delta_i16(vector: &mut Vec<i16>) {
+    if vector.len() <= 1 {
+        return;
+    }
+    for i in 1..vector.len() {
+        vector[i] = (vector[i - 1] as i32 - vector[i] as i32) as i16;
+    }
+}
+pub fn values_from_delta_i32(vector: &mut Vec<i32>) {
+    if vector.len() <= 1 {
+        return;
+    }
+    for i in 1..vector.len() {
+        vector[i] = (vector[i - 1] as i64 - vector[i] as i64) as i32;
+    }
+}
+pub fn values_from_delta_i64(vector: &mut Vec<i64>) {
+    if vector.len() <= 1 {
+        return;
+    }
+    for i in 1..vector.len() {
+        vector[i] = (vector[i - 1] as i128 - vector[i] as i128) as i64;
+    }
+}
+
+// Get Values from Delta Delta
+pub fn values_from_delta_delta_i8(vector: &mut Vec<i8>) {
+    if vector.len() <= 1 {
+        return;
+    }
+    vector[1] = vector[0] - vector[1];
+    for i in 2..vector.len() {
+        vector[i] = (vector[i - 1] as i16
+            + (vector[i - 1] as i16 - vector[i - 2] as i16)
+            + vector[i] as i16) as i8;
+    }
+}
+
+pub fn values_from_delta_delta_i16(vector: &mut Vec<i16>) {
+    if vector.len() <= 1 {
+        return;
+    }
+    vector[1] = vector[0] - vector[1];
+    for i in 2..vector.len() {
+        vector[i] = (vector[i - 1] as i32
+            + (vector[i - 1] as i32 - vector[i - 2] as i32) as i32
+            + vector[i] as i32) as i16
+    }
+}
+pub fn values_from_delta_delta_i32(vector: &mut Vec<i32>) {
+    if vector.len() <= 1 {
+        return;
+    }
+    vector[1] = vector[0] - vector[1];
+    for i in 2..vector.len() {
+        vector[i] = (vector[i - 1] as i64
+            + (vector[i - 1] as i64 - vector[i - 2] as i64)
+            + vector[i] as i64) as i32
+    }
+}
+pub fn values_from_delta_delta_i64(vector: &mut Vec<i64>) {
+    if vector.len() <= 1 {
+        return;
+    }
+    vector[1] = vector[0] - vector[1];
+    for i in 2..vector.len() {
+        vector[i] = (vector[i - 1] as i128
+            + (vector[i - 1] as i128 - vector[i - 2] as i128)
+            + vector[i] as i128) as i64
+    }
 }
