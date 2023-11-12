@@ -69,6 +69,25 @@ fn push_header_pad_sixteen_bits(buf: &mut BitBuffer) {
     }
 }
 
+#[inline]
+fn push_header_pad_thirty_two_bits(buf: &mut BitBuffer) {
+    buf.push(true);
+    buf.push(false);
+    for _ in 0..3 {
+        buf.push(true);
+    }
+    buf.push(false);
+}
+
+#[inline]
+fn push_header_pad_sixty_five_bits(buf: &mut BitBuffer) {
+    buf.push(true);
+    buf.push(false);
+    for _ in 0..4 {
+        buf.push(true);
+    }
+}
+
 pub trait EmitDeltaBits<T> {
     /// Emits bits according to the most efficient case of Delta Compression.
     /// Returns the number of elements popped from the queue.
@@ -83,13 +102,10 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
         let mut eight = true;
         let mut ten = true;
         let mut sixteen = true;
+        let mut thirty_two = true;
+        let mut sixty_five = true;
 
         let queue_length = self.len();
-
-        if queue_length == 1 {
-            let num_emitted = self.emit_delta_delta_bits(out, flush);
-            return num_emitted;
-        }
 
         // Check flush conditions
         if flush {
@@ -123,6 +139,9 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
         }
 
         self.iter().enumerate().for_each(|(index, value)| {
+            if (index < 1 && !(i32::MIN as i64..=i32::MAX as i64).contains(&value)) {
+                thirty_two = false;
+            }
             if (index < 2 && !(-32768..=32767).contains(&value)) {
                 sixteen = false;
             }
@@ -186,9 +205,26 @@ impl EmitDeltaBits<i64> for CompressionQueue<i64, 10> {
                 }
             }
             return 2;
-        } else {
-            let num_emitted = self.emit_delta_delta_bits(out, flush);
-            return num_emitted;
+        } else if thirty_two {
+            push_header_pad_thirty_two_bits(out);
+            for _ in 0..1 {
+                if let Some(value) = self.pop() {
+                    let value = value as i64;
+                    let value = (value << 1i64) ^ (value >> 63i64); // ZigZag Encoding
+                    value.extend_bits(0..32, out);
+                }
+            }
+            return 1;
+        } else if sixty_five {
+            push_header_pad_sixty_five_bits(out);
+            for _ in 0..1 {
+                if let Some(value) = self.pop() {
+                    let value = value as i128;
+                    let value = (value << 1i128) ^ (value >> 127i128); // ZigZag Encoding
+                    value.extend_bits(0..65, out);
+                }
+            }
+            return 1;
         }
         0
     }
@@ -202,13 +238,10 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
         let mut eight = true;
         let mut ten = true;
         let mut sixteen = true;
+        let mut thirty_two = true;
+        let mut sixty_five = true;
 
         let queue_length = self.len();
-
-        if queue_length == 1 {
-            let num_emitted = self.emit_delta_delta_bits(out, flush);
-            return num_emitted;
-        }
 
         // Check flush conditions
         if flush {
@@ -305,9 +338,16 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
                 }
             }
             return 2;
-        } else {
-            let num_emitted = self.emit_delta_delta_bits(out, flush);
-            return num_emitted;
+        } else if thirty_two {
+            push_header_pad_thirty_two_bits(out);
+            for _ in 0..1 {
+                if let Some(value) = self.pop() {
+                    let value = value as i32;
+                    let value = (value << 1i32) ^ (value >> 31i32); // ZigZag Encoding
+                    value.extend_bits(0..32, out);
+                }
+            }
+            return 1;
         }
         0
     }
@@ -321,13 +361,10 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
         let mut eight = true;
         let mut ten = true;
         let mut sixteen = true;
+        let mut thirty_two = true;
+        let mut sixty_five = true;
 
         let queue_length = self.len();
-
-        if queue_length == 1 {
-            let num_emitted = self.emit_delta_delta_bits(out, flush);
-            return num_emitted;
-        }
 
         // Check flush conditions
         if flush {
@@ -426,9 +463,16 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
                 }
             }
             return 2;
-        } else {
-            let num_emitted = self.emit_delta_delta_bits(out, flush);
-            return num_emitted;
+        } else if thirty_two {
+            push_header_pad_thirty_two_bits(out);
+            for _ in 0..1 {
+                if let Some(value) = self.pop() {
+                    let value = value as i32;
+                    let value = (value << 1i16) ^ (value >> 15i16); // ZigZag Encoding
+                    value.extend_bits(0..32, out);
+                }
+            }
+            return 1;
         }
         0
     }
@@ -442,16 +486,9 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
         let mut eight = true;
         let mut ten = true;
         let mut sixteen = true;
+        let mut thirty_two = true;
 
         let queue_length = self.len();
-
-        extern crate std;
-        use std::{print, println};
-
-        if queue_length == 1 {
-            let num_emitted = self.emit_delta_delta_bits(out, flush);
-            return num_emitted;
-        }
 
         // Check flush conditions
         if flush {
@@ -557,9 +594,16 @@ impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
                 }
             }
             return 2;
-        } else {
-            let num_emitted = self.emit_delta_delta_bits(out, flush);
-            return num_emitted;
+        } else if thirty_two {
+            push_header_pad_thirty_two_bits(out);
+            for _ in 0..1 {
+                if let Some(value) = self.pop() {
+                    let value = value as i32;
+                    let value = (value << 1i8) ^ (value >> 7i8); // ZigZag Encoding
+                    value.extend_bits(0..32, out);
+                }
+            }
+            return 1;
         }
         0
     }

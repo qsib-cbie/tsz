@@ -110,6 +110,21 @@ pub fn decode_i8<'a>(
                     value = 0;
                 }
                 idx += 30;
+            //Case - 32 bits: 01110
+            } else if !bits[idx]
+                && bits[idx + 1]
+                && bits[idx + 2]
+                && bits[idx + 3]
+                && !bits[idx + 4]
+            {
+                idx += 5;
+                let mut value = value as i32;
+                for i in 0..32 {
+                    value |= (bits[idx + i] as i32) << i;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                output.push(value as i8);
+                idx += 32;
             } else {
                 return Err(CodingError::InvalidBits);
             }
@@ -136,7 +151,7 @@ pub fn decode_i8<'a>(
                     value |= (bits[idx + i] as i8) << i;
                 }
                 let value = (value >> 1) ^ -(value & 1);
-                output.push(value);
+                output.push(value as i8);
                 idx += 5;
             } else if bits[idx] && !bits[idx + 1] {
                 // Skip 10
@@ -215,9 +230,9 @@ pub fn decode_i16(
                 }
                 idx += 32;
             }
-            // Case 2: 01
-            else if !bits[idx] && bits[idx + 1] {
-                // Skipping 01 and pad 000
+            // Case 2: 010
+            else if !bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skipping 010 and pad 00
                 idx += 5;
 
                 for i in (idx..idx + 30).step_by(10) {
@@ -225,7 +240,7 @@ pub fn decode_i16(
                         value |= (bits[i + j] as i16) << j;
                     }
                     value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                    output.push(value);
+                    output.push(value as i16);
                     value = 0;
                 }
                 idx += 30;
@@ -240,7 +255,7 @@ pub fn decode_i16(
                         value |= (bits[i + j] as i16) << j;
                     }
                     value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                    output.push(value);
+                    output.push(value as i16);
                     value = 0;
                 }
                 idx += 32;
@@ -254,7 +269,7 @@ pub fn decode_i16(
                         value |= (bits[i + j] as i16) << j;
                     }
                     value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                    output.push(value);
+                    output.push(value as i16);
                     value = 0;
                 }
                 idx += 32;
@@ -269,10 +284,26 @@ pub fn decode_i16(
                         value |= (bits[i + j] as i16) << j;
                     }
                     value = (value >> 1) ^ -(value & 1); // ZigZag decoding
-                    output.push(value);
+                    output.push(value as i16);
                     value = 0;
                 }
                 idx += 30;
+            }
+            // 32 bit case
+            else if !bits[idx]
+                && bits[idx + 1]
+                && bits[idx + 2]
+                && bits[idx + 3]
+                && !bits[idx + 4]
+            {
+                idx += 5;
+                let mut value: i32 = 0;
+                for i in 0..32 {
+                    value |= (bits[idx + i] as i32) << i;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                output.push(value as i16);
+                idx += 32;
             } else {
                 return Err(CodingError::InvalidBits);
             }
@@ -395,9 +426,9 @@ pub fn decode_i32(
                 }
                 idx += 32;
             }
-            // Case 2: 01
-            else if !bits[idx] && bits[idx + 1] {
-                // Skipping 01 and pad 000
+            // Case 2: 010
+            else if !bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skipping 010 and pad 00
                 idx += 5;
 
                 for i in (idx..idx + 30).step_by(10) {
@@ -454,6 +485,34 @@ pub fn decode_i32(
                     value = 0;
                 }
                 idx += 30;
+            }
+            // 32 bit case
+            else if !bits[idx]
+                && bits[idx + 1]
+                && bits[idx + 2]
+                && bits[idx + 3]
+                && !bits[idx + 4]
+            {
+                idx += 5;
+                let mut value = value as i64;
+                for i in 0..32 {
+                    value |= (bits[idx + i] as i64) << i;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                output.push(value as i32);
+                idx += 32;
+            }
+            // 65 bit case
+            else if !bits[idx] && bits[idx + 1] && bits[idx + 2] && bits[idx + 3] && bits[idx + 4]
+            {
+                idx += 5;
+                let mut value: i128 = 0;
+                for i in 0..65 {
+                    value |= (bits[idx + i] as i128) << i;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                output.push(value as i32);
+                idx += 65;
             } else {
                 return Err(CodingError::InvalidBits);
             }
@@ -573,9 +632,9 @@ pub fn decode_i64(
                 }
                 idx += 32;
             }
-            // Case 2: 01
-            else if !bits[idx] && bits[idx + 1] {
-                // Skipping 01 and pad 000
+            // Case 2: 010
+            else if !bits[idx] && bits[idx + 1] && !bits[idx + 2] {
+                // Skipping 010 and pad 00
                 idx += 5;
 
                 for i in (idx..idx + 30).step_by(10) {
@@ -630,6 +689,34 @@ pub fn decode_i64(
                     value = 0;
                 }
                 idx += 30;
+            }
+            // 32 bit case
+            else if !bits[idx]
+                && bits[idx + 1]
+                && bits[idx + 2]
+                && bits[idx + 3]
+                && !bits[idx + 4]
+            {
+                idx += 5;
+                let mut value: i64 = 0;
+                for i in 0..32 {
+                    value |= (bits[idx + i] as i64) << i;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                output.push(value);
+                idx += 32;
+            }
+            // 65 bit case
+            else if !bits[idx] && bits[idx + 1] && bits[idx + 2] && bits[idx + 3] && bits[idx + 4]
+            {
+                idx += 5;
+                let mut value: i128 = 0;
+                for i in 0..65 {
+                    value |= (bits[idx + i] as i128) << i;
+                }
+                value = (value >> 1) ^ -(value & 1); // ZigZag decoding
+                output.push(value as i64);
+                idx += 65;
             } else {
                 return Err(CodingError::InvalidBits);
             }
