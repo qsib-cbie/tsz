@@ -718,7 +718,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         final_capacity += 4 + outbuf.len();
                     });
                     self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
-                        while(self.#col_delta_comp_queue_idents.len() > 0){
+                        while(self.#col_delta_delta_comp_queue_idents.len() > 0){
                             self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf, true);
                         }
                         final_capacity += 4 + outbuf.len();
