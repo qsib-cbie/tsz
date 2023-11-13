@@ -588,10 +588,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
 
             /// Performs compression using either delta or delta-delta compression, selecting the method that yields the smallest compressed values.
             fn compress(&mut self, row: Self::T) {
-                use config::Config;
-                let mut settings = Config::default();
-                settings.merge(config::File::with_name("config.toml")).unwrap();
-                let COMPRESSION_SIZE_FACTOR: usize = settings.get("COMPRESSION_SIZE_FACTOR").unwrap_or(100);
+                let COMPRESSION_SIZE_FACTOR: usize = 5;
 
                 let mut row: Option<Self::T> = Some(row);
 
