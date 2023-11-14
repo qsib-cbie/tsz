@@ -570,7 +570,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         struct #compressor_ident {
             #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#upgraded_col_tys, 10>,)*
             #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#upgraded_col_tys, 10>,)*
-            #( #col_delta_buf_idents: Option<::tsz_compress::prelude::BitBuffer>,)*
+            #( #col_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
             #( #col_delta_delta_buf_idents: Option<::tsz_compress::prelude::BitBuffer>,)*
             #( #col_values_emitted_delta: usize,)*
             #( #col_values_emitted_delta_delta: usize,)*
@@ -588,8 +588,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 #compressor_ident {
                     #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#upgraded_col_tys, 10>::new(),)*
                     #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#upgraded_col_tys, 10>::new(),)*
-                    #( #col_delta_buf_idents: Some(::tsz_compress::prelude::BitBuffer::with_capacity(8 * prealloc_rows)),)*
-                    #( #col_delta_delta_buf_idents: Some(::tsz_compress::prelude::BitBuffer::with_capacity(8 * prealloc_rows)),)*
+                    #( #col_delta_buf_idents: Some(::tsz_compress::prelude::halfvec::HalfVec(prealloc_rows)),)*
+                    #( #col_delta_delta_buf_idents: None,)*
                     #( #col_values_emitted_delta: 0,)*
                     #( #col_values_emitted_delta_delta: 0,)*
                     #( #prev_col_idents: 0,)*
@@ -638,13 +638,13 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     }
 
                     // Maybe do delta-delta compression
-                    if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
-                        let delta_delta = delta - self.#prev_delta_idents;
-                        self.#col_delta_delta_comp_queue_idents.push(delta_delta);
-                        if self.#col_delta_delta_comp_queue_idents.is_full() {
-                            self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf, false);
-                        }
-                    }
+                    // if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                    //     let delta_delta = delta - self.#prev_delta_idents;
+                    //     self.#col_delta_delta_comp_queue_idents.push(delta_delta);
+                    //     if self.#col_delta_delta_comp_queue_idents.is_full() {
+                    //         self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf, false);
+                    //     }
+                    // }
 
                     // Update the previous values
                     self.#prev_col_idents = col;
@@ -728,12 +728,12 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         }
                         final_capacity += 4 + outbuf.len();
                     });
-                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
-                        while(self.#col_delta_delta_comp_queue_idents.len() > 0) {
-                            self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf, true);
-                        }
-                        final_capacity += 4 + outbuf.len();
-                    });
+                    // self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                    //     while(self.#col_delta_delta_comp_queue_idents.len() > 0) {
+                    //         self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf, true);
+                    //     }
+                    //     final_capacity += 4 + outbuf.len();
+                    // });
                 )*
 
                 // End on the byte alignment
@@ -741,34 +741,38 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     final_capacity += 4;
                 }
 
-                // // All of the bits are concatenated with a 1001 tag indicating the start of a new column
-                // let mut output = ::tsz_compress::prelude::BitBuffer::with_capacity(final_capacity);
+                // All of the bits are concatenated with a 1001 tag indicating the start of a new column
+                let mut output = ::tsz_compress::prelude::BitBuffer::with_capacity(final_capacity);
 
-                // // Extend bits to final output column by column
-                // #(
-                //     self.#col_delta_buf_idents.as_mut().map(|outbuf| {
-                //         output.push(true);
-                //         output.push(false);
-                //         output.push(false);
-                //         output.push(true);
-                //         output.extend(outbuf);
-                //     });
-                //     self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
-                //         output.push(true);
-                //         output.push(false);
-                //         output.push(false);
-                //         output.push(true);
-                //         output.extend(outbuf);
-                //     });
-                // )*
+                // Extend bits to final output column by column
+                #(
+                    self.#col_delta_buf_idents.as_mut().map(|outbuf| {
+                        output.push(true);
+                        output.push(false);
+                        output.push(false);
+                        output.push(true);
+                        output.extend(outbuf);
+                    });
+                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                        output.push(true);
+                        output.push(false);
+                        output.push(false);
+                        output.push(true);
+                        output.extend(outbuf);
+                    });
+                )*
 
-                // // Pad with 1011 as garbage for byte-alignment
-                // if output.len() % 8 == 4 {
-                //     output.push(true);
-                //     output.push(false);
-                //     output.push(true);
-                //     output.push(true);
-                // }
+                // Pad with 1011 as garbage for byte-alignment
+                if output.len() % 8 == 4 {
+                    // output.push(true);
+                    // output.push(false);
+                    // output.push(true);
+                    // output.push(true);
+                    output.push(true);
+                    output.push(false);
+                    output.push(false);
+                    output.push(true);
+                }
                 let output = ::tsz_compress::prelude::BitBuffer::new();
                 output
             }

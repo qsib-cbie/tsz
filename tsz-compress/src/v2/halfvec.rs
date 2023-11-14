@@ -20,12 +20,12 @@ pub enum HalfWord {
     /// The bottom bits of the word are used.
     /// 0b00001111
     Half(u8),
-    /// All bits of the word are used.
-    /// 0b11111111
-    Both(u8),
-    /// All bits of the word are used.
-    /// 0xffff
-    Short(u16),
+    // /// All bits of the word are used.
+    // /// 0b11111111
+    // Both(u8),
+    // /// All bits of the word are used.
+    // /// 0xffff
+    // Short(u16),
     /// All bits of the word are used.
     /// 0xffffffff
     Full(u32),
@@ -35,8 +35,8 @@ impl HalfWord {
     fn len(&self) -> usize {
         match self {
             HalfWord::Half(_) => 1,
-            HalfWord::Both(_) => 2,
-            HalfWord::Short(_) => 4,
+            // HalfWord::Both(_) => 2,
+            // HalfWord::Short(_) => 4,
             HalfWord::Full(_) => 8,
         }
     }
@@ -110,16 +110,16 @@ impl HalfVec {
                             // We are now on the lower nibble
                             upper = false;
                         }
-                        HalfWord::Both(value) => {
-                            // Use both nibbles
-                            bytes.push(value);
-                        }
-                        HalfWord::Short(value) => {
-                            // Use both nibbles from the top of the short
-                            bytes.push((value >> 8) as u8);
-                            // Use both nibbles from the bottom of the short
-                            bytes.push(value as u8);
-                        }
+                        // HalfWord::Both(value) => {
+                        //     // Use both nibbles
+                        //     bytes.push(value);
+                        // }
+                        // HalfWord::Short(value) => {
+                        //     // Use both nibbles from the top of the short
+                        //     bytes.push((value >> 8) as u8);
+                        //     // Use both nibbles from the bottom of the short
+                        //     bytes.push(value as u8);
+                        // }
                         HalfWord::Full(value) => {
                             // Use both nibbles from the top of the full
                             bytes.push((value >> 24) as u8);
@@ -140,24 +140,24 @@ impl HalfVec {
                             // We are now on the upper nibble
                             upper = true;
                         }
-                        HalfWord::Both(value) => {
-                            // Fill the lower nibble with the upper nibble of the value
-                            byte |= value >> 4;
-                            bytes.push(byte);
-                            // Fill the upper nibble with the lower nibble of the value
-                            byte = value << 4;
-                            // We are still on the lower nibble
-                        }
-                        HalfWord::Short(value) => {
-                            // Fill the lower nibble with the upper nibble of the value
-                            byte |= (value >> 12) as u8;
-                            bytes.push(byte);
-                            // Use both nibbles from the middle of the short
-                            bytes.push((value >> 4) as u8);
-                            // Use the lower nibble from the short as the upper nibble
-                            byte = (value << 4) as u8;
-                            // We are still on the lower nibble
-                        }
+                        // HalfWord::Both(value) => {
+                        //     // Fill the lower nibble with the upper nibble of the value
+                        //     byte |= value >> 4;
+                        //     bytes.push(byte);
+                        //     // Fill the upper nibble with the lower nibble of the value
+                        //     byte = value << 4;
+                        //     // We are still on the lower nibble
+                        // }
+                        // HalfWord::Short(value) => {
+                        //     // Fill the lower nibble with the upper nibble of the value
+                        //     byte |= (value >> 12) as u8;
+                        //     bytes.push(byte);
+                        //     // Use both nibbles from the middle of the short
+                        //     bytes.push((value >> 4) as u8);
+                        //     // Use the lower nibble from the short as the upper nibble
+                        //     byte = (value << 4) as u8;
+                        //     // We are still on the lower nibble
+                        // }
                         HalfWord::Full(value) => {
                             // Fill the lower nibble with the upper nibble of the value
                             byte |= (value >> 28) as u8;

@@ -90,7 +90,7 @@ impl<T: PrimInt, const N: usize> CompressionQueue<T, N> {
         let mut values: [T; M] = [T::zero(); M];
         for i in 0..M {
             let index = (self.front + i) % N;
-            unsafe { values[i] = self.at(index) };
+            unsafe { *values.get_unchecked_mut(i) = self.at(index) };
         }
 
         self.front = (self.front + M) % N;
@@ -144,7 +144,7 @@ pub struct CompressionQueueIter<'a, T, const N: usize> {
     index: usize,
 }
 
-impl<'a, T: Copy, const N: usize> Iterator for CompressionQueueIter<'a, T, N> {
+impl<'a, T: PrimInt, const N: usize> Iterator for CompressionQueueIter<'a, T, N> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -163,7 +163,7 @@ impl<'a, T: Copy, const N: usize> Iterator for CompressionQueueIter<'a, T, N> {
     }
 }
 
-impl<'a, T: Copy, const N: usize> ExactSizeIterator for CompressionQueueIter<'a, T, N> {}
+impl<'a, T: PrimInt, const N: usize> ExactSizeIterator for CompressionQueueIter<'a, T, N> {}
 
 #[cfg(test)]
 mod tests {
