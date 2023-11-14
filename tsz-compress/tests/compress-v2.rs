@@ -16,7 +16,7 @@ mod tests {
         let row = TestRow { a: 1 as i8 };
 
         // Initialize the compressor
-        let mut compressor = TestRowCompressorImpl::new();
+        let mut compressor = TestRowCompressorImpl::new(128);
 
         // Compress row
         for _ in 0..10 {
@@ -46,7 +46,7 @@ mod tests {
         let row = TestRow { a: i64::MAX as i64 };
 
         // Initialize the compressor
-        let mut compressor = TestRowCompressorImpl::new();
+        let mut compressor = TestRowCompressorImpl::new(128);
 
         // Compress
         for _ in 0..5 {
@@ -76,7 +76,7 @@ mod tests {
         let row = TestRow { a: 1 as i8 };
 
         // Initialize the compressor
-        let mut compressor = TestRowCompressorImpl::new();
+        let mut compressor = TestRowCompressorImpl::new(128);
 
         // Compress
         for _ in 0..6 {
@@ -105,7 +105,7 @@ mod tests {
         }
 
         // Initialize the compressor
-        let mut compressor = TestRowCompressorImpl::new();
+        let mut compressor = TestRowCompressorImpl::new(128);
 
         // Compress
         for i in 0..14 {
@@ -137,7 +137,7 @@ mod tests {
         let values: Vec<i8> = vec![17, 26, -15, -118, 119, -104, 67];
 
         // Initialize the compressor
-        let mut compressor = TestRowCompressorImpl::new();
+        let mut compressor = TestRowCompressorImpl::new(128);
 
         // Compress
         for value in &values {
@@ -171,7 +171,7 @@ mod tests {
         ];
 
         // Initialize the compressor
-        let mut compressor = TestRowCompressorImpl::new();
+        let mut compressor = TestRowCompressorImpl::new(128);
 
         // Compress
         for value in &values {
@@ -235,7 +235,7 @@ mod tests {
         ];
 
         // Initialize the compressor
-        let mut compressor = TestRowCompressorImpl::new();
+        let mut compressor = TestRowCompressorImpl::new(128);
 
         // Compress
         for value in &values {
@@ -286,7 +286,7 @@ mod tests {
         ];
 
         // Initialize the compressor
-        let mut compressor = TestRowCompressorImpl::new();
+        let mut compressor = TestRowCompressorImpl::new(128);
 
         // Compress
         for value in &values {
@@ -318,7 +318,7 @@ mod tests {
         }
 
         // Initialize the compressor
-        let mut compressor = TestRowCompressorImpl::new();
+        let mut compressor = TestRowCompressorImpl::new(128);
 
         let a_col_vec = vec![-128, 127, -127, 126, 0, -1];
         let b_col_vec = vec![-32768, 32767, -32767, 32766, 0, -1];

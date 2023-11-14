@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 pub mod decode;
 pub mod encode;
+pub mod halfvec;
 pub mod queue;
 pub mod tests;
 pub use decode::*;
@@ -24,7 +25,10 @@ pub trait TszCompressV2 {
     ///
     /// Initializes a new instance of the Compressor.
     ///
-    fn new() -> Self;
+    /// `prealloc_rows` is a hint for initial capacity for internal buffers.
+    /// It is not a hard limit, just a guess at the number of rows that will be compressed.
+    ///
+    fn new(prealloc_rows: usize) -> Self;
 
     ///
     /// Lazily compress a row.

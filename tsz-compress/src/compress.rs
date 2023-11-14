@@ -5,8 +5,8 @@ pub use tsz_macro::*;
 /// Use `u8` as the storage type for a `BitVec` to represent
 /// bits for easier conversion to and from bytes.
 ///
-pub type BitBuffer = BitVec<u8, Lsb0>;
-pub type BitBufferSlice = BitSlice<u8, Lsb0>;
+pub type BitBuffer = BitVec<u32, Lsb0>;
+pub type BitBufferSlice = BitSlice<u32, Lsb0>;
 
 ///
 /// A `Compressor` instance holds the state of the compression process.

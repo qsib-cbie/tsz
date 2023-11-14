@@ -24,7 +24,7 @@ mod tests_delta {
         for value in values {
             queue.push(*value as i16);
         }
-        let mut bits: bitvec::vec::BitVec<u8> = BitBuffer::new();
+        let mut bits = BitBuffer::new();
         // Header
         bits.push(true);
         bits.push(false);
@@ -715,7 +715,7 @@ mod test_delta_delta {
         for value in values {
             queue.push(value);
         }
-        let mut bits: bitvec::vec::BitVec<u8> = BitBuffer::new();
+        let mut bits = BitBuffer::new();
 
         // Header
         bits.push(true);
@@ -784,7 +784,7 @@ mod test_delta_delta {
         for value in values {
             queue.push(value);
         }
-        let mut bits: bitvec::vec::BitVec<u8> = BitBuffer::new();
+        let mut bits = BitBuffer::new();
 
         // Header
         bits.push(true);
@@ -922,7 +922,7 @@ mod test_delta_delta {
         for value in values {
             queue.push(value);
         }
-        let mut bits: bitvec::vec::BitVec<u8> = BitBuffer::new();
+        let mut bits = BitBuffer::new();
 
         // Header
         bits.push(true);
@@ -1070,7 +1070,7 @@ mod test_delta_delta {
         for value in values {
             queue.push(value);
         }
-        let mut bits: bitvec::vec::BitVec<u8> = BitBuffer::new();
+        let mut bits = BitBuffer::new();
 
         // Header
         bits.push(true);
@@ -1222,7 +1222,7 @@ mod test_delta_delta {
         for value in values {
             queue.push(value);
         }
-        let mut bits: bitvec::vec::BitVec<u8> = BitBuffer::new();
+        let mut bits = BitBuffer::new();
 
         // Header
         bits.push(true);
@@ -1316,7 +1316,7 @@ mod test_delta_delta {
                 BitBuffer::new()
             }
 
-            fn new() -> Self {
+            fn new(prealloc: usize) -> Self {
                 todo!()
             }
         }

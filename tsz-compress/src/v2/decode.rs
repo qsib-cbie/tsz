@@ -806,7 +806,7 @@ pub fn values_from_delta_i8(vector: &mut Vec<i8>) {
         return;
     }
     for i in 1..vector.len() {
-        vector[i] = (vector[i - 1] as i16 - vector[i] as i16) as i8;
+        vector[i] = (vector[i - 1] as i16 + vector[i] as i16) as i8;
     }
 }
 pub fn values_from_delta_i16(vector: &mut Vec<i16>) {
@@ -814,7 +814,7 @@ pub fn values_from_delta_i16(vector: &mut Vec<i16>) {
         return;
     }
     for i in 1..vector.len() {
-        vector[i] = (vector[i - 1] as i32 - vector[i] as i32) as i16;
+        vector[i] = (vector[i - 1] as i32 + vector[i] as i32) as i16;
     }
 }
 pub fn values_from_delta_i32(vector: &mut Vec<i32>) {
@@ -822,7 +822,7 @@ pub fn values_from_delta_i32(vector: &mut Vec<i32>) {
         return;
     }
     for i in 1..vector.len() {
-        vector[i] = (vector[i - 1] as i64 - vector[i] as i64) as i32;
+        vector[i] = (vector[i - 1] as i64 + vector[i] as i64) as i32;
     }
 }
 pub fn values_from_delta_i64(vector: &mut Vec<i64>) {
@@ -830,7 +830,7 @@ pub fn values_from_delta_i64(vector: &mut Vec<i64>) {
         return;
     }
     for i in 1..vector.len() {
-        vector[i] = (vector[i - 1] as i128 - vector[i] as i128) as i64;
+        vector[i] = (vector[i - 1] as i128 + vector[i] as i128) as i64;
     }
 }
 

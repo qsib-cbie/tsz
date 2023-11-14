@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 use core::mem::MaybeUninit;
 
+use num_traits::PrimInt;
+
 ///
 /// A statically sized ring-buffer queue used
 /// while compressing a column.
@@ -11,11 +13,11 @@ pub struct CompressionQueue<T, const N: usize> {
     len: usize,
 }
 
-impl<T: Copy, const N: usize> CompressionQueue<T, N> {
+impl<T: PrimInt, const N: usize> CompressionQueue<T, N> {
     ///
     /// Creates an empty queue.
     ///
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         CompressionQueue {
             buf: [MaybeUninit::uninit(); N],
             front: 0,
@@ -26,7 +28,7 @@ impl<T: Copy, const N: usize> CompressionQueue<T, N> {
     ///
     /// Returns the number of elements in the queue.
     ///
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.len
     }
 
@@ -73,6 +75,28 @@ impl<T: Copy, const N: usize> CompressionQueue<T, N> {
         self.front = (self.front + 1) % N;
         self.len -= 1;
         Some(value)
+    }
+
+    ///
+    /// Pop N values from the queue at once,
+    /// returning None if the queue is empty.
+    ///
+    #[inline(always)]
+    pub fn pop_n<const M: usize>(&mut self) -> Option<[T; M]> {
+        if self.len < M {
+            return None;
+        }
+
+        let mut values: [T; M] = [T::zero(); M];
+        for i in 0..M {
+            let index = (self.front + i) % N;
+            unsafe { values[i] = self.at(index) };
+        }
+
+        self.front = (self.front + M) % N;
+        self.len -= M;
+
+        Some(values)
     }
 
     ///
