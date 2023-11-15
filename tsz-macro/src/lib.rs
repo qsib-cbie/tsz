@@ -588,7 +588,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 #compressor_ident {
                     #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#upgraded_col_tys, 10>::new(),)*
                     #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#upgraded_col_tys, 10>::new(),)*
-                    #( #col_delta_buf_idents: Some(::tsz_compress::prelude::halfvec::HalfVec(prealloc_rows)),)*
+                    #( #col_delta_buf_idents: Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)),)*
                     #( #col_delta_delta_buf_idents: None,)*
                     #( #col_values_emitted_delta: 0,)*
                     #( #col_values_emitted_delta_delta: 0,)*
@@ -665,37 +665,37 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
             }
 
             fn len(&self) -> usize {
-                let mut finished_bit_count = 0;
+                let mut finished_nibble_count = 0;
                 #(
                     if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
-                        finished_bit_count += delta_buffer.len().min(delta_delta_buffer.len());
+                        finished_nibble_count += delta_buffer.len().min(delta_delta_buffer.len());
                     }
                     else if let Some(delta_buffer) = &self.#col_delta_buf_idents {
-                        finished_bit_count += delta_buffer.len()
+                        finished_nibble_count += delta_buffer.len()
                     }
                     else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents {
-                        finished_bit_count += delta_delta_buffer.len()
+                        finished_nibble_count += delta_delta_buffer.len()
                     }
                 )*
                 let col_count_delta = (#( self.#col_delta_comp_queue_idents.len() )+*);
                 let col_count_delta_delta = (#( self.#col_delta_delta_comp_queue_idents.len() )+*);
                 let col_bit_rate = #num_columns * self.bit_rate();
                 let pending_bit_count = col_count_delta.min(col_count_delta_delta) * col_bit_rate;
-                finished_bit_count + pending_bit_count
+                4 * finished_nibble_count + pending_bit_count
             }
 
             fn bit_rate(&self) -> usize {
-                let mut finished_bit_count = 0;
+                let mut finished_nibble_count = 0;
                 let mut total_col_values_emitted = 0;
                 #(
                     if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
-                        finished_bit_count += delta_buffer.len().min(delta_delta_buffer.len());
+                        finished_nibble_count += delta_buffer.len().min(delta_delta_buffer.len());
                     }
                     else if let Some(delta_buffer) = &self.#col_delta_buf_idents{
-                            finished_bit_count += delta_buffer.len()
+                            finished_nibble_count += delta_buffer.len()
                         }
                     else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents{
-                        finished_bit_count += delta_delta_buffer.len()
+                        finished_nibble_count += delta_delta_buffer.len()
                     }
                     // Increment total_col_values_emitted by the sum of values emitted for either delta or delta-delta compression per column. One of them will be 0 for each column.
                     total_col_values_emitted += (self.#col_values_emitted_delta + self.#col_values_emitted_delta_delta);
@@ -703,10 +703,10 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 if total_col_values_emitted == 0 {
                     return 0;
                 }
-                finished_bit_count / total_col_values_emitted / #num_columns
+                4 * finished_nibble_count / total_col_values_emitted / #num_columns
             }
 
-            fn finish(mut self) -> ::tsz_compress::prelude::BitBuffer {
+            fn finish(mut self) -> Vec<u8> {
                 // Only use one encoding mechanism
                 #(
                     if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
@@ -742,39 +742,20 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 }
 
                 // All of the bits are concatenated with a 1001 tag indicating the start of a new column
-                let mut output = ::tsz_compress::prelude::BitBuffer::with_capacity(final_capacity);
-
-                // Extend bits to final output column by column
+                let mut output = ::tsz_compress::prelude::halfvec::HalfVec::new(1);
                 #(
-                    self.#col_delta_buf_idents.as_mut().map(|outbuf| {
-                        output.push(true);
-                        output.push(false);
-                        output.push(false);
-                        output.push(true);
-                        output.extend(outbuf);
-                    });
-                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
-                        output.push(true);
-                        output.push(false);
-                        output.push(false);
-                        output.push(true);
+                    self.#col_delta_buf_idents.map(|outbuf| {
+                        output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
                         output.extend(outbuf);
                     });
                 )*
 
-                // Pad with 1011 as garbage for byte-alignment
-                if output.len() % 8 == 4 {
-                    // output.push(true);
-                    // output.push(false);
-                    // output.push(true);
-                    // output.push(true);
-                    output.push(true);
-                    output.push(false);
-                    output.push(false);
-                    output.push(true);
+                // Pad nibbles to byte-alignment
+                if output.len() % 2 == 1 {
+                    output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
                 }
-                let output = ::tsz_compress::prelude::BitBuffer::new();
-                output
+
+                output.finish()
             }
         }
     };

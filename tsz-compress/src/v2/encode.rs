@@ -1,56 +1,55 @@
+use core::fmt::Binary;
+
 use num_traits::PrimInt;
 
 use crate::prelude::*;
 
 use super::halfvec::{HalfVec, HalfWord};
 
-trait Bits: PrimInt {
+trait Bits: PrimInt + Binary {
     const BITS: usize;
 
-    fn zigzag_bits(self) -> Self {
-        // ZigZag Encoding
-        let z = (self << 1) ^ (self >> Self::BITS - 1);
-        z
-    }
+    /// Language limitations prevent us from writing simple math expressions
+    /// ((self << 1) ^ (self >> Self::BITS - 1)) as u32
+    fn zigzag_bits(self) -> u32;
 
-    fn zigzag_bit_masked(self, mask: Self) -> Self {
+    fn zigzag_bit_masked(self, mask: u32) -> u32 {
         // Mask bottom bits
-        self.zigzag_bits() & mask
+        let r = self.zigzag_bits() & mask;
+        // println!("r: {:b}", r);
+        r
     }
 }
 
 impl Bits for i16 {
     const BITS: usize = 16;
+    /// Language limitations prevent us from writing simple math expressions
+    fn zigzag_bits(self) -> u32 {
+        ((self << 1) ^ (self >> Self::BITS - 1)) as u32
+    }
 }
 
 impl Bits for i32 {
     const BITS: usize = 32;
+    /// Language limitations prevent us from writing simple math expressions
+    fn zigzag_bits(self) -> u32 {
+        ((self << 1) ^ (self >> Self::BITS - 1)) as u32
+    }
 }
 
 #[inline(always)]
 unsafe fn push_three_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf: &mut HalfVec) {
-    // Push a header nibble
+    const N: usize = 10;
+    const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1111));
-
-    // Prepare the rest of the header
-    let mut word: u32 = 0b00 << 3;
-
-    // Take the bottom 3 bits
-    let mask = T::from(0b111).unwrap_unchecked();
-    let values = q.pop_n::<10>().unwrap_unchecked();
-    for i in 0..9 {
-        word |= values[i]
-            .zigzag_bit_masked(mask)
-            .to_u32()
-            .unwrap_unchecked();
+    let mut word: u32 = 0;
+    let mask = 0b111_u32;
+    let values = q.pop_n::<N>().unwrap_unchecked();
+    for i in 0..N1 {
+        word |= values[i].zigzag_bit_masked(mask);
         word <<= 3;
     }
-    word |= values[9]
-        .zigzag_bit_masked(mask)
-        .to_u32()
-        .unwrap_unchecked();
-
-    // Push a full 32 bit word
+    word |= values[N1].zigzag_bit_masked(mask);
     buf.push(HalfWord::Full(word));
 }
 
@@ -60,19 +59,13 @@ unsafe fn push_four_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1110));
     let mut word: u32 = 0;
-    let mask = T::from(0b1111).unwrap_unchecked();
+    let mask = 0b1111_u32;
     let values = q.pop_n::<N>().unwrap_unchecked();
     for i in 0..N1 {
-        word |= values[i]
-            .zigzag_bit_masked(mask)
-            .to_u32()
-            .unwrap_unchecked();
+        word |= values[i].zigzag_bit_masked(mask);
         word <<= 4;
     }
-    word |= values[N1]
-        .zigzag_bit_masked(mask)
-        .to_u32()
-        .unwrap_unchecked();
+    word |= values[N1].zigzag_bit_masked(mask);
     buf.push(HalfWord::Full(word));
 }
 
@@ -82,19 +75,13 @@ unsafe fn push_eight_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, bu
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1100));
     let mut word: u32 = 0;
-    let mask = T::from(0b11111111).unwrap_unchecked();
+    let mask = 0b11111111_u32;
     let values = q.pop_n::<N>().unwrap_unchecked();
     for i in 0..N1 {
-        word |= values[i]
-            .zigzag_bit_masked(mask)
-            .to_u32()
-            .unwrap_unchecked();
+        word |= values[i].zigzag_bit_masked(mask);
         word <<= 8;
     }
-    word |= values[N1]
-        .zigzag_bit_masked(mask)
-        .to_u32()
-        .unwrap_unchecked();
+    word |= values[N1].zigzag_bit_masked(mask);
     buf.push(HalfWord::Full(word));
 }
 
@@ -104,19 +91,13 @@ unsafe fn push_ten_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf:
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1010));
     let mut word: u32 = 0b00 << 10;
-    let mask = T::from(0b1111111111).unwrap_unchecked();
+    let mask = 0b1111111111_u32;
     let values = q.pop_n::<N>().unwrap_unchecked();
     for i in 0..N1 {
-        word |= values[i]
-            .zigzag_bit_masked(mask)
-            .to_u32()
-            .unwrap_unchecked();
+        word |= values[i].zigzag_bit_masked(mask);
         word <<= 10;
     }
-    word |= values[N1]
-        .zigzag_bit_masked(mask)
-        .to_u32()
-        .unwrap_unchecked();
+    word |= values[N1].zigzag_bit_masked(mask);
     buf.push(HalfWord::Full(word));
 }
 
@@ -126,19 +107,13 @@ unsafe fn push_sixteen_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, 
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1000));
     let mut word: u32 = 0b00 << 10;
-    let mask = T::from(0xffff).unwrap_unchecked();
+    let mask = 0xffffu32;
     let values = q.pop_n::<N>().unwrap_unchecked();
     for i in 0..N1 {
-        word |= values[i]
-            .zigzag_bit_masked(mask)
-            .to_u32()
-            .unwrap_unchecked();
+        word |= values[i].zigzag_bit_masked(mask);
         word <<= 16;
     }
-    word |= values[N1]
-        .zigzag_bit_masked(mask)
-        .to_u32()
-        .unwrap_unchecked();
+    word |= values[N1].zigzag_bit_masked(mask);
     buf.push(HalfWord::Full(word));
 }
 
@@ -149,7 +124,7 @@ unsafe fn push_thirty_two_bits<T: PrimInt + Bits>(
 ) {
     buf.push(HalfWord::Half(0b1011));
     let value = q.pop().unwrap_unchecked();
-    let word = value.zigzag_bits().to_u32().unwrap_unchecked();
+    let word = value.zigzag_bits();
     buf.push(HalfWord::Full(word));
 }
 
@@ -186,10 +161,12 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
             if self.len() < 4 {
                 fits[2] = false;
             }
+
             // Can not emit with case ii of delta compression if number of samples < 3
             if self.len() < 3 {
                 fits[3] = false;
             }
+
             // Can not emit with case ii of delta compression if number of samples < 2
             if self.len() < 2 {
                 fits[4] = false;
@@ -198,24 +175,20 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
 
         for (index, value) in self.iter().enumerate() {
             if (index < 2 && !(-32768..=32767).contains(&value)) {
-                fits[..5].iter_mut().for_each(|x| *x = false);
+                fits[..=4].fill(false);
                 break;
             }
             if (index < 3 && !(-512..=511).contains(&value)) {
-                fits[..4].iter_mut().for_each(|x| *x = false);
-                break;
+                fits[3] = false;
             }
             if (index < 4 && !(-128..=127).contains(&value)) {
-                fits[..3].iter_mut().for_each(|x| *x = false);
-                break;
+                fits[2] = false;
             }
             if (index < 8 && !(-8..=7).contains(&value)) {
-                fits[..2].iter_mut().for_each(|x| *x = false);
-                break;
+                fits[1] = false;
             }
             if (index < 10 && !(-4..=3).contains(&value)) {
-                fits[..1].iter_mut().for_each(|x| *x = false);
-                break;
+                fits[0] = false;
             }
         }
 
@@ -282,10 +255,12 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
             if self.len() < 4 {
                 fits[2] = false;
             }
+
             // Can not emit with case ii of delta compression if number of samples < 3
             if self.len() < 3 {
                 fits[3] = false;
             }
+
             // Can not emit with case ii of delta compression if number of samples < 2
             if self.len() < 2 {
                 fits[4] = false;
@@ -293,21 +268,19 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
         }
 
         for (index, value) in self.iter().enumerate() {
+            // println!("value: {}", value);
             if (index < 3 && !(-512..=511).contains(&value)) {
-                fits[..4].iter_mut().for_each(|x| *x = false);
+                fits[..=3].fill(false);
                 break;
             }
             if (index < 4 && !(-128..=127).contains(&value)) {
-                fits[..3].iter_mut().for_each(|x| *x = false);
-                break;
+                fits[2] = false;
             }
             if (index < 8 && !(-8..=7).contains(&value)) {
-                fits[..2].iter_mut().for_each(|x| *x = false);
-                break;
+                fits[1] = false;
             }
             if (index < 10 && !(-4..=3).contains(&value)) {
-                fits[..1].iter_mut().for_each(|x| *x = false);
-                break;
+                fits[0] = false;
             }
         }
 

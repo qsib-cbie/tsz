@@ -20,12 +20,7 @@ pub enum HalfWord {
     /// The bottom bits of the word are used.
     /// 0b00001111
     Half(u8),
-    // /// All bits of the word are used.
-    // /// 0b11111111
-    // Both(u8),
-    // /// All bits of the word are used.
-    // /// 0xffff
-    // Short(u16),
+
     /// All bits of the word are used.
     /// 0xffffffff
     Full(u32),
@@ -35,8 +30,6 @@ impl HalfWord {
     fn len(&self) -> usize {
         match self {
             HalfWord::Half(_) => 1,
-            // HalfWord::Both(_) => 2,
-            // HalfWord::Short(_) => 4,
             HalfWord::Full(_) => 8,
         }
     }
@@ -109,17 +102,8 @@ impl HalfVec {
                             byte = value << 4;
                             // We are now on the lower nibble
                             upper = false;
+                            // println!("nibble: {:b}", value);
                         }
-                        // HalfWord::Both(value) => {
-                        //     // Use both nibbles
-                        //     bytes.push(value);
-                        // }
-                        // HalfWord::Short(value) => {
-                        //     // Use both nibbles from the top of the short
-                        //     bytes.push((value >> 8) as u8);
-                        //     // Use both nibbles from the bottom of the short
-                        //     bytes.push(value as u8);
-                        // }
                         HalfWord::Full(value) => {
                             // Use both nibbles from the top of the full
                             bytes.push((value >> 24) as u8);
@@ -129,6 +113,7 @@ impl HalfVec {
                             bytes.push((value >> 8) as u8);
                             // Use both nibbles from the bottom of the full
                             bytes.push(value as u8);
+                            // println!("full upper: {:b}", value);
                         }
                     }
                 } else {
@@ -139,26 +124,10 @@ impl HalfVec {
                             bytes.push(byte);
                             // We are now on the upper nibble
                             upper = true;
+                            // println!("nibble: {:b}", value);
                         }
-                        // HalfWord::Both(value) => {
-                        //     // Fill the lower nibble with the upper nibble of the value
-                        //     byte |= value >> 4;
-                        //     bytes.push(byte);
-                        //     // Fill the upper nibble with the lower nibble of the value
-                        //     byte = value << 4;
-                        //     // We are still on the lower nibble
-                        // }
-                        // HalfWord::Short(value) => {
-                        //     // Fill the lower nibble with the upper nibble of the value
-                        //     byte |= (value >> 12) as u8;
-                        //     bytes.push(byte);
-                        //     // Use both nibbles from the middle of the short
-                        //     bytes.push((value >> 4) as u8);
-                        //     // Use the lower nibble from the short as the upper nibble
-                        //     byte = (value << 4) as u8;
-                        //     // We are still on the lower nibble
-                        // }
                         HalfWord::Full(value) => {
+                            // println!("full lower: {:b}", value);
                             // Fill the lower nibble with the upper nibble of the value
                             byte |= (value >> 28) as u8;
                             bytes.push(byte);
@@ -206,30 +175,20 @@ mod tests {
         }
 
         for i in 0..128 {
-            queue.push(HalfWord::Both(i as u8));
-            assert_eq!(queue.len(), 128 + (i + 1) * 2);
-            assert_eq!(queue.is_empty(), false);
-        }
-
-        for i in 0..128 {
-            queue.push(HalfWord::Short(i as u16));
-            assert_eq!(queue.len(), (128 * 3) + (i + 1) * 4);
+            queue.push(HalfWord::Full(i as u32));
+            assert_eq!(queue.len(), 128 + (i + 1) * 4);
             assert_eq!(queue.is_empty(), false);
         }
 
         queue.push(HalfWord::Half(15));
-        queue.push(HalfWord::Both(143));
-        queue.push(HalfWord::Short(9261));
         assert!(queue.len() % 2 == 1);
         // End on the byte
         queue.push(HalfWord::Half(0));
 
         // Now every nibble is pushed together
         let flat = queue.finish();
-        assert_eq!(flat.len(), (128 + 2 * 128 + 4 * 128 + 1 + 2 + 4 + 1) / 2);
+        assert_eq!(flat.len(), (128 + 4 * 128 + 1 + 1) / 2);
         let mut q2 = HalfVec::new(128);
-        flat.iter().for_each(|i| q2.push(HalfWord::Both(*i)));
-        assert_eq!(q2.finish(), flat);
     }
 
     // #[test]

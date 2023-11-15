@@ -50,7 +50,7 @@ pub trait TszCompressV2 {
     ///
     /// Finish compression and return the compressed data.
     ///
-    fn finish(self) -> BitBuffer;
+    fn finish(self) -> alloc::vec::Vec<u8>;
 }
 
 ///
