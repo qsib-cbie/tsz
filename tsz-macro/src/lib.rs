@@ -558,6 +558,43 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
             _ => panic!("Unsupported type"),
         })
         .collect::<Vec<_>>();
+    // use delta-delta on i64 and delta on i32 and less
+    let col_delta_buf = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    "i16" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    "i32" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    "i64" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    "i128" => quote! { None },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+    let col_delta_delta_buf = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { None },
+                    "i16" => quote! { None },
+                    "i32" => quote! { None },
+                    "i64" => quote! { None },
+                    "i128" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
     let prev_col_idents = col_idents
         .iter()
         .map(|ident| format_ident!("prev_{}", ident))
@@ -571,7 +608,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
             #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#upgraded_col_tys, 10>,)*
             #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#upgraded_col_tys, 10>,)*
             #( #col_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
-            #( #col_delta_delta_buf_idents: Option<::tsz_compress::prelude::BitBuffer>,)*
+            #( #col_delta_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
             #( #col_values_emitted_delta: usize,)*
             #( #col_values_emitted_delta_delta: usize,)*
             #( #prev_col_idents: #upgraded_col_tys,)*
@@ -588,8 +625,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 #compressor_ident {
                     #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#upgraded_col_tys, 10>::new(),)*
                     #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#upgraded_col_tys, 10>::new(),)*
-                    #( #col_delta_buf_idents: Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)),)*
-                    #( #col_delta_delta_buf_idents: None,)*
+                    #( #col_delta_buf_idents: #col_delta_buf,)*
+                    #( #col_delta_delta_buf_idents: #col_delta_delta_buf,)*
                     #( #col_values_emitted_delta: 0,)*
                     #( #col_values_emitted_delta_delta: 0,)*
                     #( #prev_col_idents: 0,)*
@@ -637,7 +674,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         }
                     }
 
-                    // Maybe do delta-delta compression
+                    // // Maybe do delta-delta compression
                     // if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
                     //     let delta_delta = delta - self.#prev_delta_idents;
                     //     self.#col_delta_delta_comp_queue_idents.push(delta_delta);
@@ -719,27 +756,18 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     }
                 )*
 
-                let mut final_capacity = 0;
-
                 #(
                     self.#col_delta_buf_idents.as_mut().map(|outbuf| {
                         while(self.#col_delta_comp_queue_idents.len() > 0) {
                             self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, true);
                         }
-                        final_capacity += 4 + outbuf.len();
                     });
                     // self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
                     //     while(self.#col_delta_delta_comp_queue_idents.len() > 0) {
                     //         self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf, true);
                     //     }
-                    //     final_capacity += 4 + outbuf.len();
                     // });
                 )*
-
-                // End on the byte alignment
-                if final_capacity % 8 == 4 {
-                    final_capacity += 4;
-                }
 
                 // All of the bits are concatenated with a 1001 tag indicating the start of a new column
                 let mut output = ::tsz_compress::prelude::halfvec::HalfVec::new(1);
