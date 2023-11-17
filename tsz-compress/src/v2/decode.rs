@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use alloc::vec::Vec;
 
-pub(crate) struct HalfIter<'it> {
+pub struct HalfIter<'it> {
     buf: &'it [u8],
     upper: bool,
     idx: usize,
@@ -38,7 +38,7 @@ impl<'it> Iterator for HalfIter<'it> {
     }
 }
 
-pub(crate) fn decode_i8<'it>(
+pub fn decode_i8<'it>(
     iter: &mut HalfIter<'it>,
     output: &mut Vec<i8>,
 ) -> Result<(), CodingError> {
@@ -126,7 +126,7 @@ pub(crate) fn decode_i8<'it>(
     Ok(())
 }
 
-pub(crate) fn decode_i16<'it>(
+pub fn decode_i16<'it>(
     iter: &mut HalfIter<'it>,
     output: &mut Vec<i16>,
 ) -> Result<(), CodingError> {

@@ -569,7 +569,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     "i8" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
                     "i16" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
                     "i32" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
-                    "i64" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    // "i64" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    "i64" => quote! { None },
                     "i128" => quote! { None },
                     _ => panic!("Unsupported type"),
                 }
@@ -587,7 +588,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     "i8" => quote! { None },
                     "i16" => quote! { None },
                     "i32" => quote! { None },
-                    "i64" => quote! { None },
+                    // "i64" => quote! { None },
+                    "i64" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
                     "i128" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
                     _ => panic!("Unsupported type"),
                 }
@@ -674,30 +676,30 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         }
                     }
 
-                    // // Maybe do delta-delta compression
-                    // if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
-                    //     let delta_delta = delta - self.#prev_delta_idents;
-                    //     self.#col_delta_delta_comp_queue_idents.push(delta_delta);
-                    //     if self.#col_delta_delta_comp_queue_idents.is_full() {
-                    //         self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf, false);
-                    //     }
-                    // }
+                    // Maybe do delta-delta compression
+                    if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                        let delta_delta = delta - self.#prev_delta_idents;
+                        self.#col_delta_delta_comp_queue_idents.push(delta_delta);
+                        if self.#col_delta_delta_comp_queue_idents.is_full() {
+                            self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
+                        }
+                    }
 
                     // Update the previous values
                     self.#prev_col_idents = col;
                     self.#prev_delta_idents = delta;
 
-                    // Chooses the compression algorithm associated with the output buffer that is N times smaller than the other output buffer.
-                    if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
-                        if delta_buffer.len() > delta_delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
-                            self.#col_delta_buf_idents = None;
-                            self.#col_values_emitted_delta = 0;
-                        }
-                        else if delta_delta_buffer.len() > delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
-                            self.#col_delta_delta_buf_idents = None;
-                            self.#col_values_emitted_delta_delta = 0;
-                        }
-                    }
+                    // // Chooses the compression algorithm associated with the output buffer that is N times smaller than the other output buffer.
+                    // if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                    //     if delta_buffer.len() > delta_delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
+                    //         self.#col_delta_buf_idents = None;
+                    //         self.#col_values_emitted_delta = 0;
+                    //     }
+                    //     else if delta_delta_buffer.len() > delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
+                    //         self.#col_delta_delta_buf_idents = None;
+                    //         self.#col_values_emitted_delta_delta = 0;
+                    //     }
+                    // }
                 )*
             }
 
@@ -762,17 +764,21 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, true);
                         }
                     });
-                    // self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
-                    //     while(self.#col_delta_delta_comp_queue_idents.len() > 0) {
-                    //         self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf, true);
-                    //     }
-                    // });
+                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                        while(self.#col_delta_delta_comp_queue_idents.len() > 0) {
+                            self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
+                        }
+                    });
                 )*
 
                 // All of the bits are concatenated with a 1001 tag indicating the start of a new column
                 let mut output = ::tsz_compress::prelude::halfvec::HalfVec::new(1);
                 #(
                     self.#col_delta_buf_idents.map(|outbuf| {
+                        output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
+                        output.extend(outbuf);
+                    });
+                    self.#col_delta_delta_buf_idents.map(|outbuf| {
                         output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
                         output.extend(outbuf);
                     });

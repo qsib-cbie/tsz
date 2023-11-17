@@ -24,6 +24,7 @@ trait Bits: PrimInt + Binary {
 impl Bits for i16 {
     const BITS: usize = 16;
     /// Language limitations prevent us from writing simple math expressions
+    #[inline(always)]
     fn zigzag_bits(self) -> u32 {
         ((self << 1) ^ (self >> Self::BITS - 1)) as u32
     }
@@ -32,6 +33,7 @@ impl Bits for i16 {
 impl Bits for i32 {
     const BITS: usize = 32;
     /// Language limitations prevent us from writing simple math expressions
+    #[inline(always)]
     fn zigzag_bits(self) -> u32 {
         ((self << 1) ^ (self >> Self::BITS - 1)) as u32
     }
@@ -316,69 +318,87 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
 }
 
 // Delta-Delta Encoding
-// pub trait EmitDeltaDeltaBits<T> {
-//     /// Emits bits according to the most efficient case of Delta Compression.
-//     /// Returns the number of elements popped from the queue.
-//     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize;
-// }
+pub trait EmitDeltaDeltaBits<T> {
+    /// Emits bits according to the most efficient case of Delta Compression.
+    /// Returns the number of elements popped from the queue.
+    fn emit_delta_delta_bits(&mut self, out: &mut HalfVec) -> usize;
+}
 
-// impl EmitDeltaDeltaBits<i32> for CompressionQueue<i32, 10> {
-//     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-//         let num_values = if flush { self.len() } else { 10 };
-//         for _ in 0..num_values {
-//             if let Some(value) = self.pop() {
-//                 out.push(false);
-//                 if value == 0 {
-//                     // Write out 00
-//                     out.push(false);
-//                     out.push(false);
+fn emit_popped_values32<const N: usize>(values: &[i32; N], out: &mut HalfVec) {
+    for value in values {
+        match value {
+            0 => out.push(HalfWord::Half(0b0000)),
+            -1 => out.push(HalfWord::Half(0b0001)),
+            -16..=15 => {
+                let zigzag = value.zigzag_bit_masked(0b11111) as u8;
+                out.push(HalfWord::Byte(0b00100000 | zigzag));
+            }
+            -256..=255 => {
+                let zigzag = value.zigzag_bit_masked(0b111111111) as u16;
+                out.push(HalfWord::Half(0b0100 | (zigzag >> 8) as u8));
+                out.push(HalfWord::Byte(zigzag as u8));
+            }
+            -32678..=32767 => {
+                let zigzag = value.zigzag_bit_masked(0b1111111111111111) as u16;
+                out.push(HalfWord::Half(0b0110));
+                out.push(HalfWord::Byte((zigzag >> 8) as u8));
+                out.push(HalfWord::Byte(zigzag as u8));
+            }
+            _ => {
+                let zigzag = value.zigzag_bits();
+                out.push(HalfWord::Half(0b0111));
+                out.push(HalfWord::Full(zigzag));
+            }
+        }
+    }
+}
 
-//                     let value = (value << 1i32) ^ (value >> 31i32);
-//                     out.push(value & (1 << 0) != 0);
-//                 } else if (-16..16).contains(&value) {
-//                     // Write out 01
-//                     out.push(false);
-//                     out.push(true);
-//                     let value = (value << 1i32) ^ (value >> 31i32);
-//                     value.extend_bits(0..5, out);
-//                 } else if (-256..=255).contains(&value) {
-//                     // Write out 10
-//                     out.push(true);
-//                     out.push(false);
+fn emit_popped_values32_q(q: &mut CompressionQueue<i32, 10>, out: &mut HalfVec) {
+    while !q.is_empty() {
+        let value = unsafe { q.pop().unwrap_unchecked() };
+        match value {
+            0 => out.push(HalfWord::Half(0b0000)),
+            -1 => out.push(HalfWord::Half(0b0001)),
+            -16..=15 => {
+                let zigzag = value.zigzag_bit_masked(0b11111) as u8;
+                out.push(HalfWord::Byte(0b00100000 | zigzag));
+            }
+            -256..=255 => {
+                let zigzag = value.zigzag_bit_masked(0b111111111) as u16;
+                out.push(HalfWord::Half(0b0100 | (zigzag >> 8) as u8));
+                out.push(HalfWord::Byte(zigzag as u8));
+            }
+            -32678..=32767 => {
+                let zigzag = value.zigzag_bit_masked(0b1111111111111111) as u16;
+                out.push(HalfWord::Half(0b0110));
+                out.push(HalfWord::Byte((zigzag >> 8) as u8));
+                out.push(HalfWord::Byte(zigzag as u8));
+            }
+            _ => {
+                let zigzag = value.zigzag_bits();
+                out.push(HalfWord::Half(0b0111));
+                out.push(HalfWord::Full(zigzag));
+            }
+        }
+    }
+}
 
-//                     // ZigZag encoding
-//                     let value = (value << 1i32) ^ (value >> 31i32);
-
-//                     value.extend_bits(0..9, out);
-//                 } else if (-16384..=16383).contains(&value) {
-//                     // Write out 110
-//                     out.push(true);
-//                     out.push(true);
-//                     out.push(false);
-
-//                     // ZigZag encoding
-//                     let value = (value << 1i32) ^ (value >> 31i32);
-
-//                     value.extend_bits(0..16, out);
-//                 } else {
-//                     // Write out 111
-//                     out.push(true);
-//                     out.push(true);
-//                     out.push(true);
-
-//                     let value = value as i64;
-
-//                     // ZigZag Encoding
-//                     let value = (value << 1i64) ^ (value >> 63i16);
-
-//                     // Write out least significant 64 bits
-//                     value.extend_bits(0..64, out);
-//                 }
-//             }
-//         }
-//         num_values
-//     }
-// }
+impl EmitDeltaDeltaBits<i32> for CompressionQueue<i32, 10> {
+    fn emit_delta_delta_bits(&mut self, out: &mut HalfVec) -> usize {
+        match self.len() {
+            10 => {
+                let values = unsafe { self.pop_n::<10>().unwrap_unchecked() };
+                emit_popped_values32(&values, out);
+                return 10;
+            }
+            _ => {
+                let len = self.len();
+                emit_popped_values32_q(self, out);
+                return len;
+            }
+        }
+    }
+}
 
 // impl EmitDeltaDeltaBits<i16> for CompressionQueue<i16, 10> {
 //     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {

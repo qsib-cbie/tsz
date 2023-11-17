@@ -21,6 +21,10 @@ pub enum HalfWord {
     /// 0b00001111
     Half(u8),
 
+    /// The top and bottom bits of the word are used.
+    /// 0b11111111
+    Byte(u8),
+
     /// All bits of the word are used.
     /// 0xffffffff
     Full(u32),
@@ -30,6 +34,7 @@ impl HalfWord {
     fn len(&self) -> usize {
         match self {
             HalfWord::Half(_) => 1,
+            HalfWord::Byte(_) => 2,
             HalfWord::Full(_) => 8,
         }
     }
@@ -104,6 +109,10 @@ impl HalfVec {
                             upper = false;
                             // println!("nibble: {:b}", value);
                         }
+                        HalfWord::Byte(value) => {
+                            // Use both nibbles from the byte
+                            bytes.push(value);
+                        }
                         HalfWord::Full(value) => {
                             // Use both nibbles from the top of the full
                             bytes.push((value >> 24) as u8);
@@ -125,6 +134,14 @@ impl HalfVec {
                             // We are now on the upper nibble
                             upper = true;
                             // println!("nibble: {:b}", value);
+                        }
+                        HalfWord::Byte(value) => {
+                            // Fill the lower nibble with the upper nibble of the value
+                            byte |= value >> 4;
+                            bytes.push(byte);
+                            // Use the lower nibble from the value as the upper nibble
+                            byte = (value << 4) as u8;
+                            // We are still on the lower nibble
                         }
                         HalfWord::Full(value) => {
                             // println!("full lower: {:b}", value);
