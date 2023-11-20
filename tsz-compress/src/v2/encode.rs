@@ -130,6 +130,10 @@ unsafe fn push_thirty_two_bits<T: PrimInt + Bits>(
     buf.push(HalfWord::Full(word));
 }
 
+// Todo: How can we implement this?
+// #[inline(always)]
+// unsafe fn push_sixty_four_bits<T: PrimInt + Bits>();
+
 pub trait EmitDeltaBits<T> {
     /// Emits bits according to the most efficient case of Delta Compression.
     /// Returns the number of elements popped from the queue.

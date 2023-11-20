@@ -31,8 +31,3 @@ harness = false
 [[bench]]
 name = "real_world"
 harness = false
-
-
-[[bin]]
-name = "example"
-path = "bin/example.rs"

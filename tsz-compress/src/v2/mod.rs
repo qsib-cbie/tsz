@@ -48,20 +48,46 @@ pub trait TszCompressV2 {
     ///
     /// Finish compression and return the compressed data.
     ///
-    fn finish(self) -> alloc::vec::Vec<u8>;
+    fn finish(self) -> ::alloc::vec::Vec<u8>;
 }
 
 ///
 /// High-level interface for decompression.
 ///
 pub trait TszDecompressV2 {
+    type T: Copy;
+
     ///
     /// Initializes a new instance of the Decompressor.
     ///
     fn new() -> Self;
 
     ///
-    /// Decompress a row.
+    /// Decompress all of the rows into columnar buffers.
     ///
-    fn decompress(&mut self, bits: &[u8]);
+    /// This operation will not overwrite existing data in the buffers.
+    ///
+    /// # Arguments
+    /// * `bits` - The compressed data from a TszCmopressV2 instance.
+    ///
+    fn decompress(&mut self, bits: &[u8]) -> Result<(), CodingError>;
+
+    ///
+    /// Rotate the decompressed values into a vector of rows.
+    ///
+    /// If columnar data is desired, each implementation derived
+    /// via macro will include an accessor for each column vector by name.
+    ///
+    /// For example, if derived for a struct with fields `a: i8` and `b: i32`
+    /// then the following accessors will be generated:
+    ///
+    /// ```rust
+    /// fn col_a(&self) -> &[i8];
+    /// fn col_b(&self) -> &[i32];
+    /// ```
+    ///
+    /// # Returns
+    /// A vector of rows, where each row is a struct with the same fields as the original.
+    ///
+    fn rows(&self) -> ::alloc::vec::Vec<Self::T>;
 }

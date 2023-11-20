@@ -1,6 +1,8 @@
 #![allow(unused)]
 use tsz_compress::prelude::*;
 
+extern crate alloc;
+
 #[cfg(test)]
 mod tests {
 
@@ -27,7 +29,7 @@ mod tests {
         let bit_buffer = compressor.finish();
 
         // Initialize the decompressor
-        let mut decompressor = TestRowDecompressorImpl::new();
+        let mut decompressor = decompressor::TestRowDecompressorImpl::new();
 
         // Decompress the bit buffer
         decompressor.decompress(&bit_buffer);
@@ -57,7 +59,7 @@ mod tests {
         let bit_buffer = compressor.finish();
 
         // Initialize the decompressor
-        let mut decompressor = TestRowDecompressorImpl::new();
+        let mut decompressor = decompressor::TestRowDecompressorImpl::new();
 
         // Decompress the bit buffer
         decompressor.decompress(&bit_buffer);
@@ -87,7 +89,7 @@ mod tests {
         let bit_buffer = compressor.finish();
 
         // Initialize the decompressor
-        let mut decompressor = TestRowDecompressorImpl::new();
+        let mut decompressor = decompressor::TestRowDecompressorImpl::new();
 
         // Decompress the bit buffer
         decompressor.decompress(&bit_buffer);
@@ -117,7 +119,7 @@ mod tests {
         let bit_buffer = compressor.finish();
 
         // Initialize the decompressor
-        let mut decompressor = TestRowDecompressorImpl::new();
+        let mut decompressor = decompressor::TestRowDecompressorImpl::new();
 
         // Decompress the bit buffer
         decompressor.decompress(&bit_buffer);
@@ -148,7 +150,7 @@ mod tests {
         let bit_buffer = compressor.finish();
 
         // Initialize the decompressor
-        let mut decompressor = TestRowDecompressorImpl::new();
+        let mut decompressor = decompressor::TestRowDecompressorImpl::new();
 
         // Decompress the bit buffer
         decompressor.decompress(&bit_buffer);
@@ -182,7 +184,7 @@ mod tests {
         let bit_buffer = compressor.finish();
 
         // Initialize the decompressor
-        let mut decompressor = TestRowDecompressorImpl::new();
+        let mut decompressor = decompressor::TestRowDecompressorImpl::new();
 
         // Decompress the bit buffer
         decompressor.decompress(&bit_buffer);
@@ -246,7 +248,7 @@ mod tests {
         let bit_buffer = compressor.finish();
 
         // Initialize the decompressor
-        let mut decompressor = TestRowDecompressorImpl::new();
+        let mut decompressor = decompressor::TestRowDecompressorImpl::new();
 
         // Decompress the bit buffer
         decompressor.decompress(&bit_buffer);
@@ -297,7 +299,7 @@ mod tests {
         let bit_buffer = compressor.finish();
 
         // Initialize the decompressor
-        let mut decompressor = TestRowDecompressorImpl::new();
+        let mut decompressor = decompressor::TestRowDecompressorImpl::new();
 
         // Decompress the bit buffer
         decompressor.decompress(&bit_buffer);
@@ -314,6 +316,7 @@ mod tests {
             a: i8,
             b: i16,
             c: i32,
+            // #[tsz(delta_type = "i32", scheme = "delta")]
             d: i64,
         }
 
@@ -346,15 +349,15 @@ mod tests {
         let bit_buffer = compressor.finish();
 
         // Initialize the decompressor
-        let mut decompressor = TestRowDecompressorImpl::new();
+        let mut decompressor = decompressor::TestRowDecompressorImpl::new();
 
         // Decompress the bit buffer
         decompressor.decompress(&bit_buffer);
 
         // Assert that the decompressed data matches the original
-        assert_eq!(a_col_vec, decompressor.a_col_vec);
-        assert_eq!(b_col_vec, decompressor.b_col_vec);
-        assert_eq!(c_col_vec, decompressor.c_col_vec);
-        assert_eq!(c_col_vec, decompressor.c_col_vec);
+        assert_eq!(a_col_vec, decompressor.col_a());
+        assert_eq!(b_col_vec, decompressor.col_b());
+        assert_eq!(c_col_vec, decompressor.col_c());
+        assert_eq!(c_col_vec, decompressor.col_d());
     }
 }

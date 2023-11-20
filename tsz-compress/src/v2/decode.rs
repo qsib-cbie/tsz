@@ -95,6 +95,13 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                 break;
             }
             0b1111 => {
+                // TODO: Support skipping decoding for seeking to another column
+                // if skip {
+                //     for _ in 0..8 {
+                //         iter.next()
+                //     }
+                // }
+
                 // 2 bit pad, 10 samples of 3 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -111,7 +118,7 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                 for i in 0..10 {
                     let delta = (word >> (shift - bit_width * i)) & 0b111;
                     value = (value as i16 + delta as i16) as i8;
-                    output.push((value >> 1) as i8 ^ -(value as i8 & 1));
+                    output.push((value >> 1) ^ -(value & 1));
                 }
             }
             0b1110 => {
@@ -131,7 +138,7 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                 for i in 0..8 {
                     let delta = (word >> (shift - bit_width * i)) & 0b1111;
                     value = (value as i16 + delta as i16) as i8;
-                    output.push((value >> 1) as i8 ^ -(value as i8 & 1));
+                    output.push((value >> 1) ^ -(value & 1));
                 }
             }
             0b1100 => {
@@ -151,7 +158,7 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                 for i in 0..4 {
                     let delta = (word >> (shift - bit_width * i)) & 0b11111111;
                     value = (value as i16 + delta as i16) as i8;
-                    output.push((value >> 1) as i8 ^ -(value as i8 & 1));
+                    output.push((value >> 1) ^ -(value & 1));
                 }
             }
             // 0b1010 => {
@@ -224,7 +231,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 for i in 0..10 {
                     let delta = (word >> (shift - bit_width * i)) & 0b111;
                     value = (value as i32 + delta as i32) as i16;
-                    output.push((value >> 1) as i16 ^ -(value as i16 & 1));
+                    output.push((value >> 1) ^ -(value & 1));
                 }
             }
             0b1110 => {
@@ -244,7 +251,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 for i in 0..8 {
                     let delta = (word >> (shift - bit_width * i)) & 0b1111;
                     value = (value as i32 + delta as i32) as i16;
-                    output.push((value >> 1) as i16 ^ -(value as i16 & 1));
+                    output.push((value >> 1) ^ -(value & 1));
                 }
             }
             0b1100 => {
@@ -264,7 +271,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 for i in 0..4 {
                     let delta = (word >> (shift - bit_width * i)) & 0b11111111;
                     value = (value as i32 + delta as i32) as i16;
-                    output.push((value >> 1) as i16 ^ -(value as i16 & 1));
+                    output.push((value >> 1) ^ -(value & 1));
                 }
             }
             0b1010 => {
@@ -284,7 +291,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 for i in 0..3 {
                     let delta = (word >> (shift - bit_width * i)) & 0b1111111111;
                     value = (value as i32 + delta as i32) as i16;
-                    output.push((value >> 1) as i16 ^ -(value as i16 & 1));
+                    output.push((value >> 1) ^ -(value & 1));
                 }
             }
             0b1000 => {
@@ -306,7 +313,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 for i in 0..2 {
                     let delta = (word >> (shift - bit_width * i)) & 0xffff;
                     value = (value as i32 + delta as i32) as i16;
-                    output.push((value >> 1) as i16 ^ -(value as i16 & 1));
+                    output.push((value >> 1) ^ -(value & 1));
                 }
             }
             // 0b1011 => {
@@ -323,84 +330,16 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
     Ok(())
 }
 
-// // Get Values from Delta
+pub fn decode_i32<'it>(
+    _iter: &mut HalfIter<'it>,
+    _output: &mut Vec<i32>,
+) -> Result<(), CodingError> {
+    todo!();
+}
 
-// pub fn values_from_delta_i8(vector: &mut Vec<i8>) {
-//     if vector.len() <= 1 {
-//         return;
-//     }
-//     for i in 1..vector.len() {
-//         vector[i] = (vector[i - 1] as i16 + vector[i] as i16) as i8;
-//     }
-// }
-// pub fn values_from_delta_i16(vector: &mut Vec<i16>) {
-//     if vector.len() <= 1 {
-//         return;
-//     }
-//     for i in 1..vector.len() {
-//         vector[i] = (vector[i - 1] as i32 + vector[i] as i32) as i16;
-//     }
-// }
-// pub fn values_from_delta_i32(vector: &mut Vec<i32>) {
-//     if vector.len() <= 1 {
-//         return;
-//     }
-//     for i in 1..vector.len() {
-//         vector[i] = (vector[i - 1] as i64 + vector[i] as i64) as i32;
-//     }
-// }
-// pub fn values_from_delta_i64(vector: &mut Vec<i64>) {
-//     if vector.len() <= 1 {
-//         return;
-//     }
-//     for i in 1..vector.len() {
-//         vector[i] = (vector[i - 1] as i128 + vector[i] as i128) as i64;
-//     }
-// }
-
-// // Get Values from Delta Delta
-// pub fn values_from_delta_delta_i8(vector: &mut Vec<i8>) {
-//     if vector.len() <= 1 {
-//         return;
-//     }
-//     vector[1] = vector[0] - vector[1];
-//     for i in 2..vector.len() {
-//         vector[i] = (vector[i - 1] as i16
-//             + (vector[i - 1] as i16 - vector[i - 2] as i16)
-//             + vector[i] as i16) as i8;
-//     }
-// }
-
-// pub fn values_from_delta_delta_i16(vector: &mut Vec<i16>) {
-//     if vector.len() <= 1 {
-//         return;
-//     }
-//     vector[1] = vector[0] - vector[1];
-//     for i in 2..vector.len() {
-//         vector[i] = (vector[i - 1] as i32
-//             + (vector[i - 1] as i32 - vector[i - 2] as i32) as i32
-//             + vector[i] as i32) as i16
-//     }
-// }
-// pub fn values_from_delta_delta_i32(vector: &mut Vec<i32>) {
-//     if vector.len() <= 1 {
-//         return;
-//     }
-//     vector[1] = vector[0] - vector[1];
-//     for i in 2..vector.len() {
-//         vector[i] = (vector[i - 1] as i64
-//             + (vector[i - 1] as i64 - vector[i - 2] as i64)
-//             + vector[i] as i64) as i32
-//     }
-// }
-// pub fn values_from_delta_delta_i64(vector: &mut Vec<i64>) {
-//     if vector.len() <= 1 {
-//         return;
-//     }
-//     vector[1] = vector[0] - vector[1];
-//     for i in 2..vector.len() {
-//         vector[i] = (vector[i - 1] as i128
-//             + (vector[i - 1] as i128 - vector[i - 2] as i128)
-//             + vector[i] as i128) as i64
-//     }
-// }
+pub fn decode_i64<'it>(
+    _iter: &mut HalfIter<'it>,
+    _output: &mut Vec<i64>,
+) -> Result<(), CodingError> {
+    todo!();
+}
