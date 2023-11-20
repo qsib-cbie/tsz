@@ -1,5 +1,3 @@
-use crate::prelude::*;
-
 pub mod decode;
 pub mod encode;
 pub mod halfvec;
@@ -65,5 +63,5 @@ pub trait TszDecompressV2 {
     ///
     /// Decompress a row.
     ///
-    fn decompress(&mut self, bits: &BitBufferSlice);
+    fn decompress(&mut self, bits: &[u8]);
 }

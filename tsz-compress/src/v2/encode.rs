@@ -353,7 +353,7 @@ fn emit_popped_values32<const N: usize>(values: &[i32; N], out: &mut HalfVec) {
     }
 }
 
-fn emit_popped_values32_q(q: &mut CompressionQueue<i32, 10>, out: &mut HalfVec) {
+fn emit_popped_values32_q(q: &mut CompressionQueue<i32, 2>, out: &mut HalfVec) {
     while !q.is_empty() {
         let value = unsafe { q.pop().unwrap_unchecked() };
         match value {
@@ -383,13 +383,13 @@ fn emit_popped_values32_q(q: &mut CompressionQueue<i32, 10>, out: &mut HalfVec) 
     }
 }
 
-impl EmitDeltaDeltaBits<i32> for CompressionQueue<i32, 10> {
+impl EmitDeltaDeltaBits<i32> for CompressionQueue<i32, 2> {
     fn emit_delta_delta_bits(&mut self, out: &mut HalfVec) -> usize {
         match self.len() {
-            10 => {
-                let values = unsafe { self.pop_n::<10>().unwrap_unchecked() };
+            2 => {
+                let values = unsafe { self.pop_n::<2>().unwrap_unchecked() };
                 emit_popped_values32(&values, out);
-                return 10;
+                return 2;
             }
             _ => {
                 let len = self.len();
@@ -400,62 +400,106 @@ impl EmitDeltaDeltaBits<i32> for CompressionQueue<i32, 10> {
     }
 }
 
-// impl EmitDeltaDeltaBits<i16> for CompressionQueue<i16, 10> {
-//     fn emit_delta_delta_bits(&mut self, out: &mut BitBuffer, flush: bool) -> usize {
-//         let num_values = if flush { self.len() } else { 10 };
-//         for _ in 0..num_values {
-//             if let Some(value) = self.pop() {
-//                 out.push(false);
-//                 if value == 0 {
-//                     // Write out 00
-//                     out.push(false);
-//                     out.push(false);
+fn emit_popped_values16<const N: usize>(values: &[i16; N], out: &mut HalfVec) {
+    for value in values {
+        match value {
+            0 => out.push(HalfWord::Half(0b0000)),
+            -1 => out.push(HalfWord::Half(0b0001)),
+            -16..=15 => {
+                let zigzag = value.zigzag_bit_masked(0b11111) as u8;
+                out.push(HalfWord::Byte(0b00100000 | zigzag));
+            }
+            -256..=255 => {
+                let zigzag = value.zigzag_bit_masked(0b111111111) as u16;
+                out.push(HalfWord::Half(0b0100 | (zigzag >> 8) as u8));
+                out.push(HalfWord::Byte(zigzag as u8));
+            }
+            -32678..=32767 => {
+                let zigzag = value.zigzag_bit_masked(0b1111111111111111) as u16;
+                out.push(HalfWord::Half(0b0110));
+                out.push(HalfWord::Byte((zigzag >> 8) as u8));
+                out.push(HalfWord::Byte(zigzag as u8));
+            }
+            _ => {
+                let zigzag = value.zigzag_bits();
+                out.push(HalfWord::Half(0b0111));
+                out.push(HalfWord::Full(zigzag));
+            }
+        }
+    }
+}
 
-//                     let value = (value << 1i16) ^ (value >> 15i16);
-//                     out.push(value & (1 << 0) != 0);
-//                 } else if (-16..16).contains(&value) {
-//                     // Write out 01
-//                     out.push(false);
-//                     out.push(true);
-//                     let value = (value << 1i16) ^ (value >> 15i16);
-//                     value.extend_bits(0..5, out);
-//                 } else if (-256..=255).contains(&value) {
-//                     // Write out 10
-//                     out.push(true);
-//                     out.push(false);
+fn emit_popped_values16_q(q: &mut CompressionQueue<i16, 2>, out: &mut HalfVec) {
+    while !q.is_empty() {
+        let value = unsafe { q.pop().unwrap_unchecked() };
+        match value {
+            0 => out.push(HalfWord::Half(0b0000)),
+            -1 => out.push(HalfWord::Half(0b0001)),
+            -16..=15 => {
+                let zigzag = value.zigzag_bit_masked(0b11111) as u8;
+                out.push(HalfWord::Byte(0b00100000 | zigzag));
+            }
+            -256..=255 => {
+                let zigzag = value.zigzag_bit_masked(0b111111111) as u16;
+                out.push(HalfWord::Half(0b0100 | (zigzag >> 8) as u8));
+                out.push(HalfWord::Byte(zigzag as u8));
+            }
+            -32678..=32767 => {
+                let zigzag = value.zigzag_bit_masked(0b1111111111111111) as u16;
+                out.push(HalfWord::Half(0b0110));
+                out.push(HalfWord::Byte((zigzag >> 8) as u8));
+                out.push(HalfWord::Byte(zigzag as u8));
+            }
+            _ => {
+                let zigzag = value.zigzag_bits();
+                out.push(HalfWord::Half(0b0111));
+                out.push(HalfWord::Full(zigzag));
+            }
+        }
+    }
+}
 
-//                     let value = value as i16;
+impl EmitDeltaDeltaBits<i16> for CompressionQueue<i16, 2> {
+    fn emit_delta_delta_bits(&mut self, out: &mut HalfVec) -> usize {
+        match self.len() {
+            2 => {
+                let values = unsafe { self.pop_n::<2>().unwrap_unchecked() };
+                emit_popped_values16(&values, out);
+                return 2;
+            }
+            _ => {
+                let len = self.len();
+                emit_popped_values16_q(self, out);
+                return len;
+            }
+        }
+    }
+}
 
-//                     // ZigZag encoding
-//                     let value = (value << 1i16) ^ (value >> 15i16);
+pub fn write_i128_bits(buf: &mut HalfVec, i: i128) {
+    let i = i as u128;
+    buf.push(HalfWord::Full((i >> 96) as u32));
+    buf.push(HalfWord::Full((i >> 64) as u32));
+    buf.push(HalfWord::Full((i >> 32) as u32));
+    buf.push(HalfWord::Full(i as u32));
+}
 
-//                     value.extend_bits(0..9, out);
-//                 } else if (-16384..=16383).contains(&value) {
-//                     // Write out 110
-//                     out.push(true);
-//                     out.push(true);
-//                     out.push(false);
+pub fn write_i64_bits(buf: &mut HalfVec, i: i64) {
+    let i = i as u64;
+    buf.push(HalfWord::Full((i >> 32) as u32));
+    buf.push(HalfWord::Full(i as u32));
+}
 
-//                     // ZigZag encoding
-//                     let value = (value << 1i16) ^ (value >> 15i16);
+pub fn write_i32_bits(buf: &mut HalfVec, i: i32) {
+    buf.push(HalfWord::Full(i as u32));
+}
 
-//                     value.extend_bits(0..16, out);
-//                 } else {
-//                     // Write out 111
-//                     out.push(true);
-//                     out.push(true);
-//                     out.push(true);
+pub fn write_i16_bits(buf: &mut HalfVec, i: i16) {
+    let i = i as u16;
+    buf.push(HalfWord::Byte((i >> 8) as u8));
+    buf.push(HalfWord::Byte(i as u8));
+}
 
-//                     let value = value as i64;
-
-//                     // ZigZag Encoding
-//                     let value = (value << 1i64) ^ (value >> 63i16);
-
-//                     // Write out least significant 64 bits
-//                     value.extend_bits(0..64, out);
-//                 }
-//             }
-//         }
-//         num_values
-//     }
-// }
+pub fn write_i8_bits(buf: &mut HalfVec, i: i8) {
+    buf.push(HalfWord::Byte(i as u8));
+}

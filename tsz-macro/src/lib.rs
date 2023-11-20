@@ -597,6 +597,42 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
             _ => panic!("Unsupported type"),
         })
         .collect::<Vec<_>>();
+    let write_first = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { write_i8_bits },
+                    "i16" => quote! { write_i16_bits },
+                    "i32" => quote! { write_i32_bits },
+                    "i64" => quote! { write_i64_bits },
+                    "i128" => quote! { write_i128_bits },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+    let write_second = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { write_i16_bits },
+                    "i16" => quote! { write_i32_bits },
+                    "i32" => quote! { write_i32_bits },
+                    "i64" => quote! { write_i32_bits },
+                    "i128" => quote! { write_i128_bits },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
     let prev_col_idents = col_idents
         .iter()
         .map(|ident| format_ident!("prev_{}", ident))
@@ -608,7 +644,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
     let compressor_struct = quote! {
         struct #compressor_ident {
             #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#upgraded_col_tys, 10>,)*
-            #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#upgraded_col_tys, 10>,)*
+            #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#upgraded_col_tys, 2>,)*
             #( #col_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
             #( #col_delta_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
             #( #col_values_emitted_delta: usize,)*
@@ -626,7 +662,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
             fn new(prealloc_rows: usize) -> Self {
                 #compressor_ident {
                     #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#upgraded_col_tys, 10>::new(),)*
-                    #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#upgraded_col_tys, 10>::new(),)*
+                    #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#upgraded_col_tys, 2>::new(),)*
                     #( #col_delta_buf_idents: #col_delta_buf,)*
                     #( #col_delta_delta_buf_idents: #col_delta_delta_buf,)*
                     #( #col_values_emitted_delta: 0,)*
@@ -645,9 +681,13 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 self.rows += 1;
                 if self.rows == 1 {
                     #(
+                        if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                            #write_first(outbuf, row.#col_idents);
+                        }
+                        if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                            #write_first(outbuf, row.#col_idents);
+                        }
                         self.#prev_col_idents = row.#col_idents as #upgraded_col_tys;
-                        self.#col_delta_comp_queue_idents.push(self.#prev_col_idents);
-                        self.#col_delta_delta_comp_queue_idents.push(self.#prev_col_idents);
                     )*
                     return;
                 }
@@ -657,8 +697,12 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         let col = row.#col_idents as #upgraded_col_tys;
                         self.#prev_delta_idents = self.#prev_col_idents - col;
                         self.#prev_col_idents = col;
-                        self.#col_delta_comp_queue_idents.push(self.#prev_delta_idents);
-                        self.#col_delta_delta_comp_queue_idents.push(self.#prev_delta_idents);
+                        if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                            #write_second (outbuf, self.#prev_delta_idents);
+                        }
+                        if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                            #write_second (outbuf, self.#prev_delta_idents);
+                        }
                     )*;
                     return;
                 }
@@ -730,10 +774,10 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
                         finished_nibble_count += delta_buffer.len().min(delta_delta_buffer.len());
                     }
-                    else if let Some(delta_buffer) = &self.#col_delta_buf_idents{
+                    else if let Some(delta_buffer) = &self.#col_delta_buf_idents {
                             finished_nibble_count += delta_buffer.len()
                         }
-                    else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents{
+                    else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents {
                         finished_nibble_count += delta_delta_buffer.len()
                     }
                     // Increment total_col_values_emitted by the sum of values emitted for either delta or delta-delta compression per column. One of them will be 0 for each column.
@@ -772,7 +816,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 )*
 
                 // All of the bits are concatenated with a 1001 tag indicating the start of a new column
-                let mut output = ::tsz_compress::prelude::halfvec::HalfVec::new(1);
+                let mut output = ::tsz_compress::prelude::halfvec::HalfVec::new(0);
                 #(
                     self.#col_delta_buf_idents.map(|outbuf| {
                         output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
@@ -802,14 +846,15 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
     let input = parse_macro_input!(tokens as syn::DeriveInput);
 
     // We will define a struct by this name
-    let decompressor_ident = format_ident!("{}DecompressorImpl", input.ident);
+    let ident = input.ident.clone();
+    let decompressor_ident = format_ident!("{}DecompressorImpl", ident);
 
     let columns = get_fields_of_struct(input);
     let (col_idents, col_tys): (Vec<_>, Vec<_>) = multiunzip(columns);
 
     let col_vec_idents = col_idents
         .iter()
-        .map(|ident| format_ident!("{}_col_vec", ident))
+        .map(|ident| format_ident!("{}_col", ident))
         .collect_vec();
 
     let decode_idents = col_tys
@@ -830,94 +875,45 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    let values_from_delta_ident = col_tys
-        .iter()
-        .map(|ty| match ty {
-            syn::Type::Path(syn::TypePath { path, .. }) => {
-                let segment = path.segments.first().unwrap();
-                let ident = segment.ident.clone();
-                match ident.to_string().as_str() {
-                    "i8" => quote! { values_from_delta_i8 },
-                    "i16" => quote! { values_from_delta_i16 },
-                    "i32" => quote! { values_from_delta_i32 },
-                    "i64" => quote! { values_from_delta_i64 },
-                    _ => panic!("Unsupported type"),
-                }
-            }
-            _ => panic!("Unsupported type"),
-        })
-        .collect::<Vec<_>>();
-
-    let values_from_delta_delta_ident = col_tys
-        .iter()
-        .map(|ty| match ty {
-            syn::Type::Path(syn::TypePath { path, .. }) => {
-                let segment = path.segments.first().unwrap();
-                let ident = segment.ident.clone();
-                match ident.to_string().as_str() {
-                    "i8" => quote! { values_from_delta_delta_i8 },
-                    "i16" => quote! { values_from_delta_delta_i16 },
-                    "i32" => quote! { values_from_delta_delta_i32 },
-                    "i64" => quote! { values_from_delta_delta_i64 },
-                    _ => panic!("Unsupported type"),
-                }
-            }
-            _ => panic!("Unsupported type"),
-        })
-        .collect::<Vec<_>>();
-
-    let delta_ident = col_idents
-        .iter()
-        .map(|ident| format_ident!("{}_delta_ident", ident))
-        .collect_vec();
-
     let decompressor_struct = quote! {
-        struct #decompressor_ident {
-            #( #col_vec_idents: Vec<#col_tys>,)*
-            #( #delta_ident: bool,)*
-            bits_length: usize,
-            index: Option<usize>
-        }
+        struct #decompressor_ident { }
 
         impl TszDecompressV2 for #decompressor_ident {
-            /// Performs compression using either delta or delta-delta compression, selecting the method that yields the smallest compressed values.
-            fn new() -> Self {
-                #decompressor_ident {
-                    #( #col_vec_idents: Vec::new(),)*
-                    #( #delta_ident: true,)*
-                    bits_length: 0,
-                    index: Some(0),
+            fn decompress(bytes: &[u8]) -> Result<Vec<#ident>, CodingError> {
+                // Iterate over the bits
+                let mut iter = HalfIter::new(&bytes);
+
+                // Expect a 1001 tag indicating the start of a new column
+                if iter.next() != Some(0b1001) {
+                    return Err(CodingError::InvalidBits);
                 }
-            }
 
-            fn decompress(
-                &mut self,
-                bits: & tsz_compress::prelude::BitBufferSlice){
+                // Read the column bytes into a vector one after the other
+                #( #decode_idents(iter, &mut #col_vec_idents))*
 
-                self.index = Some(0);
-                self.bits_length = bits.len();
-
-
-                #(
-                    if let Some(index) = self.index{
-                        (self.index, self.#delta_ident) = #decode_idents(& bits, index, &mut self.#col_vec_idents).unwrap();
-                    }
-                )*
-
-                #(
-                    if self.#delta_ident {
-                        #values_from_delta_ident(&mut self.#col_vec_idents);
-                    }
-                    else{
-                        #values_from_delta_delta_ident(&mut self.#col_vec_idents);
-                    }
-                )*
-
-                if let Some(index) = self.index{
-                    if (index < self.bits_length) && !(bits[index] && !(bits[index] && bits[index + 1] && !bits[index + 2]  && bits[index + 3])) {
-                        panic!("Invalid bits.");
-                    }
+                // Pad nibbles to byte-alignment
+                match iter.next() {
+                    Some(0b1001) => (),
+                    Some(_) => return Err(CodingError::InvalidBits),
+                    None => (),
                 }
+
+                // Make sure all the columns are the same length
+                let elems = [ #( self.#col_vec_idents.len(), )* ];
+                if !elems.iter().all(|elem| *elem == elems[0]) {
+                    return Err(CodingError::InvalidBits);
+                }
+                let len = elems[0];
+
+                // Create the rows from columns
+                let mut rows = Vec::with_capacity(len);
+                for i in 0..len {
+                    rows.push(#ident {
+                        #( #col_idents: unsafe { *self.#col_vec_idents.get_unchecked(i) }, )*
+                    });
+                }
+
+                Ok(rows)
             }
         }
     };

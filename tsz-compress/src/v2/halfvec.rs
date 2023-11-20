@@ -91,81 +91,92 @@ impl HalfVec {
     /// Flattens the queue into a single vector of bytes.
     ///
     pub fn finish(self) -> Vec<u8> {
-        // 2 nibbles per byte and len is in nibbles
-        let expected_capacity = self.len / 2;
-        let mut bytes = Vec::with_capacity(expected_capacity + 1);
+        // We will be writing directly into the buffer since we know the capacity
+        unsafe {
+            // 2 nibbles per byte and len is in nibbles
+            let expected_capacity = self.len / 2;
+            let mut bytes = Vec::with_capacity(expected_capacity + 1);
 
-        // Keep track of whether we are on the upper or lower nibble across word lists
-        let mut upper = true;
-        for words in self.words {
-            let mut byte = 0u8;
-            for word in words {
-                if upper {
-                    match word {
-                        HalfWord::Half(value) => {
-                            // Shift the value into the upper nibble
-                            byte = value << 4;
-                            // We are now on the lower nibble
-                            upper = false;
-                            // println!("nibble: {:b}", value);
+            // Keep track of whether we are on the upper or lower nibble across word lists
+            let mut upper = true;
+            for words in self.words {
+                let mut byte = 0u8;
+                for word in words {
+                    if upper {
+                        match word {
+                            HalfWord::Half(value) => {
+                                // Shift the value into the upper nibble
+                                byte = value << 4;
+                                // We are now on the lower nibble
+                                upper = false;
+                                // println!("nibble: {:b}", value);
+                            }
+                            HalfWord::Byte(value) => {
+                                // Use both nibbles from the byte
+                                known_append(&mut bytes, value);
+                            }
+                            HalfWord::Full(value) => {
+                                // Use both nibbles from the top of the full
+                                known_append(&mut bytes, (value >> 24) as u8);
+                                // Use both nibbles from the top middle of the full
+                                known_append(&mut bytes, (value >> 16) as u8);
+                                // Use both nibbles from the bottom middle of the full
+                                known_append(&mut bytes, (value >> 8) as u8);
+                                // Use both nibbles from the bottom of the full
+                                known_append(&mut bytes, value as u8);
+                                // println!("full upper: {:b}", value);
+                            }
                         }
-                        HalfWord::Byte(value) => {
-                            // Use both nibbles from the byte
-                            bytes.push(value);
-                        }
-                        HalfWord::Full(value) => {
-                            // Use both nibbles from the top of the full
-                            bytes.push((value >> 24) as u8);
-                            // Use both nibbles from the top middle of the full
-                            bytes.push((value >> 16) as u8);
-                            // Use both nibbles from the bottom middle of the full
-                            bytes.push((value >> 8) as u8);
-                            // Use both nibbles from the bottom of the full
-                            bytes.push(value as u8);
-                            // println!("full upper: {:b}", value);
-                        }
-                    }
-                } else {
-                    match word {
-                        HalfWord::Half(value) => {
-                            // Fill the lower nibble, the upper nibble is already filled
-                            byte |= value;
-                            bytes.push(byte);
-                            // We are now on the upper nibble
-                            upper = true;
-                            // println!("nibble: {:b}", value);
-                        }
-                        HalfWord::Byte(value) => {
-                            // Fill the lower nibble with the upper nibble of the value
-                            byte |= value >> 4;
-                            bytes.push(byte);
-                            // Use the lower nibble from the value as the upper nibble
-                            byte = (value << 4) as u8;
-                            // We are still on the lower nibble
-                        }
-                        HalfWord::Full(value) => {
-                            // println!("full lower: {:b}", value);
-                            // Fill the lower nibble with the upper nibble of the value
-                            byte |= (value >> 28) as u8;
-                            bytes.push(byte);
-                            // Fill the upper nibble with the top middle nibble of the value
-                            byte = (value >> 20) as u8;
-                            // Use both nibbles from the top middle of the full
-                            bytes.push(byte);
-                            // Fill the upper nibble with the bottom middle nibble of the value
-                            byte = (value >> 12) as u8;
-                            // Use both nibbles from the bottom middle of the full
-                            bytes.push(byte);
-                            // Use the lower nibble from the full as the upper nibble
-                            byte = (value << 4) as u8;
-                            // We are still on the lower nibble
+                    } else {
+                        match word {
+                            HalfWord::Half(value) => {
+                                // Fill the lower nibble, the upper nibble is already filled
+                                byte |= value;
+                                known_append(&mut bytes, byte);
+                                // We are now on the upper nibble
+                                upper = true;
+                                // println!("nibble: {:b}", value);
+                            }
+                            HalfWord::Byte(value) => {
+                                // Fill the lower nibble with the upper nibble of the value
+                                byte |= value >> 4;
+                                known_append(&mut bytes, byte);
+                                // Use the lower nibble from the value as the upper nibble
+                                byte = (value << 4) as u8;
+                                // We are still on the lower nibble
+                            }
+                            HalfWord::Full(value) => {
+                                // println!("full lower: {:b}", value);
+                                // Fill the lower nibble with the upper nibble of the value
+                                byte |= (value >> 28) as u8;
+                                known_append(&mut bytes, byte);
+                                // Fill the upper nibble with the top middle nibble of the value
+                                byte = (value >> 20) as u8;
+                                // Use both nibbles from the top middle of the full
+                                known_append(&mut bytes, byte);
+                                // Fill the upper nibble with the bottom middle nibble of the value
+                                byte = (value >> 12) as u8;
+                                // Use both nibbles from the bottom middle of the full
+                                known_append(&mut bytes, byte);
+                                // Use the lower nibble from the full as the upper nibble
+                                byte = (value << 4) as u8;
+                                // We are still on the lower nibble
+                            }
                         }
                     }
                 }
             }
+            bytes
         }
-        bytes
     }
+}
+
+/// Appends a value to a vector without checking the capacity.
+#[inline(always)]
+unsafe fn known_append(buf: &mut Vec<u8>, value: u8) {
+    // SAFETY: We allocate at least one vector in the constructor and never remove it.
+    buf.as_mut_ptr().add(buf.len()).write(value);
+    buf.set_len(buf.len() + 1);
 }
 
 #[cfg(test)]
@@ -205,7 +216,6 @@ mod tests {
         // Now every nibble is pushed together
         let flat = queue.finish();
         assert_eq!(flat.len(), (128 + 4 * 128 + 1 + 1) / 2);
-        let mut q2 = HalfVec::new(128);
     }
 
     // #[test]
