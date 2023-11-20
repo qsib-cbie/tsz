@@ -704,7 +704,6 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         // Enqueues delta and delta-delta values
                         self.rows += 1;
                         if self.rows == 1 {
-                            println!("FULL ROW: {:?}", row);
                             /// Write out the full value in the exact bit-width of the column.
                             #(
                                 if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
@@ -719,7 +718,6 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         }
 
                         if self.rows == 2 {
-                            println!("DELTA ROW: {:?}", row);
                             /// Write out the full value in the next exact bit-width of the column, regardless of chosen delta bit-width.
                             /// SAFETY: If the bit-width is configurable, then bits at rest will be uninterpretable.
                             #(
@@ -739,8 +737,6 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             )*;
                             return;
                         }
-
-                        println!("STEADY STATE ROW: {:?}", row);
 
                         #(
                             // The new delta  and delta-delta
@@ -838,8 +834,6 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             }
                         )*
 
-                        println!("FINISH: {:?}", self);
-
                         // Flush any pending samples in the queues
                         #(
                             self.#col_delta_buf_idents.as_mut().map(|outbuf| {
@@ -871,8 +865,6 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         if output.len() % 2 == 1 {
                             output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
                         }
-
-                        println!("OUTPUT: {:?}", output);
 
                         output.finish()
                     }
@@ -956,11 +948,9 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                         // Iterate over the bits
                         let mut iter = HalfIter::new(&bytes);
 
-                        println!("INPUT: {:?}", bytes);
 
                         // Expect a 1001 tag indicating the start of a new column
                         if iter.next() != Some(0b1001) {
-                            println!("INPUT ERROR: {:?}", bytes);
                             return Err(CodingError::InvalidBits);
                         }
 

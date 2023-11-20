@@ -75,7 +75,6 @@ mod tests {
 
         // Finalize the compression
         let bytes = compressor.finish();
-        println!("bytes: {:?}", bytes);
 
         // Initialize the decompressor
         let mut decompressor = TestRowDecompressorImpl::new();

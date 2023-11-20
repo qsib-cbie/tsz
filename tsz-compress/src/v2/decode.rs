@@ -31,13 +31,6 @@ impl<'it> Iterator for HalfIter<'it> {
     /// Upper then lower nibble, repeat.
     ///
     fn next(&mut self) -> Option<Self::Item> {
-        println!(
-            "idx: {} / {}, upper: {}",
-            self.idx,
-            self.buf.len(),
-            self.upper
-        );
-
         if self.idx >= self.buf.len() {
             return None;
         }
@@ -91,7 +84,6 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
         | iter.next().ok_or(CodingError::NotEnoughBits)?];
     let value = read_full_i8(&buf);
     output.push(value);
-    println!("FULL: {}", value);
 
     // Delta encoded 16 bit value
     let buf = [
@@ -101,13 +93,11 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
     ];
     let delta = read_full_i16(&buf);
-    println!("SECOND: {}", delta);
     let mut value = (value as i16 + delta) as i8;
     output.push(value);
 
     // Every thing is delta or delta-delta encoded from here on out
     while let Some(tag) = iter.next() {
-        println!("tag: {:b}", tag);
         match tag {
             0b1001 => {
                 // Start of column of next column
@@ -120,11 +110,9 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                     word |= half as u32;
                     word <<= 4;
-                    println!("WORD: {:b}", word);
                 }
                 let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                 word |= half as u32;
-                println!("WORD: {:b}", word);
 
                 let padding = 2;
                 let bit_width = 3;
@@ -134,7 +122,6 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i16 + delta as i16) as i8;
                     output.push(value);
-                    println!("VALUE: {}", value);
                 }
             }
             0b1110 => {
@@ -144,11 +131,9 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                     word |= half as u32;
                     word <<= 4;
-                    println!("WORD: {:b}", word);
                 }
                 let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                 word |= half as u32;
-                println!("WORD: {:b}", word);
 
                 let padding = 0;
                 let bit_width = 4;
@@ -158,7 +143,6 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i16 + delta as i16) as i8;
                     output.push(value);
-                    println!("VALUE: {}", value);
                 }
             }
             0b1100 => {
@@ -168,11 +152,9 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                     word |= half as u32;
                     word <<= 4;
-                    println!("WORD: {:b}", word);
                 }
                 let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                 word |= half as u32;
-                println!("WORD: {:b}", word);
 
                 let padding = 0;
                 let bit_width = 8;
@@ -182,7 +164,6 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i16 + delta as i16) as i8;
                     output.push(value);
-                    println!("VALUE: {}", value);
                 }
             }
             0b1010 => {
@@ -192,11 +173,9 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                     word |= half as u32;
                     word <<= 4;
-                    println!("WORD: {:b}", word);
                 }
                 let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                 word |= half as u32;
-                println!("WORD: {:b}", word);
 
                 let padding = 2;
                 let bit_width = 10;
@@ -206,7 +185,6 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i16 + delta as i16) as i8;
                     output.push(value);
-                    println!("VALUE: {}", value);
                 }
             }
             0b1000 => {
@@ -216,11 +194,9 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                     word |= half as u32;
                     word <<= 4;
-                    println!("WORD: {:b}", word);
                 }
                 let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                 word |= half as u32;
-                println!("WORD: {:b}", word);
 
                 let padding = 0;
                 let bit_width = 16;
@@ -230,7 +206,6 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i16 + delta as i16) as i8;
                     output.push(value);
-                    println!("VALUE: {}", value);
                 }
             }
             0b1011 => {
@@ -240,11 +215,9 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                     word |= half as u32;
                     word <<= 4;
-                    println!("WORD: {:b}", word);
                 }
                 let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
                 word |= half as u32;
-                println!("WORD: {:b}", word);
 
                 let padding = 0;
                 let bit_width = 32;
@@ -254,12 +227,10 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i16 + delta as i16) as i8;
                     output.push(value);
-                    println!("VALUE: {}", value);
                 }
             }
             _ => {
                 // Delta-Delta encoding, or not implemented
-                // println!("unhandled tag: {:b}", tag);
                 todo!()
             }
         }
@@ -295,7 +266,6 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
     output.push(value);
 
     while let Some(tag) = iter.next() {
-        // println!("tag: {:b}", tag);
         match tag {
             0b1001 => {
                 // Start of column of next column
@@ -429,7 +399,6 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
             }
             _ => {
                 // Delta-Delta encoding, or not implemented
-                // println!("unhandled tag: {:b}", tag);
                 todo!()
             }
         }
@@ -477,7 +446,6 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
     output.push(value);
 
     while let Some(tag) = iter.next() {
-        // println!("tag: {:b}", tag);
         match tag {
             0b1001 => {
                 // Start of column of next column
@@ -611,7 +579,6 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
             }
             _ => {
                 // Delta-Delta encoding, or not implemented
-                // println!("unhandled tag: {:b}", tag);
                 todo!()
             }
         }

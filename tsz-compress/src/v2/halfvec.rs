@@ -99,13 +99,13 @@ impl HalfVec {
             let expected_capacity = self.len / 2;
             let mut bytes = Vec::with_capacity(expected_capacity + 1);
 
-            println!("expected capacity: {}", expected_capacity);
+            // println!("expected capacity: {}", expected_capacity);
 
             // Keep track of whether we are on the upper or lower nibble across word lists
             let mut upper = true;
             let mut byte = 0u8;
             for words in self.words {
-                println!("words: {:?}", words);
+                // println!("words: {:?}", words);
                 for word in words {
                     if upper {
                         match word {
@@ -114,12 +114,12 @@ impl HalfVec {
                                 byte = value << 4;
                                 // We are now on the lower nibble
                                 upper = false;
-                                println!("upper nibble: {:b}", value);
+                                // println!("upper nibble: {:b}", value);
                             }
                             HalfWord::Byte(value) => {
                                 // Use both nibbles from the byte
                                 known_append(&mut bytes, value);
-                                println!("upper byte: {:b}", value);
+                                // println!("upper byte: {:b}", value);
                             }
                             HalfWord::Full(value) => {
                                 // Use both nibbles from the top of the full
@@ -130,7 +130,7 @@ impl HalfVec {
                                 known_append(&mut bytes, (value >> 8) as u8);
                                 // Use both nibbles from the bottom of the full
                                 known_append(&mut bytes, value as u8);
-                                println!("upper full: {:b}", value);
+                                // println!("upper full: {:b}", value);
                             }
                         }
                     } else {
@@ -141,7 +141,7 @@ impl HalfVec {
                                 known_append(&mut bytes, byte);
                                 // We are now on the upper nibble
                                 upper = true;
-                                println!("lower nibble: {:b}", value);
+                                // println!("lower nibble: {:b}", value);
                             }
                             HalfWord::Byte(value) => {
                                 // Fill the lower nibble with the upper nibble of the value
@@ -150,10 +150,10 @@ impl HalfVec {
                                 // Use the lower nibble from the value as the upper nibble
                                 byte = (value << 4) as u8;
                                 // We are still on the lower nibble
-                                println!("lower byte: {:b}", value);
+                                // println!("lower byte: {:b}", value);
                             }
                             HalfWord::Full(value) => {
-                                println!("lower full: {:b}", value);
+                                // println!("lower full: {:b}", value);
                                 // Fill the lower nibble with the upper nibble of the value
                                 byte |= (value >> 28) as u8;
                                 known_append(&mut bytes, byte);

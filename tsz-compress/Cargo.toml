@@ -11,8 +11,8 @@ keywords = ["time-series", "delta", "compression", "Gorilla", "serde"]
 readme = "README.md"
 version = { workspace = true }
 
-[feature]
-default = ["std"]
+[features]
+default = []
 std = []
 
 [lib]

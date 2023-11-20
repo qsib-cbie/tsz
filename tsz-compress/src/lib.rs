@@ -163,7 +163,7 @@
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
-// #[cfg(any(feature = "std", test))]
+#[cfg(any(feature = "std", test))]
 #[macro_use]
 extern crate std;
 
