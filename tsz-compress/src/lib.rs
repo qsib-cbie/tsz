@@ -158,12 +158,12 @@
 //!
 //!
 
-#![cfg_attr(not(test), no_std, no_main)]
+#![cfg_attr(all(not(feature = "std"), not(test)), no_std, no_main)]
 #![cfg_attr(test, allow(unused_imports))]
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
-#[cfg(test)]
+// #[cfg(any(feature = "std", test))]
 #[macro_use]
 extern crate std;
 

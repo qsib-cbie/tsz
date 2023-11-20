@@ -7,6 +7,7 @@ use num_traits::PrimInt;
 /// A statically sized ring-buffer queue used
 /// while compressing a column.
 ///
+#[derive(Debug)]
 pub struct CompressionQueue<T, const N: usize> {
     buf: [MaybeUninit<T>; N],
     front: usize,

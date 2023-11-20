@@ -661,207 +661,225 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         .map(|ident| format_ident!("prev_delta_{}", ident))
         .collect_vec();
     let compressor_struct = quote! {
-        struct #compressor_ident {
-            #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#delta_col_tys, 10>,)*
-            #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#delta_col_tys, 2>,)*
-            #( #col_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
-            #( #col_delta_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
-            #( #col_values_emitted_delta: usize,)*
-            #( #col_values_emitted_delta_delta: usize,)*
-            #( #prev_col_idents: #delta_col_tys,)*
-            #( #prev_delta_idents: #delta_col_tys,)*
-            rows: usize,
-        }
+        mod compress {
+            use super::*;
+            mod private {
+                use super::*;
+                /// A Compressor type implementing TszCompressV2.
+                #[derive(Debug)]
+                pub struct #compressor_ident {
+                    #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#delta_col_tys, 10>,)*
+                    #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#delta_col_tys, 2>,)*
+                    #( #col_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
+                    #( #col_delta_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
+                    #( #col_values_emitted_delta: usize,)*
+                    #( #col_values_emitted_delta_delta: usize,)*
+                    #( #prev_col_idents: #delta_col_tys,)*
+                    #( #prev_delta_idents: #delta_col_tys,)*
+                    rows: usize,
+                }
 
-        impl TszCompressV2 for #compressor_ident {
-            type T = #ident;
+                impl TszCompressV2 for #compressor_ident {
+                    type T = #ident;
 
-            /// Sets up two compression queues: one for delta compression and one for delta-delta compression,
-            /// along with their respective output buffers. Initializes counters for the number of column values
-            /// emitted during the delta and delta-delta compression processes.
-            fn new(prealloc_rows: usize) -> Self {
-                #compressor_ident {
-                    #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#delta_col_tys, 10>::new(),)*
-                    #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#delta_col_tys, 2>::new(),)*
-                    #( #col_delta_buf_idents: #col_delta_buf,)*
-                    #( #col_delta_delta_buf_idents: #col_delta_delta_buf,)*
-                    #( #col_values_emitted_delta: 0,)*
-                    #( #col_values_emitted_delta_delta: 0,)*
-                    #( #prev_col_idents: 0,)*
-                    #( #prev_delta_idents: 0,)*
-                    rows: 0,
+                    /// Sets up two compression queues: one for delta compression and one for delta-delta compression,
+                    /// along with their respective output buffers. Initializes counters for the number of column values
+                    /// emitted during the delta and delta-delta compression processes.
+                    fn new(prealloc_rows: usize) -> Self {
+                        #compressor_ident {
+                            #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#delta_col_tys, 10>::new(),)*
+                            #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#delta_col_tys, 2>::new(),)*
+                            #( #col_delta_buf_idents: #col_delta_buf,)*
+                            #( #col_delta_delta_buf_idents: #col_delta_delta_buf,)*
+                            #( #col_values_emitted_delta: 0,)*
+                            #( #col_values_emitted_delta_delta: 0,)*
+                            #( #prev_col_idents: 0,)*
+                            #( #prev_delta_idents: 0,)*
+                            rows: 0,
+                        }
+                    }
+
+                    /// Performs compression using delta/delta-delta compression.
+                    fn compress(&mut self, row: Self::T) {
+                        // Enqueues delta and delta-delta values
+                        self.rows += 1;
+                        if self.rows == 1 {
+                            println!("FULL ROW: {:?}", row);
+                            /// Write out the full value in the exact bit-width of the column.
+                            #(
+                                if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                    #write_first(outbuf, row.#col_idents);
+                                }
+                                if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                    #write_first(outbuf, row.#col_idents);
+                                }
+                                self.#prev_col_idents = row.#col_idents as #delta_col_tys;
+                            )*
+                            return;
+                        }
+
+                        if self.rows == 2 {
+                            println!("DELTA ROW: {:?}", row);
+                            /// Write out the full value in the next exact bit-width of the column, regardless of chosen delta bit-width.
+                            /// SAFETY: If the bit-width is configurable, then bits at rest will be uninterpretable.
+                            #(
+                                // Up cast to double bit-width always for the first delta
+                                let col = row.#col_idents as #double_col_tys;
+                                let double_delta = self.#prev_col_idents as #double_col_tys - col;
+                                if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                    #write_second(outbuf, double_delta);
+                                }
+                                if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                    #write_second(outbuf, double_delta);
+                                }
+
+                                // Use choice of bit-width for delta/delta-delta compression
+                                self.#prev_delta_idents = double_delta as #delta_col_tys;
+                                self.#prev_col_idents = col as #delta_col_tys;
+                            )*;
+                            return;
+                        }
+
+                        println!("STEADY STATE ROW: {:?}", row);
+
+                        #(
+                            // The new delta  and delta-delta
+                            let col = row.#col_idents as #delta_col_tys;
+                            let delta = col - self.#prev_col_idents;
+
+                            // Maybe do delta compression
+                            if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                self.#col_delta_comp_queue_idents.push(delta);
+                                if self.#col_delta_comp_queue_idents.is_full() {
+                                    self.#col_values_emitted_delta += self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                                }
+                            }
+
+                            // Maybe do delta-delta compression
+                            if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                let delta_delta = delta - self.#prev_delta_idents;
+                                self.#col_delta_delta_comp_queue_idents.push(delta_delta);
+                                if self.#col_delta_delta_comp_queue_idents.is_full() {
+                                    self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
+                                }
+                            }
+
+                            // Update the previous values
+                            self.#prev_col_idents = col;
+                            self.#prev_delta_idents = delta;
+
+                            // // Chooses the compression algorithm associated with the output buffer that is N times smaller than the other output buffer.
+                            // let COMPRESSION_SIZE_FACTOR: usize = 3;
+                            // if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                            //     if delta_buffer.len() > delta_delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
+                            //         self.#col_delta_buf_idents = None;
+                            //         self.#col_values_emitted_delta = 0;
+                            //     }
+                            //     else if delta_delta_buffer.len() > delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
+                            //         self.#col_delta_delta_buf_idents = None;
+                            //         self.#col_values_emitted_delta_delta = 0;
+                            //     }
+                            // }
+                        )*
+                    }
+
+                    fn len(&self) -> usize {
+                        let mut finished_nibble_count = 0;
+                        #(
+                            if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                                finished_nibble_count += delta_buffer.len().min(delta_delta_buffer.len());
+                            }
+                            else if let Some(delta_buffer) = &self.#col_delta_buf_idents {
+                                finished_nibble_count += delta_buffer.len()
+                            }
+                            else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents {
+                                finished_nibble_count += delta_delta_buffer.len()
+                            }
+                        )*
+                        let col_count_delta = (#( self.#col_delta_comp_queue_idents.len() )+*);
+                        let col_count_delta_delta = (#( self.#col_delta_delta_comp_queue_idents.len() )+*);
+                        let col_bit_rate = #num_columns * self.bit_rate();
+                        let pending_bit_count = col_count_delta.min(col_count_delta_delta) * col_bit_rate;
+                        4 * finished_nibble_count + pending_bit_count
+                    }
+
+                    fn bit_rate(&self) -> usize {
+                        let mut finished_nibble_count = 0;
+                        let mut total_col_values_emitted = 0;
+                        #(
+                            if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                                finished_nibble_count += delta_buffer.len().min(delta_delta_buffer.len());
+                            }
+                            else if let Some(delta_buffer) = &self.#col_delta_buf_idents {
+                                    finished_nibble_count += delta_buffer.len()
+                                }
+                            else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents {
+                                finished_nibble_count += delta_delta_buffer.len()
+                            }
+                            // Increment total_col_values_emitted by the sum of values emitted for either delta or delta-delta compression per column. One of them will be 0 for each column.
+                            total_col_values_emitted += (self.#col_values_emitted_delta + self.#col_values_emitted_delta_delta);
+                        )*
+                        if total_col_values_emitted == 0 {
+                            return 0;
+                        }
+                        4 * finished_nibble_count / total_col_values_emitted / #num_columns
+                    }
+
+                    fn finish(mut self) -> Vec<u8> {
+                        // Only use one encoding mechanism
+                        #(
+                            if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                                // Prefer delta on ties
+                                if delta_delta_buffer.len() >= delta_buffer.len() {
+                                    self.#col_delta_delta_buf_idents = None;
+                                } else {
+                                    self.#col_delta_buf_idents = None;
+                                }
+                            }
+                        )*
+
+                        println!("FINISH: {:?}", self);
+
+                        // Flush any pending samples in the queues
+                        #(
+                            self.#col_delta_buf_idents.as_mut().map(|outbuf| {
+                                while(self.#col_delta_comp_queue_idents.len() > 0) {
+                                    self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, true);
+                                }
+                            });
+                            self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                                while(self.#col_delta_delta_comp_queue_idents.len() > 0) {
+                                    self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
+                                }
+                            });
+                        )*
+
+                        // All of the bits are concatenated with a 1001 tag indicating the start of a new column
+                        let mut output = ::tsz_compress::prelude::halfvec::HalfVec::new(0);
+                        #(
+                            self.#col_delta_buf_idents.map(|outbuf| {
+                                output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
+                                output.extend(outbuf);
+                            });
+                            self.#col_delta_delta_buf_idents.map(|outbuf| {
+                                output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
+                                output.extend(outbuf);
+                            });
+                        )*
+
+                        // Pad nibbles to byte-alignment
+                        if output.len() % 2 == 1 {
+                            output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
+                        }
+
+                        println!("OUTPUT: {:?}", output);
+
+                        output.finish()
+                    }
                 }
             }
 
-            /// Performs compression using delta/delta-delta compression.
-            fn compress(&mut self, row: Self::T) {
-                // Enqueues delta and delta-delta values
-                self.rows += 1;
-                if self.rows == 1 {
-                    /// Write out the full value in the exact bit-width of the column.
-                    #(
-                        if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
-                            #write_first(outbuf, row.#col_idents);
-                        }
-                        if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
-                            #write_first(outbuf, row.#col_idents);
-                        }
-                        self.#prev_col_idents = row.#col_idents as #delta_col_tys;
-                    )*
-                    return;
-                }
-
-                if self.rows == 2 {
-                    /// Write out the full value in the next exact bit-width of the column, regardless of chosen delta bit-width.
-                    /// SAFETY: If the bit-width is configurable, then bits at rest will be uninterpretable.
-                    #(
-                        // Up cast to double bit-width always for the first delta
-                        let col = row.#col_idents as #double_col_tys;
-                        let double_delta = self.#prev_col_idents as #double_col_tys - col;
-                        if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
-                            #write_second(outbuf, double_delta);
-                        }
-                        if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
-                            #write_second(outbuf, double_delta);
-                        }
-
-                        // Use choice of bit-width for delta/delta-delta compression
-                        self.#prev_delta_idents = double_delta as #delta_col_tys;
-                        self.#prev_col_idents = col as #delta_col_tys;
-                    )*;
-                    return;
-                }
-
-                #(
-                    // The new delta  and delta-delta
-                    let col = row.#col_idents as #delta_col_tys;
-                    let delta = col - self.#prev_col_idents;
-
-                    // Maybe do delta compression
-                    if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
-                        self.#col_delta_comp_queue_idents.push(delta);
-                        if self.#col_delta_comp_queue_idents.is_full() {
-                            self.#col_values_emitted_delta += self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
-                        }
-                    }
-
-                    // Maybe do delta-delta compression
-                    if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
-                        let delta_delta = delta - self.#prev_delta_idents;
-                        self.#col_delta_delta_comp_queue_idents.push(delta_delta);
-                        if self.#col_delta_delta_comp_queue_idents.is_full() {
-                            self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
-                        }
-                    }
-
-                    // Update the previous values
-                    self.#prev_col_idents = col;
-                    self.#prev_delta_idents = delta;
-
-                    // // Chooses the compression algorithm associated with the output buffer that is N times smaller than the other output buffer.
-                    // let COMPRESSION_SIZE_FACTOR: usize = 3;
-                    // if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
-                    //     if delta_buffer.len() > delta_delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
-                    //         self.#col_delta_buf_idents = None;
-                    //         self.#col_values_emitted_delta = 0;
-                    //     }
-                    //     else if delta_delta_buffer.len() > delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
-                    //         self.#col_delta_delta_buf_idents = None;
-                    //         self.#col_values_emitted_delta_delta = 0;
-                    //     }
-                    // }
-                )*
-            }
-
-            fn len(&self) -> usize {
-                let mut finished_nibble_count = 0;
-                #(
-                    if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
-                        finished_nibble_count += delta_buffer.len().min(delta_delta_buffer.len());
-                    }
-                    else if let Some(delta_buffer) = &self.#col_delta_buf_idents {
-                        finished_nibble_count += delta_buffer.len()
-                    }
-                    else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents {
-                        finished_nibble_count += delta_delta_buffer.len()
-                    }
-                )*
-                let col_count_delta = (#( self.#col_delta_comp_queue_idents.len() )+*);
-                let col_count_delta_delta = (#( self.#col_delta_delta_comp_queue_idents.len() )+*);
-                let col_bit_rate = #num_columns * self.bit_rate();
-                let pending_bit_count = col_count_delta.min(col_count_delta_delta) * col_bit_rate;
-                4 * finished_nibble_count + pending_bit_count
-            }
-
-            fn bit_rate(&self) -> usize {
-                let mut finished_nibble_count = 0;
-                let mut total_col_values_emitted = 0;
-                #(
-                    if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
-                        finished_nibble_count += delta_buffer.len().min(delta_delta_buffer.len());
-                    }
-                    else if let Some(delta_buffer) = &self.#col_delta_buf_idents {
-                            finished_nibble_count += delta_buffer.len()
-                        }
-                    else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents {
-                        finished_nibble_count += delta_delta_buffer.len()
-                    }
-                    // Increment total_col_values_emitted by the sum of values emitted for either delta or delta-delta compression per column. One of them will be 0 for each column.
-                    total_col_values_emitted += (self.#col_values_emitted_delta + self.#col_values_emitted_delta_delta);
-                )*
-                if total_col_values_emitted == 0 {
-                    return 0;
-                }
-                4 * finished_nibble_count / total_col_values_emitted / #num_columns
-            }
-
-            fn finish(mut self) -> Vec<u8> {
-                // Only use one encoding mechanism
-                #(
-                    if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
-                        // Prefer delta on ties
-                        if delta_delta_buffer.len() >= delta_buffer.len() {
-                            self.#col_delta_delta_buf_idents = None;
-                        } else {
-                            self.#col_delta_buf_idents = None;
-                        }
-                    }
-                )*
-
-                // Flush any pending samples in the queues
-                #(
-                    self.#col_delta_buf_idents.as_mut().map(|outbuf| {
-                        while(self.#col_delta_comp_queue_idents.len() > 0) {
-                            self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, true);
-                        }
-                    });
-                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
-                        while(self.#col_delta_delta_comp_queue_idents.len() > 0) {
-                            self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
-                        }
-                    });
-                )*
-
-                // All of the bits are concatenated with a 1001 tag indicating the start of a new column
-                let mut output = ::tsz_compress::prelude::halfvec::HalfVec::new(0);
-                #(
-                    self.#col_delta_buf_idents.map(|outbuf| {
-                        output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
-                        output.extend(outbuf);
-                    });
-                    self.#col_delta_delta_buf_idents.map(|outbuf| {
-                        output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
-                        output.extend(outbuf);
-                    });
-                )*
-
-                // Pad nibbles to byte-alignment
-                if output.len() % 2 == 1 {
-                    output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
-                }
-
-                output.finish()
-            }
+            pub use private::#compressor_ident;
         }
     };
 
@@ -908,6 +926,8 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
             mod private {
                 use super::*;
 
+                /// A Decompressor type implementing TszDecompressV2.
+                #[derive(Debug)]
                 pub struct #decompressor_ident {
                     #( #col_vec_idents: Vec<#col_tys>, )*
                 }
@@ -936,8 +956,11 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                         // Iterate over the bits
                         let mut iter = HalfIter::new(&bytes);
 
+                        println!("INPUT: {:?}", bytes);
+
                         // Expect a 1001 tag indicating the start of a new column
                         if iter.next() != Some(0b1001) {
+                            println!("INPUT ERROR: {:?}", bytes);
                             return Err(CodingError::InvalidBits);
                         }
 

@@ -19,7 +19,7 @@ fn main() {
     };
 
     // Initialize the compressor
-    let mut compressor = TestRowCompressorImpl::new(128);
+    let mut compressor = compress::TestRowCompressorImpl::new(128);
 
     // Compress row
     for _ in 0..10 {

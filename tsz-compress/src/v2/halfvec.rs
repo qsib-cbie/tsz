@@ -8,6 +8,7 @@ use alloc::vec::Vec;
 /// Pushing is fast. There is no pop.
 /// All bits are pushed together during finish.
 ///
+#[derive(Debug)]
 pub struct HalfVec {
     words: Vec<Vec<HalfWord>>,
     len: usize,
@@ -16,6 +17,7 @@ pub struct HalfVec {
 ///
 /// Bits collected into a single word as one byte or two bytes.
 ///
+#[derive(Debug)]
 pub enum HalfWord {
     /// The bottom bits of the word are used.
     /// 0b00001111
@@ -97,10 +99,13 @@ impl HalfVec {
             let expected_capacity = self.len / 2;
             let mut bytes = Vec::with_capacity(expected_capacity + 1);
 
+            println!("expected capacity: {}", expected_capacity);
+
             // Keep track of whether we are on the upper or lower nibble across word lists
             let mut upper = true;
+            let mut byte = 0u8;
             for words in self.words {
-                let mut byte = 0u8;
+                println!("words: {:?}", words);
                 for word in words {
                     if upper {
                         match word {
@@ -109,11 +114,12 @@ impl HalfVec {
                                 byte = value << 4;
                                 // We are now on the lower nibble
                                 upper = false;
-                                // println!("nibble: {:b}", value);
+                                println!("upper nibble: {:b}", value);
                             }
                             HalfWord::Byte(value) => {
                                 // Use both nibbles from the byte
                                 known_append(&mut bytes, value);
+                                println!("upper byte: {:b}", value);
                             }
                             HalfWord::Full(value) => {
                                 // Use both nibbles from the top of the full
@@ -124,18 +130,18 @@ impl HalfVec {
                                 known_append(&mut bytes, (value >> 8) as u8);
                                 // Use both nibbles from the bottom of the full
                                 known_append(&mut bytes, value as u8);
-                                // println!("full upper: {:b}", value);
+                                println!("upper full: {:b}", value);
                             }
                         }
                     } else {
                         match word {
                             HalfWord::Half(value) => {
                                 // Fill the lower nibble, the upper nibble is already filled
-                                byte |= value;
+                                byte |= value & 0x0F;
                                 known_append(&mut bytes, byte);
                                 // We are now on the upper nibble
                                 upper = true;
-                                // println!("nibble: {:b}", value);
+                                println!("lower nibble: {:b}", value);
                             }
                             HalfWord::Byte(value) => {
                                 // Fill the lower nibble with the upper nibble of the value
@@ -144,20 +150,23 @@ impl HalfVec {
                                 // Use the lower nibble from the value as the upper nibble
                                 byte = (value << 4) as u8;
                                 // We are still on the lower nibble
+                                println!("lower byte: {:b}", value);
                             }
                             HalfWord::Full(value) => {
-                                // println!("full lower: {:b}", value);
+                                println!("lower full: {:b}", value);
                                 // Fill the lower nibble with the upper nibble of the value
                                 byte |= (value >> 28) as u8;
                                 known_append(&mut bytes, byte);
-                                // Fill the upper nibble with the top middle nibble of the value
+                                // Bits 28-20
                                 byte = (value >> 20) as u8;
-                                // Use both nibbles from the top middle of the full
                                 known_append(&mut bytes, byte);
-                                // Fill the upper nibble with the bottom middle nibble of the value
+                                // Bits 20-12
                                 byte = (value >> 12) as u8;
-                                // Use both nibbles from the bottom middle of the full
                                 known_append(&mut bytes, byte);
+                                // Bits 12-4
+                                byte = (value >> 4) as u8;
+                                known_append(&mut bytes, byte);
+
                                 // Use the lower nibble from the full as the upper nibble
                                 byte = (value << 4) as u8;
                                 // We are still on the lower nibble
@@ -166,6 +175,10 @@ impl HalfVec {
                     }
                 }
             }
+            // if !upper {
+            //     byte |= 0b1001;
+            //     known_append(&mut bytes, byte);
+            // }
             bytes
         }
     }
@@ -217,32 +230,4 @@ mod tests {
         let flat = queue.finish();
         assert_eq!(flat.len(), (128 + 4 * 128 + 1 + 1) / 2);
     }
-
-    // #[test]
-    // fn fuzz() {
-    //     use alloc::collections::VecDeque;
-    //     use rand::Rng;
-
-    //     let mut rng = rand::thread_rng();
-    //     let mut std_queue: VecDeque<usize> = VecDeque::new();
-    //     let mut queue: CompressionQueue<usize, 10> = CompressionQueue::new();
-
-    //     for _ in 0..10000 {
-    //         let value = rng.gen::<usize>() % 100;
-    //         if rng.gen::<bool>() {
-    //             std_queue.push_back(value);
-    //             if queue.is_full() {
-    //                 std_queue.pop_front();
-    //             }
-    //             queue.push(value);
-    //         } else {
-    //             assert_eq!(std_queue.pop_front(), queue.pop());
-    //         }
-
-    //         assert_eq!(std_queue.len(), queue.len());
-    //         for (a, b) in std_queue.iter().zip(queue.iter()) {
-    //             assert_eq!(*a, b);
-    //         }
-    //     }
-    // }
 }
