@@ -661,7 +661,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         .map(|ident| format_ident!("prev_delta_{}", ident))
         .collect_vec();
     let compressor_struct = quote! {
-        mod compress {
+        pub mod compress {
             use super::*;
             mod private {
                 use super::*;
@@ -821,7 +821,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         4 * finished_nibble_count / total_col_values_emitted / #num_columns
                     }
 
-                    fn finish(mut self) -> Vec<u8> {
+                    fn finish(mut self) -> ::alloc::vec::Vec<u8> {
                         // Only use one encoding mechanism
                         #(
                             if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
@@ -913,7 +913,7 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
         .collect::<Vec<_>>();
 
     let decompressor_tokens = quote! {
-        mod decompress {
+        pub mod decompress {
             use super::*;
             mod private {
                 use super::*;
@@ -921,7 +921,7 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                 /// A Decompressor type implementing TszDecompressV2.
                 #[derive(Debug)]
                 pub struct #decompressor_ident {
-                    #( #col_vec_idents: Vec<#col_tys>, )*
+                    #( #col_vec_idents: ::alloc::vec::Vec<#col_tys>, )*
                 }
 
                 impl #decompressor_ident {
@@ -939,7 +939,7 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                     /// Initialize a decompressor with a vector for each column.
                     fn new() -> Self {
                         #decompressor_ident {
-                            #( #col_vec_idents: Vec::new(), )*
+                            #( #col_vec_idents: ::alloc::vec::Vec::new(), )*
                         }
                     }
 
@@ -978,7 +978,7 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                         // Create the rows from columns
                         let elems = [ #( self.#col_vec_idents.len(), )* ];
                         let len = elems[0];
-                        let mut rows = Vec::with_capacity(len);
+                        let mut rows = ::alloc::vec::Vec::with_capacity(len);
                         for i in 0..len {
                             rows.push(#ident {
                                 #( #col_idents: unsafe { *self.#col_vec_idents.get_unchecked(i) }, )*
