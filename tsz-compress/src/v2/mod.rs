@@ -46,9 +46,10 @@ pub trait TszCompressV2 {
     fn bit_rate(&self) -> usize;
 
     ///
-    /// Finish compression and return the compressed data.
+    /// Finish compression, consuming the compressor and returning the compressed bytes.
+    /// This may leave intermediate buffers in a cleared state.
     ///
-    fn finish(self) -> ::alloc::vec::Vec<u8>;
+    fn finish(&mut self) -> ::alloc::vec::Vec<u8>;
 }
 
 ///

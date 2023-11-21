@@ -55,17 +55,33 @@ unsafe fn push_three_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, bu
     buf.push(HalfWord::Full(word));
 }
 
+// #[inline(always)]
+// unsafe fn push_four_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf: &mut HalfVec) {
+//     const N: usize = 8;
+//     const N1: usize = N - 1;
+//     buf.push(HalfWord::Half(0b1110));
+//     let mut word: u32 = 0;
+//     let mask = 0b1111_u32;
+//     let values = q.pop_n::<N>().unwrap_unchecked();
+//     for i in 0..N1 {
+//         word |= values[i].zigzag_bit_masked(mask);
+//         word <<= 4;
+//     }
+//     word |= values[N1].zigzag_bit_masked(mask);
+//     buf.push(HalfWord::Full(word));
+// }
+
 #[inline(always)]
-unsafe fn push_four_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf: &mut HalfVec) {
-    const N: usize = 8;
+unsafe fn push_six_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf: &mut HalfVec) {
+    const N: usize = 5;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1110));
     let mut word: u32 = 0;
-    let mask = 0b1111_u32;
+    let mask = 0b111111_u32;
     let values = q.pop_n::<N>().unwrap_unchecked();
     for i in 0..N1 {
         word |= values[i].zigzag_bit_masked(mask);
-        word <<= 4;
+        word <<= 6;
     }
     word |= values[N1].zigzag_bit_masked(mask);
     buf.push(HalfWord::Full(word));
@@ -158,8 +174,8 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
                 fits[0] = false;
             }
 
-            // Can not emit with case iv of delta compression if number of samples < 8.
-            if self.len() < 8 {
+            // Can not emit with case iv of delta compression if number of samples < 5.
+            if self.len() < 5 {
                 fits[1] = false;
             }
 
@@ -190,7 +206,7 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
             if (index < 4 && !(-128..=127).contains(&value)) {
                 fits[2] = false;
             }
-            if (index < 8 && !(-8..=7).contains(&value)) {
+            if (index < 5 && !(-32..=31).contains(&value)) {
                 fits[1] = false;
             }
             if (index < 10 && !(-4..=3).contains(&value)) {
@@ -206,9 +222,9 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
             return 10;
         } else if fits[1] {
             unsafe {
-                push_four_bits(self, out);
+                push_six_bits(self, out);
             }
-            return 8;
+            return 6;
         } else if fits[2] {
             unsafe {
                 push_eight_bits(self, out);
@@ -238,7 +254,7 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
     #[allow(unused)]
     fn emit_delta_bits(&mut self, out: &mut HalfVec, flush: bool) -> usize {
         let queue_length = self.len();
-        let mut fits = [true; 5];
+        let mut fits = [true; 6];
 
         // Check flush conditions
         if flush {
@@ -252,8 +268,8 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
                 fits[0] = false;
             }
 
-            // Can not emit with case iv of delta compression if number of samples < 8.
-            if self.len() < 8 {
+            // Can not emit with case iv of delta compression if number of samples < 5.
+            if self.len() < 5 {
                 fits[1] = false;
             }
 
@@ -282,7 +298,7 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
             if (index < 4 && !(-128..=127).contains(&value)) {
                 fits[2] = false;
             }
-            if (index < 8 && !(-8..=7).contains(&value)) {
+            if (index < 5 && !(-32..=31).contains(&value)) {
                 fits[1] = false;
             }
             if (index < 10 && !(-4..=3).contains(&value)) {
@@ -298,9 +314,9 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
             return 10;
         } else if fits[1] {
             unsafe {
-                push_four_bits(self, out);
+                push_six_bits(self, out);
             }
-            return 8;
+            return 6;
         } else if fits[2] {
             unsafe {
                 push_eight_bits(self, out);
@@ -316,6 +332,11 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
                 push_sixteen_bits(self, out);
             }
             return 2;
+        } else if fits[5] {
+            unsafe {
+                push_thirty_two_bits(self, out);
+            }
+            return 1;
         }
         0
     }

@@ -747,7 +747,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
                                 self.#col_delta_comp_queue_idents.push(delta);
                                 if self.#col_delta_comp_queue_idents.is_full() {
-                                    self.#col_values_emitted_delta += self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                                    let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                                    self.#col_values_emitted_delta += emitted;
                                 }
                             }
 
@@ -821,7 +822,11 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         4 * finished_nibble_count / total_col_values_emitted / #num_columns
                     }
 
-                    fn finish(mut self) -> ::alloc::vec::Vec<u8> {
+                    ///
+                    /// Consumes the compressor and returns the compressed bytes.
+                    /// Leaving intermediate buffers in a cleared state.
+                    ///
+                    fn finish(&mut self) -> ::alloc::vec::Vec<u8> {
                         // Only use one encoding mechanism
                         #(
                             if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
@@ -835,38 +840,47 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         )*
 
                         // Flush any pending samples in the queues
+                        // All of the bits are concatenated with a 1001 tag indicating the start of a new column
                         #(
                             self.#col_delta_buf_idents.as_mut().map(|outbuf| {
-                                while(self.#col_delta_comp_queue_idents.len() > 0) {
+                                while self.#col_delta_comp_queue_idents.len() > 0 {
                                     self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, true);
                                 }
+                                outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
                             });
                             self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
-                                while(self.#col_delta_delta_comp_queue_idents.len() > 0) {
+                                while self.#col_delta_delta_comp_queue_idents.len() > 0 {
                                     self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
                                 }
+                                outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
                             });
                         )*
 
-                        // All of the bits are concatenated with a 1001 tag indicating the start of a new column
-                        let mut output = ::tsz_compress::prelude::halfvec::HalfVec::new(0);
+                        // Create an iterator over the words to be written
+                        let words = [
+                            #(
+                                self.#col_delta_buf_idents.as_ref().into_iter(),
+                                self.#col_delta_delta_buf_idents.as_ref().into_iter(),
+                            )*
+                        ].into_iter().flatten();
+
+                        // Pack the words into nibbles
+                        let output = ::tsz_compress::prelude::halfvec::HalfVec::finish(words);
+
+                        // Clear the buffers for re-use
                         #(
-                            self.#col_delta_buf_idents.map(|outbuf| {
-                                output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
-                                output.extend(outbuf);
+                            self.#col_delta_buf_idents.as_mut().map(|outbuf| {
+                                outbuf.clear();
                             });
-                            self.#col_delta_delta_buf_idents.map(|outbuf| {
-                                output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
-                                output.extend(outbuf);
+                            self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                                outbuf.clear();
                             });
+                            self.#col_values_emitted_delta = 0;
+                            self.#col_values_emitted_delta_delta = 0;
+                            self.rows = 0;
                         )*
 
-                        // Pad nibbles to byte-alignment
-                        if output.len() % 2 == 1 {
-                            output.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
-                        }
-
-                        output.finish()
+                        output
                     }
                 }
             }
