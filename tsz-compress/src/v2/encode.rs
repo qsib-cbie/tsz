@@ -224,7 +224,7 @@ impl EmitDeltaBits<i32> for CompressionQueue<i32, 10> {
             unsafe {
                 push_six_bits(self, out);
             }
-            return 6;
+            return 5;
         } else if fits[2] {
             unsafe {
                 push_eight_bits(self, out);
@@ -316,7 +316,7 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
             unsafe {
                 push_six_bits(self, out);
             }
-            return 6;
+            return 5;
         } else if fits[2] {
             unsafe {
                 push_eight_bits(self, out);
