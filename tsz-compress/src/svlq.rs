@@ -45,7 +45,7 @@ macro_rules! impl_signed_svlq {
                 };
 
                 // First byte is 6 bits, the rest are 7 bits
-                let mut byte = (value & 0b00111111) as u8;
+                let mut byte = (value & 0b0011_1111) as u8;
                 value >>= 6;
                 if value > 0 {
                     // VLQ continuation bit is set to the 7th bit on the first byte

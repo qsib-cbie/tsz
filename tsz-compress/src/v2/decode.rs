@@ -152,7 +152,7 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                 let bit_width = 6;
                 let shift = 32 - padding - bit_width;
                 for i in 0..5 {
-                    let delta = ((word >> (shift - bit_width * i)) & 0b111111) as i8;
+                    let delta = ((word >> (shift - bit_width * i)) & 0b11_1111) as i8;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i16 + delta as i16) as i8;
                     output.push(value);
@@ -320,7 +320,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 let bit_width = 6;
                 let shift = 32 - padding - bit_width;
                 for i in 0..5 {
-                    let delta = ((word >> (shift - bit_width * i)) & 0b111111) as i16;
+                    let delta = ((word >> (shift - bit_width * i)) & 0b11_1111) as i16;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i32 + delta as i32) as i16;
                     output.push(value);
@@ -362,7 +362,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 let bit_width = 10;
                 let shift = 32 - padding - bit_width;
                 for i in 0..3 {
-                    let delta = ((word >> (shift - bit_width * i)) & 0b1111111111) as i16;
+                    let delta = ((word >> (shift - bit_width * i)) & 0b11_1111_1111) as i16;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i32 + delta as i32) as i16;
                     output.push(value);
@@ -500,7 +500,7 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                 let bit_width = 6;
                 let shift = 32 - padding - bit_width;
                 for i in 0..5 {
-                    let delta = ((word >> (shift - bit_width * i)) & 0b111111) as i32;
+                    let delta = ((word >> (shift - bit_width * i)) & 0b11_1111) as i32;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i64 + delta as i64) as i32;
                     output.push(value);
@@ -543,7 +543,7 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                 let bit_width = 10;
                 let shift = 32 - padding - bit_width;
                 for i in 0..3 {
-                    let delta = ((word >> (shift - bit_width * i)) & 0b1111111111) as i32;
+                    let delta = ((word >> (shift - bit_width * i)) & 0b11_1111_1111) as i32;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i64 + delta as i64) as i32;
                     output.push(value);
@@ -705,7 +705,7 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
                 let bit_width = 6;
                 let shift = 32 - padding - bit_width;
                 for i in 0..5 {
-                    let delta = ((word >> (shift - bit_width * i)) & 0b111111) as i32;
+                    let delta = ((word >> (shift - bit_width * i)) & 0b11_1111) as i32;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i128 + delta as i128) as i64;
                     output.push(value);
@@ -748,7 +748,7 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
                 let bit_width = 10;
                 let shift = 32 - padding - bit_width;
                 for i in 0..3 {
-                    let delta = ((word >> (shift - bit_width * i)) & 0b1111111111) as i32;
+                    let delta = ((word >> (shift - bit_width * i)) & 0b11_1111_1111) as i32;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i128 + delta as i128) as i64;
                     output.push(value);

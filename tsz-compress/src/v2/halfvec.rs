@@ -20,15 +20,15 @@ pub struct HalfVec {
 #[derive(Debug)]
 pub enum HalfWord {
     /// The bottom bits of the word are used.
-    /// 0b00001111
+    /// 0b0000_1111
     Half(u8),
 
     /// The top and bottom bits of the word are used.
-    /// 0b11111111
+    /// 0b1111_1111
     Byte(u8),
 
     /// All bits of the word are used.
-    /// 0xffffffff
+    /// 0xffff_ffff
     Full(u32),
 }
 
