@@ -92,16 +92,24 @@ pub fn read_full_i8(buf: &[u8; 1]) -> i8 {
 }
 
 pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<(), CodingError> {
+    // No rows
+    let Some(next_upper) = iter.next() else {
+        return Ok(());
+    };
+
     // Full 8 bit value
-    let buf = [(iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
-        | iter.next().ok_or(CodingError::NotEnoughBits)?];
+    let buf = [(next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?];
     let value = read_full_i8(&buf);
     output.push(value);
 
+    // One row
+    let Some(next_upper) = iter.next() else {
+        return Ok(());
+    };
+
     // Delta encoded 16 bit value
     let buf = [
-        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
-            | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
     ];
@@ -253,20 +261,28 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
 }
 
 pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Result<(), CodingError> {
+    // No rows
+    let Some(next_upper) = iter.next() else {
+        return Ok(());
+    };
+
     // Full 16 bit value
     let buf = [
-        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
-            | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
     ];
     let value = read_full_i16(&buf);
     output.push(value);
 
+    // One row
+    let Some(next_upper) = iter.next() else {
+        return Ok(());
+    };
+
     // Delta encoded 32 bit value
     let buf = [
-        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
-            | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
@@ -421,10 +437,14 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
 }
 
 pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Result<(), CodingError> {
+    // No rows
+    let Some(next_upper) = iter.next() else {
+        return Ok(());
+    };
+
     // Full 32 bit value
     let buf = [
-        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
-            | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
@@ -435,10 +455,14 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
     let value = read_full_i32(&buf);
     output.push(value);
 
+    // One row
+    let Some(next_upper) = iter.next() else {
+        return Ok(());
+    };
+
     // Delta encoded 64 bit value
     let buf = [
-        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
-            | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
@@ -602,10 +626,14 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
 }
 
 pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Result<(), CodingError> {
+    // No rows
+    let Some(next_upper) = iter.next() else {
+        return Ok(());
+    };
+
     // Full 64 bit value
     let buf = [
-        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
-            | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
@@ -624,10 +652,14 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
     let value = read_full_i64(&buf);
     output.push(value);
 
+    // One row
+    let Some(next_upper) = iter.next() else {
+        return Ok(());
+    };
+
     // Delta encoded 128 bit value
     let buf = [
-        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
-            | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
