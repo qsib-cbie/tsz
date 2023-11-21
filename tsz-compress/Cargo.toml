@@ -11,12 +11,18 @@ keywords = ["time-series", "delta", "compression", "Gorilla", "serde"]
 readme = "README.md"
 version = { workspace = true }
 
+[features]
+default = []
+std = []
+
 [lib]
 crate-type = ["rlib"]
 
 [dependencies]
-bitvec = { version = "1.0.1", default-features = false, features = ["alloc", "atomic"] }
+bitvec = { version = "1.0.1", default-features = false, features = ["alloc"] }
+num-traits = { version = "0.2.17", default-features = false }
 tsz-macro = { workspace = true }
+
 
 [dev-dependencies]
 criterion = "0.4.0"
@@ -29,8 +35,3 @@ harness = false
 [[bench]]
 name = "real_world"
 harness = false
-
-
-[[bin]]
-name = "example"
-path = "bin/example.rs"

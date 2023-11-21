@@ -1,21 +1,24 @@
 #![allow(dead_code)]
 use core::mem::MaybeUninit;
 
+use num_traits::PrimInt;
+
 ///
 /// A statically sized ring-buffer queue used
 /// while compressing a column.
 ///
+#[derive(Debug)]
 pub struct CompressionQueue<T, const N: usize> {
     buf: [MaybeUninit<T>; N],
     front: usize,
     len: usize,
 }
 
-impl<T: Copy, const N: usize> CompressionQueue<T, N> {
+impl<T: PrimInt, const N: usize> CompressionQueue<T, N> {
     ///
     /// Creates an empty queue.
     ///
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         CompressionQueue {
             buf: [MaybeUninit::uninit(); N],
             front: 0,
@@ -26,7 +29,7 @@ impl<T: Copy, const N: usize> CompressionQueue<T, N> {
     ///
     /// Returns the number of elements in the queue.
     ///
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.len
     }
 
@@ -76,6 +79,28 @@ impl<T: Copy, const N: usize> CompressionQueue<T, N> {
     }
 
     ///
+    /// Pop N values from the queue at once,
+    /// returning None if the queue is empty.
+    ///
+    #[inline(always)]
+    pub fn pop_n<const M: usize>(&mut self) -> Option<[T; M]> {
+        if self.len < M {
+            return None;
+        }
+
+        let mut values: [T; M] = [T::zero(); M];
+        for i in 0..M {
+            let index = (self.front + i) % N;
+            unsafe { *values.get_unchecked_mut(i) = self.at(index) };
+        }
+
+        self.front = (self.front + M) % N;
+        self.len -= M;
+
+        Some(values)
+    }
+
+    ///
     /// Creates an iterator over the elements of the queue.
     /// The iterator will yield the oldest element first.
     ///
@@ -120,7 +145,7 @@ pub struct CompressionQueueIter<'a, T, const N: usize> {
     index: usize,
 }
 
-impl<'a, T: Copy, const N: usize> Iterator for CompressionQueueIter<'a, T, N> {
+impl<'a, T: PrimInt, const N: usize> Iterator for CompressionQueueIter<'a, T, N> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -139,7 +164,7 @@ impl<'a, T: Copy, const N: usize> Iterator for CompressionQueueIter<'a, T, N> {
     }
 }
 
-impl<'a, T: Copy, const N: usize> ExactSizeIterator for CompressionQueueIter<'a, T, N> {}
+impl<'a, T: PrimInt, const N: usize> ExactSizeIterator for CompressionQueueIter<'a, T, N> {}
 
 #[cfg(test)]
 mod tests {

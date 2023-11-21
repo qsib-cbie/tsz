@@ -1,9 +1,13 @@
 [workspace]
 resolver = "2"
-members = [
-    "tsz-compress",
-    "tsz-macro",
-]
+members = ["tsz-compress", "tsz-macro"]
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+debug = true
 
 [workspace.package]
 version = "1.1.0"

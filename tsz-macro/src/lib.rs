@@ -514,56 +514,497 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
     // We will compress each of the fields as columns
     let columns = get_fields_of_struct(input);
     let (col_idents, col_tys): (Vec<_>, Vec<_>) = multiunzip(columns);
-    let col_comp_idents = col_idents
+    let col_delta_comp_queue_idents = col_idents
         .iter()
-        .map(|ident| format_ident!("{}_compressor", ident))
+        .map(|ident| format_ident!("{}_delta_compressor_queue", ident))
         .collect_vec();
-    let col_output_idents = col_idents
+    let col_delta_delta_comp_queue_idents = col_idents
         .iter()
-        .map(|ident| format_ident!("{}_output", ident))
+        .map(|ident| format_ident!("{}_delta_delta_compressor_queue", ident))
+        .collect_vec();
+    let col_delta_buf_idents = col_idents
+        .iter()
+        .map(|ident| format_ident!("{}_delta_output_buffer", ident))
+        .collect_vec();
+    let col_delta_delta_buf_idents = col_idents
+        .iter()
+        .map(|ident| format_ident!("{}_delta_delta_output_buffer", ident))
         .collect_vec();
     let num_columns = col_idents.len();
+    let col_values_emitted_delta = col_idents
+        .iter()
+        .map(|ident| format_ident!("{}_columns_values_emitted_delta_compression", ident))
+        .collect_vec();
+    let col_values_emitted_delta_delta = col_idents
+        .iter()
+        .map(|ident| format_ident!("{}_columns_values_emitted_delta_delta_compression", ident))
+        .collect_vec();
+    let delta_col_tys = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { i16 },
+                    "i16" => quote! { i32 },
+                    "i32" => quote! { i32 }, // todo, make choice based on macro attributes for field
+                    // "i32" => quote! { i64 }, // performance too degraded
+                    "i64" => quote! { i32 }, // todo, make choice based on macro attributes for field
+                    // "i64" => quote! { i128 }, // performance too degraded
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+    let double_col_tys = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { i16 },
+                    "i16" => quote! { i32 },
+                    "i32" => quote! { i64 },
+                    "i64" => quote! { i128 },
+                    "i128" => quote! { i128 }, // Note i128 is not doubled
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
 
+    // todo, make choice based on macro attributes for field, default to delta-delta and delta
+    let col_delta_buf = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    "i16" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    "i32" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    // "i64" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    "i64" => quote! { None },
+                    "i128" => quote! { None },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+    let col_delta_delta_buf = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { None },
+                    "i16" => quote! { None },
+                    "i32" => quote! { None },
+                    // "i64" => quote! { None },
+                    "i64" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    "i128" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+    let write_first = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { write_i8_bits },
+                    "i16" => quote! { write_i16_bits },
+                    "i32" => quote! { write_i32_bits },
+                    "i64" => quote! { write_i64_bits },
+                    "i128" => quote! { write_i128_bits },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+    let write_second = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { write_i16_bits },
+                    "i16" => quote! { write_i32_bits },
+                    "i32" => quote! { write_i64_bits },
+                    "i64" => quote! { write_i128_bits },
+                    "i128" => quote! { write_i128_bits },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+    let prev_col_idents = col_idents
+        .iter()
+        .map(|ident| format_ident!("prev_{}", ident))
+        .collect_vec();
+    let prev_delta_idents = col_idents
+        .iter()
+        .map(|ident| format_ident!("prev_delta_{}", ident))
+        .collect_vec();
     let compressor_struct = quote! {
-        struct #compressor_ident {
-            #( #col_comp_idents: ::tsz_compress::prelude::CompressionQueue<#col_tys, 10>,)*
-            #( #col_output_idents: ::tsz_compress::prelude::BitBuffer,)*
-            column_values_emitted: usize,
-        }
+        pub mod compress {
+            use super::*;
+            mod private {
+                use super::*;
+                /// A Compressor type implementing TszCompressV2.
+                #[derive(Debug)]
+                pub struct #compressor_ident {
+                    #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#delta_col_tys, 10>,)*
+                    #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#delta_col_tys, 2>,)*
+                    #( #col_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
+                    #( #col_delta_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
+                    #( #col_values_emitted_delta: usize,)*
+                    #( #col_values_emitted_delta_delta: usize,)*
+                    #( #prev_col_idents: #delta_col_tys,)*
+                    #( #prev_delta_idents: #delta_col_tys,)*
+                    rows: usize,
+                }
 
-        impl TszCompressV2 for #compressor_ident {
-            type T = #ident;
+                impl TszCompressV2 for #compressor_ident {
+                    type T = #ident;
 
-            fn compress(&mut self, row: Self::T) {
-                #(
-                    self.#col_comp_idents.push(row.#col_idents);
-                    if self.#col_comp_idents.is_full() {
-                        self.column_values_emitted += self.#col_comp_idents.emit_bits(&mut self.#col_output_idents, false);
+                    /// Sets up two compression queues: one for delta compression and one for delta-delta compression,
+                    /// along with their respective output buffers. Initializes counters for the number of column values
+                    /// emitted during the delta and delta-delta compression processes.
+                    fn new(prealloc_rows: usize) -> Self {
+                        #compressor_ident {
+                            #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#delta_col_tys, 10>::new(),)*
+                            #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#delta_col_tys, 2>::new(),)*
+                            #( #col_delta_buf_idents: #col_delta_buf,)*
+                            #( #col_delta_delta_buf_idents: #col_delta_delta_buf,)*
+                            #( #col_values_emitted_delta: 0,)*
+                            #( #col_values_emitted_delta_delta: 0,)*
+                            #( #prev_col_idents: 0,)*
+                            #( #prev_delta_idents: 0,)*
+                            rows: 0,
+                        }
                     }
-                )*
+
+                    /// Performs compression using delta/delta-delta compression.
+                    fn compress(&mut self, row: Self::T) {
+                        // Enqueues delta and delta-delta values
+                        self.rows += 1;
+                        if self.rows == 1 {
+                            /// Write out the full value in the exact bit-width of the column.
+                            #(
+                                if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                    #write_first(outbuf, row.#col_idents);
+                                }
+                                if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                    #write_first(outbuf, row.#col_idents);
+                                }
+                                self.#prev_col_idents = row.#col_idents as #delta_col_tys;
+                            )*
+                            return;
+                        }
+
+                        if self.rows == 2 {
+                            /// Write out the full value in the next exact bit-width of the column, regardless of chosen delta bit-width.
+                            /// SAFETY: If the bit-width is configurable, then bits at rest will be uninterpretable.
+                            #(
+                                // Up cast to double bit-width always for the first delta
+                                let col = row.#col_idents as #double_col_tys;
+                                let double_delta = self.#prev_col_idents as #double_col_tys - col;
+                                if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                    #write_second(outbuf, double_delta);
+                                }
+                                if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                    #write_second(outbuf, double_delta);
+                                }
+
+                                // Use choice of bit-width for delta/delta-delta compression
+                                self.#prev_delta_idents = double_delta as #delta_col_tys;
+                                self.#prev_col_idents = col as #delta_col_tys;
+                            )*;
+                            return;
+                        }
+
+                        #(
+                            // The new delta  and delta-delta
+                            let col = row.#col_idents as #delta_col_tys;
+                            let delta = col - self.#prev_col_idents;
+
+                            // Maybe do delta compression
+                            if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                self.#col_delta_comp_queue_idents.push(delta);
+                                if self.#col_delta_comp_queue_idents.is_full() {
+                                    let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                                    self.#col_values_emitted_delta += emitted;
+                                }
+                            }
+
+                            // Maybe do delta-delta compression
+                            if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                let delta_delta = delta - self.#prev_delta_idents;
+                                self.#col_delta_delta_comp_queue_idents.push(delta_delta);
+                                if self.#col_delta_delta_comp_queue_idents.is_full() {
+                                    self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
+                                }
+                            }
+
+                            // Update the previous values
+                            self.#prev_col_idents = col;
+                            self.#prev_delta_idents = delta;
+
+                            // // Chooses the compression algorithm associated with the output buffer that is N times smaller than the other output buffer.
+                            // let COMPRESSION_SIZE_FACTOR: usize = 3;
+                            // if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                            //     if delta_buffer.len() > delta_delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
+                            //         self.#col_delta_buf_idents = None;
+                            //         self.#col_values_emitted_delta = 0;
+                            //     }
+                            //     else if delta_delta_buffer.len() > delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
+                            //         self.#col_delta_delta_buf_idents = None;
+                            //         self.#col_values_emitted_delta_delta = 0;
+                            //     }
+                            // }
+                        )*
+                    }
+
+                    fn len(&self) -> usize {
+                        let mut finished_nibble_count = 0;
+                        #(
+                            if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                                finished_nibble_count += delta_buffer.len().min(delta_delta_buffer.len());
+                            }
+                            else if let Some(delta_buffer) = &self.#col_delta_buf_idents {
+                                finished_nibble_count += delta_buffer.len()
+                            }
+                            else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents {
+                                finished_nibble_count += delta_delta_buffer.len()
+                            }
+                        )*
+                        let col_count_delta = (#( self.#col_delta_comp_queue_idents.len() )+*);
+                        let col_count_delta_delta = (#( self.#col_delta_delta_comp_queue_idents.len() )+*);
+                        let col_bit_rate = #num_columns * self.bit_rate();
+                        let pending_bit_count = col_count_delta.min(col_count_delta_delta) * col_bit_rate;
+                        4 * finished_nibble_count + pending_bit_count
+                    }
+
+                    fn bit_rate(&self) -> usize {
+                        let mut finished_nibble_count = 0;
+                        let mut total_col_values_emitted = 0;
+                        #(
+                            if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                                finished_nibble_count += delta_buffer.len().min(delta_delta_buffer.len());
+                            }
+                            else if let Some(delta_buffer) = &self.#col_delta_buf_idents {
+                                    finished_nibble_count += delta_buffer.len()
+                                }
+                            else if let Some(delta_delta_buffer) = &self.#col_delta_delta_buf_idents {
+                                finished_nibble_count += delta_delta_buffer.len()
+                            }
+                            // Increment total_col_values_emitted by the sum of values emitted for either delta or delta-delta compression per column. One of them will be 0 for each column.
+                            total_col_values_emitted += (self.#col_values_emitted_delta + self.#col_values_emitted_delta_delta);
+                        )*
+                        if total_col_values_emitted == 0 {
+                            return 0;
+                        }
+                        4 * finished_nibble_count / total_col_values_emitted / #num_columns
+                    }
+
+                    ///
+                    /// Consumes the compressor and returns the compressed bytes.
+                    /// Leaving intermediate buffers in a cleared state.
+                    ///
+                    fn finish(&mut self) -> ::alloc::vec::Vec<u8> {
+                        // Only use one encoding mechanism
+                        #(
+                            if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                                // Prefer delta on ties
+                                if delta_delta_buffer.len() >= delta_buffer.len() {
+                                    self.#col_delta_delta_buf_idents = None;
+                                } else {
+                                    self.#col_delta_buf_idents = None;
+                                }
+                            }
+                        )*
+
+                        // Flush any pending samples in the queues
+                        // All of the bits are concatenated with a 1001 tag indicating the start of a new column
+                        #(
+                            self.#col_delta_buf_idents.as_mut().map(|outbuf| {
+                                while self.#col_delta_comp_queue_idents.len() > 0 {
+                                    self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, true);
+                                }
+                                outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
+                            });
+                            self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                                while self.#col_delta_delta_comp_queue_idents.len() > 0 {
+                                    self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
+                                }
+                                outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
+                            });
+                        )*
+
+                        // Create an iterator over the words to be written
+                        let words = [
+                            #(
+                                self.#col_delta_buf_idents.as_ref().into_iter(),
+                                self.#col_delta_delta_buf_idents.as_ref().into_iter(),
+                            )*
+                        ].into_iter().flatten();
+
+                        // Pack the words into nibbles
+                        let output = ::tsz_compress::prelude::halfvec::HalfVec::finish(words);
+
+                        // Clear the buffers for re-use
+                        #(
+                            self.#col_delta_buf_idents.as_mut().map(|outbuf| {
+                                outbuf.clear();
+                            });
+                            self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                                outbuf.clear();
+                            });
+                            self.#col_values_emitted_delta = 0;
+                            self.#col_values_emitted_delta_delta = 0;
+                            self.rows = 0;
+                        )*
+
+                        output
+                    }
+                }
             }
 
-            fn len(&self) -> usize {
-                let finished_bit_count = (#( self.#col_output_idents.len() )+*);
-                let col_count = (#( self.#col_comp_idents.len() )+*);
-                let col_bit_rate = #num_columns * self.bit_rate();
-                let pending_bit_count = col_count * col_bit_rate;
-                finished_bit_count + pending_bit_count
-            }
-
-            fn bit_rate(&self) -> usize {
-                let finished_bit_count = (#( self.#col_output_idents.len() )+*);
-                finished_bit_count / self.column_values_emitted / #num_columns
-            }
-
-            fn finish(mut self) -> ::tsz_compress::prelude::BitBuffer {
-                #(self.#col_comp_idents.emit_bits(&mut self.#col_output_idents, true);)*
-                let mut output = ::tsz_compress::prelude::BitBuffer::new();
-                #(output.extend(self.#col_output_idents);)*
-                output
-            }
+            pub use private::#compressor_ident;
         }
     };
 
     compressor_struct.into()
+}
+
+#[proc_macro_derive(DecompressV2)]
+pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(tokens as syn::DeriveInput);
+
+    // We will define a struct by this name
+    let ident = input.ident.clone();
+    let decompressor_ident = format_ident!("{}DecompressorImpl", ident);
+
+    let columns = get_fields_of_struct(input);
+    let (col_idents, col_tys): (Vec<_>, Vec<_>) = multiunzip(columns);
+
+    let col_vec_idents = col_idents
+        .iter()
+        .map(|ident| format_ident!("col_{}", ident))
+        .collect_vec();
+
+    let decode_idents = col_tys
+        .iter()
+        .map(|ty| match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { decode_i8 },
+                    "i16" => quote! { decode_i16 },
+                    "i32" => quote! { decode_i32 },
+                    "i64" => quote! { decode_i64 },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+
+    let decompressor_tokens = quote! {
+        pub mod decompress {
+            use super::*;
+            mod private {
+                use super::*;
+
+                /// A Decompressor type implementing TszDecompressV2.
+                #[derive(Debug)]
+                pub struct #decompressor_ident {
+                    #( #col_vec_idents: ::alloc::vec::Vec<#col_tys>, )*
+                }
+
+                impl #decompressor_ident {
+                    #(
+                        /// Decompressed values for the column
+                        pub fn #col_vec_idents(&self) -> &[#col_tys] {
+                            &self.#col_vec_idents
+                        }
+                    )*
+                }
+
+                impl TszDecompressV2 for #decompressor_ident {
+                    type T = #ident;
+
+                    /// Initialize a decompressor with a vector for each column.
+                    fn new() -> Self {
+                        #decompressor_ident {
+                            #( #col_vec_idents: ::alloc::vec::Vec::new(), )*
+                        }
+                    }
+
+                    /// Decompress tsz-compressed bytes, extending the columns with the decompressed values.
+                    fn decompress(&mut self, bytes: &[u8]) -> Result<(), CodingError> {
+                        // Iterate over the bits
+                        let mut iter = HalfIter::new(&bytes);
+
+
+                        // Expect a 1001 tag indicating the start of a new column
+                        if iter.next() != Some(0b1001) {
+                            return Err(CodingError::InvalidBits);
+                        }
+
+                        // Read the column bytes into a vector one after the other
+                        #( #decode_idents(&mut iter, &mut self.#col_vec_idents)?; )*
+
+                        // Pad nibbles to byte-alignment
+                        match iter.next() {
+                            Some(0b1001) => (),
+                            Some(_) => return Err(CodingError::InvalidBits),
+                            None => (),
+                        }
+
+                        // Make sure all the columns are the same length
+                        let elems = [ #( self.#col_vec_idents.len(), )* ];
+                        if !elems.iter().all(|elem| *elem == elems[0]) {
+                            return Err(CodingError::InvalidBits);
+                        }
+
+                        Ok(())
+                    }
+
+                    /// Rotate the columns into rows
+                    fn rows(&self) -> ::alloc::vec::Vec<Self::T> {
+                        // Create the rows from columns
+                        let elems = [ #( self.#col_vec_idents.len(), )* ];
+                        let len = elems[0];
+                        let mut rows = ::alloc::vec::Vec::with_capacity(len);
+                        for i in 0..len {
+                            rows.push(#ident {
+                                #( #col_idents: unsafe { *self.#col_vec_idents.get_unchecked(i) }, )*
+                            });
+                        }
+                        rows
+                    }
+                }
+            }
+            pub use private::#decompressor_ident;
+        }
+
+    };
+    decompressor_tokens.into()
 }
