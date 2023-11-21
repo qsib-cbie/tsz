@@ -9,8 +9,26 @@ pub use queue::*;
 
 #[derive(Debug)]
 pub enum CodingError {
+    /// There is not enough data to decode a single value.
+    Empty,
+    /// There were not enough bits to finish decoding an expected value.
     NotEnoughBits,
+    /// There were bits that indicated an invalid value.
     InvalidBits,
+    /// The first column tag was invalid.
+    InvalidInitialColumnTag,
+    /// A non-first column tag was invalid.
+    InvalidColumnTag,
+    /// The number of rows decoded did not match the expected number of rows.
+    ColumnLengthMismatch(ColumnLengths),
+    /// The number of rows to decode cannot be valid
+    InvalidRowCount(usize),
+}
+
+#[derive(Debug)]
+pub struct ColumnLengths {
+    pub expected_rows: usize,
+    pub column_lengths: ::alloc::vec::Vec<usize>,
 }
 
 ///

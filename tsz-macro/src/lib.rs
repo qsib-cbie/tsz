@@ -856,8 +856,17 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             });
                         )*
 
+                        // Write the number of rows as a 32-bit integer
+                        // The decompressor will read this value and reserve space for the rows
+                        // SAFETY: The number of rows may be more than 2^32, but the decompressor will
+                        //         reserve at most 2^32 rows.
+                        let mut rows = ::tsz_compress::prelude::halfvec::HalfVec::new(8);
+                        write_i32_bits(&mut rows, self.rows as u32 as i32);
+
                         // Create an iterator over the words to be written
+                        let rows = Some(rows);
                         let words = [
+                            rows.as_ref().into_iter(),
                             #(
                                 self.#col_delta_buf_idents.as_ref().into_iter(),
                                 self.#col_delta_delta_buf_idents.as_ref().into_iter(),
@@ -959,13 +968,37 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
 
                     /// Decompress tsz-compressed bytes, extending the columns with the decompressed values.
                     fn decompress(&mut self, bytes: &[u8]) -> Result<(), CodingError> {
-                        // Iterate over the bits
-                        let mut iter = HalfIter::new(&bytes);
+                        // Require at least the row count and 1 column
+                        if bytes.len() < 9 {
+                            return Err(CodingError::Empty);
+                        }
 
+                        // Read the row count, accepting a reservation up to 2^32 rows
+                        // SAFETY: The decompressor will reserve at most 2^32 rows, but there may be more if overflow occurs.
+                        let rows = read_full_i32(bytes) as u32;
+                        let bytes = &bytes[core::mem::size_of::<i32>()..];
+
+                        // At best we can emit 3 bits per row not counting any metadata for one column
+                        if rows as usize > bytes.len() * 8 / 3 {
+                            return Err(CodingError::InvalidRowCount(rows as usize));
+                        }
+
+                        // Reserve space for the rows if there is enough remaining capacity
+                        #(
+                            let remaining = (self.#col_vec_idents.capacity() - self.#col_vec_idents.len()) as isize;
+                            let reservation = rows as isize - remaining;
+                            if reservation > 0 {
+                                self.#col_vec_idents.reserve(reservation as usize);
+                            }
+                        )*
+
+                        // Iterate over the bits
+                        let mut iter = HalfIter::new(bytes);
 
                         // Expect a 1001 tag indicating the start of a new column
                         if iter.next() != Some(0b1001) {
-                            return Err(CodingError::InvalidBits);
+                            #( self.#col_vec_idents.clear(); )*
+                            return Err(CodingError::InvalidInitialColumnTag);
                         }
 
                         // Read the column bytes into a vector one after the other
@@ -974,14 +1007,15 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                         // Pad nibbles to byte-alignment
                         match iter.next() {
                             Some(0b1001) => (),
-                            Some(_) => return Err(CodingError::InvalidBits),
+                            Some(_) => return Err(CodingError::InvalidColumnTag),
                             None => (),
                         }
 
                         // Make sure all the columns are the same length
                         let elems = [ #( self.#col_vec_idents.len(), )* ];
                         if !elems.iter().all(|elem| *elem == elems[0]) {
-                            return Err(CodingError::InvalidBits);
+                            #( self.#col_vec_idents.clear(); )*
+                            return Err(CodingError::ColumnLengthMismatch(ColumnLengths { expected_rows: rows as usize, column_lengths: elems.to_vec() }));
                         }
 
                         Ok(())

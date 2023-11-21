@@ -52,15 +52,15 @@ pub fn read_full_i64(buf: &[u8]) -> i64 {
     // Reverse of
     // buf.push(HalfWord::Full((i >> 32) as u32));
     // buf.push(HalfWord::Full(i as u32));
-    let word = ((u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]) as u64) << 32)
-        | u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]) as u64;
+    let word = ((u32::from_le_bytes([buf[3], buf[2], buf[1], buf[0]]) as u64) << 32)
+        | u32::from_le_bytes([buf[7], buf[6], buf[5], buf[4]]) as u64;
     word as i64
 }
 
 pub fn read_full_i32(buf: &[u8]) -> i32 {
     // Reverse of
     // buf.push(HalfWord::Full(i as u32));
-    let word = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]) as u32;
+    let word = u32::from_le_bytes([buf[3], buf[2], buf[1], buf[0]]) as u32;
     word as i32
 }
 
@@ -68,7 +68,7 @@ pub fn read_full_i16(buf: &[u8]) -> i16 {
     // Reverse of
     // buf.push(HalfWord::Byte((i >> 8) as u8));
     // buf.push(HalfWord::Byte(i as u8));
-    let word = u16::from_be_bytes([buf[0], buf[1]]) as u16;
+    let word = u16::from_le_bytes([buf[1], buf[0]]) as u16;
     word as i16
 }
 
@@ -125,27 +125,6 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                 }
             }
             0b1110 => {
-                // 8 samples of 4 bits
-                let mut word: u32 = 0;
-                for _ in 0..7 {
-                    let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
-                    word |= half as u32;
-                    word <<= 4;
-                }
-                let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
-                word |= half as u32;
-
-                let padding = 0;
-                let bit_width = 4;
-                let shift = 32 - padding - bit_width;
-                for i in 0..8 {
-                    let delta = ((word >> (shift - bit_width * i)) & 0b1111) as i8;
-                    let delta = (delta >> 1) ^ -(delta & 1);
-                    value = (value as i16 + delta as i16) as i8;
-                    output.push(value);
-                }
-            }
-            0b1100 => {
                 // 5 samples of 6 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -161,6 +140,27 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                 let shift = 32 - padding - bit_width;
                 for i in 0..5 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b111111) as i8;
+                    let delta = (delta >> 1) ^ -(delta & 1);
+                    value = (value as i16 + delta as i16) as i8;
+                    output.push(value);
+                }
+            }
+            0b1100 => {
+                // 4 samples of 8 bits
+                let mut word: u32 = 0;
+                for _ in 0..7 {
+                    let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
+                    word |= half as u32;
+                    word <<= 4;
+                }
+                let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
+                word |= half as u32;
+
+                let padding = 0;
+                let bit_width = 8;
+                let shift = 32 - padding - bit_width;
+                for i in 0..4 {
+                    let delta = ((word >> (shift - bit_width * i)) & 0b1111) as i8;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i16 + delta as i16) as i8;
                     output.push(value);
@@ -314,7 +314,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 }
             }
             0b1100 => {
-                // 8 samples of 4 bits
+                // 4 samples of 8 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
                     let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
@@ -325,9 +325,9 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 word |= half as u32;
 
                 let padding = 0;
-                let bit_width = 4;
+                let bit_width = 8;
                 let shift = 32 - padding - bit_width;
-                for i in 0..8 {
+                for i in 0..4 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b1111) as i16;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i32 + delta as i32) as i16;
@@ -494,7 +494,7 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                 }
             }
             0b1100 => {
-                // 8 samples of 4 bits
+                // 4 samples of 8 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
                     let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
@@ -505,9 +505,9 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                 word |= half as u32;
 
                 let padding = 0;
-                let bit_width = 4;
+                let bit_width = 8;
                 let shift = 32 - padding - bit_width;
-                for i in 0..8 {
+                for i in 0..4 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b1111) as i32;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i64 + delta as i64) as i32;
