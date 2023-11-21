@@ -707,9 +707,11 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             /// Write out the full value in the exact bit-width of the column.
                             #(
                                 if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
                                     #write_first(outbuf, row.#col_idents);
                                 }
                                 if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
                                     #write_first(outbuf, row.#col_idents);
                                 }
                                 self.#prev_col_idents = row.#col_idents as #delta_col_tys;
@@ -846,13 +848,11 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                                 while self.#col_delta_comp_queue_idents.len() > 0 {
                                     self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, true);
                                 }
-                                outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
-                            });
+                             });
                             self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
                                 while self.#col_delta_delta_comp_queue_idents.len() > 0 {
                                     self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
                                 }
-                                outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
                             });
                         )*
 
