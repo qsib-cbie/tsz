@@ -975,7 +975,7 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
 
                         // Read the row count, accepting a reservation up to 2^32 rows
                         // SAFETY: The decompressor will reserve at most 2^32 rows, but there may be more if overflow occurs.
-                        let rows = read_full_i32(bytes) as isize;
+                        let rows = read_full_i32(bytes) as u32;
                         let bytes = &bytes[core::mem::size_of::<i32>()..];
 
                         // At best we can emit 3 bits per row not counting any metadata for one column
@@ -985,8 +985,8 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
 
                         // Reserve space for the rows if there is enough remaining capacity
                         #(
-                            let remaining = (self.#col_vec_idents.capacity() - self.#col_vec_idents.len()) as isize ;
-                            let reservation = rows - remaining;
+                            let remaining = (self.#col_vec_idents.capacity() - self.#col_vec_idents.len()) as isize;
+                            let reservation = rows as isize - remaining;
                             if reservation > 0 {
                                 self.#col_vec_idents.reserve(reservation as usize);
                             }
