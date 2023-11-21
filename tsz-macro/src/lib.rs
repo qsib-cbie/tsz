@@ -588,8 +588,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     "i8" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
                     "i16" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
                     "i32" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
-                    // "i64" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
-                    "i64" => quote! { None },
+                    "i64" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    // "i64" => quote! { None },
                     "i128" => quote! { None },
                     _ => panic!("Unsupported type"),
                 }
@@ -607,8 +607,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     "i8" => quote! { None },
                     "i16" => quote! { None },
                     "i32" => quote! { None },
-                    // "i64" => quote! { None },
-                    "i64" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
+                    "i64" => quote! { None },
+                    // "i64" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
                     "i128" => quote! { Some(::tsz_compress::prelude::halfvec::HalfVec::new(prealloc_rows)) },
                     _ => panic!("Unsupported type"),
                 }
@@ -656,6 +656,10 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         .iter()
         .map(|ident| format_ident!("prev_{}", ident))
         .collect_vec();
+    let prev_double_col_idents = col_idents
+        .iter()
+        .map(|ident| format_ident!("prev_double_{}", ident))
+        .collect_vec();
     let prev_delta_idents = col_idents
         .iter()
         .map(|ident| format_ident!("prev_delta_{}", ident))
@@ -674,6 +678,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     #( #col_delta_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
                     #( #col_values_emitted_delta: usize,)*
                     #( #col_values_emitted_delta_delta: usize,)*
+                    #( #prev_double_col_idents: #double_col_tys,)*
                     #( #prev_col_idents: #delta_col_tys,)*
                     #( #prev_delta_idents: #delta_col_tys,)*
                     rows: usize,
@@ -693,6 +698,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             #( #col_delta_delta_buf_idents: #col_delta_delta_buf,)*
                             #( #col_values_emitted_delta: 0,)*
                             #( #col_values_emitted_delta_delta: 0,)*
+                            #( #prev_double_col_idents: 0,)*
                             #( #prev_col_idents: 0,)*
                             #( #prev_delta_idents: 0,)*
                             rows: 0,
@@ -714,7 +720,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                                     outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
                                     #write_first(outbuf, row.#col_idents);
                                 }
-                                self.#prev_col_idents = row.#col_idents as #delta_col_tys;
+                                self.#prev_double_col_idents = row.#col_idents as #double_col_tys;
                             )*
                             return;
                         }
@@ -725,16 +731,16 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             #(
                                 // Up cast to double bit-width always for the first delta
                                 let col = row.#col_idents as #double_col_tys;
-                                let double_delta = self.#prev_col_idents as #double_col_tys - col;
+                                let delta = col - self.#prev_double_col_idents;
                                 if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
-                                    #write_second(outbuf, double_delta);
+                                    #write_second(outbuf, delta);
                                 }
                                 if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
-                                    #write_second(outbuf, double_delta);
+                                    #write_second(outbuf, delta);
                                 }
 
                                 // Use choice of bit-width for delta/delta-delta compression
-                                self.#prev_delta_idents = double_delta as #delta_col_tys;
+                                self.#prev_delta_idents = delta as #delta_col_tys;
                                 self.#prev_col_idents = col as #delta_col_tys;
                             )*;
                             return;
@@ -975,7 +981,8 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
 
                         // Read the row count, accepting a reservation up to 2^32 rows
                         // SAFETY: The decompressor will reserve at most 2^32 rows, but there may be more if overflow occurs.
-                        let rows = read_full_i32(bytes) as u32;
+                        let row_bytes: &[u8; 4] = bytes[..4].try_into().map_err(|_|CodingError::NotEnoughBits)?;
+                        let rows = read_full_i32(row_bytes) as u32;
                         let bytes = &bytes[core::mem::size_of::<i32>()..];
 
                         // At best we can emit 3 bits per row not counting any metadata for one column
