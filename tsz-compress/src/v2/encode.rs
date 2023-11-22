@@ -125,6 +125,7 @@ unsafe fn push_ten_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf:
         word <<= 10;
     }
     word |= values[N1].zigzag_bit_masked(mask);
+    word <<= 2;
     buf.push(HalfWord::Full(word));
 }
 
