@@ -125,7 +125,7 @@ unsafe fn push_ten_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf:
         word <<= 10;
     }
     word |= values[N1].zigzag_bit_masked(mask);
-    word <<= 2;
+    word <<= 2; // Nibble alignment
     buf.push(HalfWord::Full(word));
 }
 
