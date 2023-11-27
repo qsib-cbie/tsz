@@ -21,6 +21,15 @@ trait Bits: PrimInt + Binary {
     }
 }
 
+impl Bits for i8 {
+    const BITS: usize = 8;
+    /// Language limitations prevent us from writing simple math expressions
+    #[inline(always)]
+    fn zigzag_bits(self) -> u32 {
+        ((self << 1) ^ (self >> Self::BITS - 1)) as u32
+    }
+}
+
 impl Bits for i16 {
     const BITS: usize = 16;
     /// Language limitations prevent us from writing simple math expressions
@@ -295,6 +304,93 @@ impl EmitDeltaBits<i16> for CompressionQueue<i16, 10> {
                 fits[..=3].fill(false);
                 break;
             }
+            if (index < 4 && !(-128..=127).contains(&value)) {
+                fits[2] = false;
+            }
+            if (index < 5 && !(-32..=31).contains(&value)) {
+                fits[1] = false;
+            }
+            if (index < 10 && !(-4..=3).contains(&value)) {
+                fits[0] = false;
+            }
+        }
+
+        // Emit according to priority of cases
+        if fits[0] {
+            unsafe {
+                push_three_bits(self, out);
+            }
+            return 10;
+        } else if fits[1] {
+            unsafe {
+                push_six_bits(self, out);
+            }
+            return 5;
+        } else if fits[2] {
+            unsafe {
+                push_eight_bits(self, out);
+            }
+            return 4;
+        } else if fits[3] {
+            unsafe {
+                push_ten_bits(self, out);
+            }
+            return 3;
+        } else if fits[4] {
+            unsafe {
+                push_sixteen_bits(self, out);
+            }
+            return 2;
+        } else if fits[5] {
+            unsafe {
+                push_thirty_two_bits(self, out);
+            }
+            return 1;
+        }
+        0
+    }
+}
+
+impl EmitDeltaBits<i8> for CompressionQueue<i8, 10> {
+    #[allow(unused)]
+    fn emit_delta_bits(&mut self, out: &mut HalfVec, flush: bool) -> usize {
+        let queue_length = self.len();
+        let mut fits = [true; 6];
+
+        // Check flush conditions
+        if flush {
+            // Can not emit with any case of delta compression if queue is empty
+            if self.is_empty() {
+                return 0;
+            }
+
+            // Can not emit with case v of delta compression if number of samples < 10
+            if self.len() < 10 {
+                fits[0] = false;
+            }
+
+            // Can not emit with case iv of delta compression if number of samples < 5.
+            if self.len() < 5 {
+                fits[1] = false;
+            }
+
+            // Can not emit with case iii of delta compression if number of samples < 4
+            if self.len() < 4 {
+                fits[2] = false;
+            }
+
+            // Can not emit with case ii of delta compression if number of samples < 3
+            if self.len() < 3 {
+                fits[3] = false;
+            }
+
+            // Can not emit with case ii of delta compression if number of samples < 2
+            if self.len() < 2 {
+                fits[4] = false;
+            }
+        }
+
+        for (index, value) in self.iter().enumerate() {
             if (index < 4 && !(-128..=127).contains(&value)) {
                 fits[2] = false;
             }
