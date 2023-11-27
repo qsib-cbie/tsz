@@ -399,7 +399,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 let bit_width = 16;
                 let shift = 32 - padding - bit_width;
                 for i in 0..2 {
-                    let delta = (word >> (shift - bit_width * i)) as i32;
+                    let delta = ((word >> (shift - bit_width * i)) & 0b1111_1111_1111_1111) as i32;
                     let delta = (delta >> 1) ^ -(delta & 1);
                     value = (value as i32 + delta) as i16;
                     output.push(value);
