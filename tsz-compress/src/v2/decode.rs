@@ -138,7 +138,6 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                 let padding = 2;
                 let bit_width = 3;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..10 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b111) as i16;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -160,7 +159,6 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                 let padding = 2;
                 let bit_width = 6;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..5 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b11_1111) as i16;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -203,7 +201,6 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                 let padding = 2;
                 let bit_width = 10;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..3 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b11_1111_1111) as i16;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -317,7 +314,6 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 let padding = 2;
                 let bit_width = 3;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..10 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b111) as i32;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -339,7 +335,6 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 let padding = 2;
                 let bit_width = 6;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..5 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b11_1111) as i32;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -382,7 +377,6 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                 let padding = 2;
                 let bit_width = 10;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..3 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b11_1111_1111) as i32;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -508,7 +502,6 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                 let padding = 2;
                 let bit_width = 3;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..10 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b111) as i64;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -530,7 +523,6 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                 let padding = 2;
                 let bit_width = 6;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..5 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b11_1111) as i64;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -574,7 +566,6 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                 let padding = 2;
                 let bit_width = 10;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..3 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b11_1111_1111) as i64;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -724,7 +715,6 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
                 let padding = 2;
                 let bit_width = 3;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..10 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b111) as i128;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -746,7 +736,6 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
                 let padding = 2;
                 let bit_width = 6;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..5 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b11_1111) as i128;
                     let delta = (delta >> 1) ^ -(delta & 1);
@@ -790,7 +779,6 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
                 let padding = 2;
                 let bit_width = 10;
                 let shift = 32 - padding - bit_width;
-                word = word >> 2; // Nibble align
                 for i in 0..3 {
                     let delta = ((word >> (shift - bit_width * i)) & 0b11_1111_1111) as i128;
                     let delta = (delta >> 1) ^ -(delta & 1);

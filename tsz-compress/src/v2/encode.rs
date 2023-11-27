@@ -61,7 +61,6 @@ unsafe fn push_three_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, bu
         word <<= 3;
     }
     word |= values[N1].zigzag_bit_masked(mask);
-    word <<= 2; // Nibble alignment
     buf.push(HalfWord::Full(word));
 }
 
@@ -94,7 +93,6 @@ unsafe fn push_six_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf:
         word <<= 6;
     }
     word |= values[N1].zigzag_bit_masked(mask);
-    word <<= 2; // Nibble alignment
     buf.push(HalfWord::Full(word));
 }
 
@@ -127,7 +125,6 @@ unsafe fn push_ten_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf:
         word <<= 10;
     }
     word |= values[N1].zigzag_bit_masked(mask);
-    word <<= 2; // Nibble alignment
     buf.push(HalfWord::Full(word));
 }
 
