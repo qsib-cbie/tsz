@@ -3,14 +3,13 @@ use tsz_compress::prelude::*;
 
 extern crate alloc;
 
-use rand::Rng;
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::Rng;
 
     #[test]
-    fn test_macro_compress_test_macro_compress_sanity1_i8() {
+    fn test_macro_compress_sanity1_i8() {
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
@@ -50,7 +49,7 @@ mod tests {
     }
 
     #[test]
-    fn test_macro_compress_test_macro_compress_sanity2_i8() {
+    fn test_macro_compress_sanity2_i8() {
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
@@ -87,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn test_macro_compress_test_macro_compress_sanity1_i16() {
+    fn test_macro_compress_sanity1_i16() {
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
@@ -126,7 +125,7 @@ mod tests {
     }
 
     #[test]
-    fn test_macro_compress_test_macro_compress_sanity2_i16() {
+    fn test_macro_compress_sanity2_i16() {
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
@@ -163,7 +162,7 @@ mod tests {
     }
 
     #[test]
-    fn test_macro_compress_test_macro_compress_random_i16() {
+    fn test_macro_compress_random_i16() {
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
@@ -182,16 +181,14 @@ mod tests {
             // Initialize the compressor
             let mut compressor = TestRowCompressorImpl::new(128);
 
-            // Initialize the input vector
-            let mut values: Vec<i16> = vec![];
-
             // Number of samples in the input vector
             let end_range = rng.gen_range(100..10000);
 
-            // Generate input vector randomly in i16 range
-            for _ in 0..end_range {
-                values.push(rng.gen_range(i16::MIN..i16::MAX));
-            }
+            // Create a vector with the specified number of elements
+            let mut values = vec![0i16; end_range];
+
+            // Fill the vector with random i16 values
+            rng.fill(values.as_mut_slice());
 
             // Compression
             for value in &values {
@@ -214,7 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn test_macro_compress_test_macro_compress_sanity1_i32() {
+    fn test_macro_compress_sanity1_i32() {
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
@@ -254,7 +251,7 @@ mod tests {
     }
 
     #[test]
-    fn test_macro_compress_test_macro_compress_random_i32() {
+    fn test_macro_compress_random_i32() {
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
@@ -273,16 +270,14 @@ mod tests {
             // Initialize the compressor
             let mut compressor = TestRowCompressorImpl::new(128);
 
-            // Initialize the input vector
-            let mut values: Vec<i32> = vec![];
-
             // Number of samples in the input vector
             let end_range = rng.gen_range(100..10000);
 
-            // Generate input vector randomly in i32 range
-            for _ in 0..end_range {
-                values.push(rng.gen_range(i32::MIN..i32::MAX));
-            }
+            // Create a vector with the specified number of elements
+            let mut values = vec![0i32; end_range];
+
+            // Fill the vector with random i32 values
+            rng.fill(values.as_mut_slice());
 
             // Compression
             for value in &values {
@@ -305,7 +300,7 @@ mod tests {
     }
 
     #[test]
-    fn test_macro_compress_test_macro_compress_sanity_all() {
+    fn test_macro_compress_sanity_all() {
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
@@ -355,7 +350,7 @@ mod tests {
     }
 
     #[test]
-    fn test_macro_compress_test_macro_compress_sanity_delta_col_tys() {
+    fn test_macro_compress_sanity_delta_col_tys() {
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
