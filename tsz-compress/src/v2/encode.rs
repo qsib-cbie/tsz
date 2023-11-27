@@ -87,7 +87,7 @@ unsafe fn push_six_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf:
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1110));
     let mut word: u32 = 0;
-    let mask = 0b111111_u32;
+    let mask = 0b11_1111_u32;
     let values = q.pop_n::<N>().unwrap_unchecked();
     for i in 0..N1 {
         word |= values[i].zigzag_bit_masked(mask);
@@ -104,7 +104,7 @@ unsafe fn push_eight_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, bu
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1100));
     let mut word: u32 = 0;
-    let mask = 0b11111111_u32;
+    let mask = 0b1111_1111_u32;
     let values = q.pop_n::<N>().unwrap_unchecked();
     for i in 0..N1 {
         word |= values[i].zigzag_bit_masked(mask);
@@ -120,7 +120,7 @@ unsafe fn push_ten_bits<T: PrimInt + Bits>(q: &mut CompressionQueue<T, 10>, buf:
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1010));
     let mut word: u32 = 0b00 << 10;
-    let mask = 0b1111111111_u32;
+    let mask = 0b11_1111_1111_u32;
     let values = q.pop_n::<N>().unwrap_unchecked();
     for i in 0..N1 {
         word |= values[i].zigzag_bit_masked(mask);
@@ -454,16 +454,16 @@ fn emit_popped_values32<const N: usize>(values: &[i32; N], out: &mut HalfVec) {
             0 => out.push(HalfWord::Half(0b0000)),
             -1 => out.push(HalfWord::Half(0b0001)),
             -16..=15 => {
-                let zigzag = value.zigzag_bit_masked(0b11111) as u8;
-                out.push(HalfWord::Byte(0b00100000 | zigzag));
+                let zigzag = value.zigzag_bit_masked(0b1_1111) as u8;
+                out.push(HalfWord::Byte(0b0010_0000 | zigzag));
             }
             -256..=255 => {
-                let zigzag = value.zigzag_bit_masked(0b111111111) as u16;
+                let zigzag = value.zigzag_bit_masked(0b1_1111_1111) as u16;
                 out.push(HalfWord::Half(0b0100 | (zigzag >> 8) as u8));
                 out.push(HalfWord::Byte(zigzag as u8));
             }
             -32678..=32767 => {
-                let zigzag = value.zigzag_bit_masked(0b1111111111111111) as u16;
+                let zigzag = value.zigzag_bit_masked(0b1111_1111_1111_1111) as u16;
                 out.push(HalfWord::Half(0b0110));
                 out.push(HalfWord::Byte((zigzag >> 8) as u8));
                 out.push(HalfWord::Byte(zigzag as u8));
@@ -484,16 +484,16 @@ fn emit_popped_values32_q(q: &mut CompressionQueue<i32, 2>, out: &mut HalfVec) {
             0 => out.push(HalfWord::Half(0b0000)),
             -1 => out.push(HalfWord::Half(0b0001)),
             -16..=15 => {
-                let zigzag = value.zigzag_bit_masked(0b11111) as u8;
-                out.push(HalfWord::Byte(0b00100000 | zigzag));
+                let zigzag = value.zigzag_bit_masked(0b1_1111) as u8;
+                out.push(HalfWord::Byte(0b0010_0000 | zigzag));
             }
             -256..=255 => {
-                let zigzag = value.zigzag_bit_masked(0b111111111) as u16;
+                let zigzag = value.zigzag_bit_masked(0b1_1111_1111) as u16;
                 out.push(HalfWord::Half(0b0100 | (zigzag >> 8) as u8));
                 out.push(HalfWord::Byte(zigzag as u8));
             }
             -32678..=32767 => {
-                let zigzag = value.zigzag_bit_masked(0b1111111111111111) as u16;
+                let zigzag = value.zigzag_bit_masked(0b1111_1111_1111_1111) as u16;
                 out.push(HalfWord::Half(0b0110));
                 out.push(HalfWord::Byte((zigzag >> 8) as u8));
                 out.push(HalfWord::Byte(zigzag as u8));
@@ -530,16 +530,16 @@ fn emit_popped_values16<const N: usize>(values: &[i16; N], out: &mut HalfVec) {
             0 => out.push(HalfWord::Half(0b0000)),
             -1 => out.push(HalfWord::Half(0b0001)),
             -16..=15 => {
-                let zigzag = value.zigzag_bit_masked(0b11111) as u8;
-                out.push(HalfWord::Byte(0b00100000 | zigzag));
+                let zigzag = value.zigzag_bit_masked(0b1_1111) as u8;
+                out.push(HalfWord::Byte(0b0010_0000 | zigzag));
             }
             -256..=255 => {
-                let zigzag = value.zigzag_bit_masked(0b111111111) as u16;
+                let zigzag = value.zigzag_bit_masked(0b1_1111_1111) as u16;
                 out.push(HalfWord::Half(0b0100 | (zigzag >> 8) as u8));
                 out.push(HalfWord::Byte(zigzag as u8));
             }
             -32678..=32767 => {
-                let zigzag = value.zigzag_bit_masked(0b1111111111111111) as u16;
+                let zigzag = value.zigzag_bit_masked(0b1111_1111_1111_1111) as u16;
                 out.push(HalfWord::Half(0b0110));
                 out.push(HalfWord::Byte((zigzag >> 8) as u8));
                 out.push(HalfWord::Byte(zigzag as u8));
@@ -560,16 +560,16 @@ fn emit_popped_values16_q(q: &mut CompressionQueue<i16, 2>, out: &mut HalfVec) {
             0 => out.push(HalfWord::Half(0b0000)),
             -1 => out.push(HalfWord::Half(0b0001)),
             -16..=15 => {
-                let zigzag = value.zigzag_bit_masked(0b11111) as u8;
-                out.push(HalfWord::Byte(0b00100000 | zigzag));
+                let zigzag = value.zigzag_bit_masked(0b1_1111) as u8;
+                out.push(HalfWord::Byte(0b0010_0000 | zigzag));
             }
             -256..=255 => {
-                let zigzag = value.zigzag_bit_masked(0b111111111) as u16;
+                let zigzag = value.zigzag_bit_masked(0b1_1111_1111) as u16;
                 out.push(HalfWord::Half(0b0100 | (zigzag >> 8) as u8));
                 out.push(HalfWord::Byte(zigzag as u8));
             }
             -32678..=32767 => {
-                let zigzag = value.zigzag_bit_masked(0b1111111111111111) as u16;
+                let zigzag = value.zigzag_bit_masked(0b1111_1111_1111_1111) as u16;
                 out.push(HalfWord::Half(0b0110));
                 out.push(HalfWord::Byte((zigzag >> 8) as u8));
                 out.push(HalfWord::Byte(zigzag as u8));

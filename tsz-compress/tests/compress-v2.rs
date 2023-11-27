@@ -3,6 +3,8 @@ use tsz_compress::prelude::*;
 
 extern crate alloc;
 
+use rand::Rng;
+
 #[cfg(test)]
 mod tests {
     use super::*;
