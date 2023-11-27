@@ -3,6 +3,8 @@ use tsz_compress::prelude::*;
 
 extern crate alloc;
 
+use rand::Rng;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,6 +146,7 @@ mod tests {
             // Initialize the compressor
             let mut compressor = TestRowCompressorImpl::new(128);
 
+
             // Number of samples in the input vector
             let end_range = rng.gen_range(100..10000);
 
@@ -221,7 +224,6 @@ mod tests {
             pub struct TestRow {
                 pub a: i32,
             }
-
             pub use compress::TestRowCompressorImpl;
             pub use decompress::TestRowDecompressorImpl;
         }
