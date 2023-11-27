@@ -88,6 +88,94 @@ mod tests {
     }
 
     #[test]
+    fn test_macro_compress_sanity3_i8() {
+        // Test with deltas out of i8 range
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                pub a: i16,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        let values = vec![1, 1, 1, 1, -128, 127, 1, 1, 1, 1, 1, 1]; // 127 - -128 = 255 > i8::MAX
+
+        for value in &values {
+            let row = TestRow { a: *value };
+            compressor.compress(row);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
+    fn test_macro_compress_random_i8() {
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                pub a: i8,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..10000 {
+            // Initialize the compressor
+            let mut compressor = TestRowCompressorImpl::new(128);
+
+            // Number of samples in the input vector
+            let end_range = rng.gen_range(100..10000);
+            // let end_range = 10;
+
+            // Create a vector with the specified number of elements
+            let mut values = vec![0i8; end_range];
+
+            // Fill the vector with random i8 values
+            rng.fill(values.as_mut_slice());
+
+            // Compression
+            for value in &values {
+                let row = TestRow { a: *value };
+                compressor.compress(row);
+            }
+
+            // Finalize the compression
+            let bytes = compressor.finish();
+
+            // Initialize the decompressor
+            let mut decompressor = TestRowDecompressorImpl::new();
+
+            // Decompress the bit buffer
+            decompressor.decompress(&bytes).unwrap();
+
+            // Assert that the decompressed data matches the original
+            assert_eq!(values, decompressor.col_a());
+        }
+    }
+
+    #[test]
     fn test_macro_compress_sanity1_i16() {
         mod row {
             use tsz_compress::prelude::*;
@@ -164,6 +252,44 @@ mod tests {
     }
 
     #[test]
+    fn test_macro_compress_sanity3_i16() {
+        // Test with deltas out of i16 range
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                pub a: i16,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        let values = vec![1, -26679, 28996, 1, 1, 1, 1, 1, 1, 1]; // 28895 - -26679 = 55574 > i16::MAX
+
+        for value in &values {
+            let row = TestRow { a: *value };
+            compressor.compress(row);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
     fn test_macro_compress_random_i16() {
         mod row {
             use tsz_compress::prelude::*;
@@ -179,7 +305,7 @@ mod tests {
 
         let mut rng = rand::thread_rng();
 
-        for _ in 0..100 {
+        for _ in 0..1000 {
             // Initialize the compressor
             let mut compressor = TestRowCompressorImpl::new(128);
 
