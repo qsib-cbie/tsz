@@ -674,21 +674,21 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 let segment = path.segments.first().unwrap();
                 let ident = segment.ident.clone();
                 match ident.to_string().as_str() {
-                    "i8" => quote! { 
+                    "i8" => quote! {
                         debug_assert!(self.#col_delta_buf_idents.is_some());
                         let outbuf = unsafe { self.#col_delta_buf_idents.as_mut().unwrap_unchecked() };
                         self.#col_delta_comp_queue_idents.push(delta);
                         if self.#col_delta_comp_queue_idents.is_full() {
-                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf);
                             self.#col_values_emitted_delta += emitted;
                         }
                     },
-                    "i16" => quote! { 
+                    "i16" => quote! {
                         debug_assert!(self.#col_delta_buf_idents.is_some());
                         let outbuf = unsafe { self.#col_delta_buf_idents.as_mut().unwrap_unchecked() };
                         self.#col_delta_comp_queue_idents.push(delta);
                         if self.#col_delta_comp_queue_idents.is_full() {
-                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf);
                             self.#col_values_emitted_delta += emitted;
                         }
                     },
@@ -697,16 +697,16 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         let outbuf = unsafe { self.#col_delta_buf_idents.as_mut().unwrap_unchecked() };
                         self.#col_delta_comp_queue_idents.push(delta);
                         if self.#col_delta_comp_queue_idents.is_full() {
-                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf);
                             self.#col_values_emitted_delta += emitted;
                         }
                     },
-                    "i64" => quote! { 
+                    "i64" => quote! {
                         debug_assert!(self.#col_delta_buf_idents.is_some());
                         let outbuf = unsafe { self.#col_delta_buf_idents.as_mut().unwrap_unchecked() };
                         self.#col_delta_comp_queue_idents.push(delta);
                         if self.#col_delta_comp_queue_idents.is_full() {
-                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf);
                             self.#col_values_emitted_delta += emitted;
                         }
                     },
@@ -753,8 +753,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 /// A Compressor type implementing TszCompressV2.
                 #[derive(Debug)]
                 pub struct #compressor_ident {
-                    #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#delta_col_tys, 10>,)*
-                    #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<#delta_col_tys, 2>,)*
+                    #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<10>,)*
+                    #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue<2>,)*
                     #( #col_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
                     #( #col_delta_delta_buf_idents: Option<::tsz_compress::prelude::halfvec::HalfVec>,)*
                     #( #col_values_emitted_delta: usize,)*
@@ -773,8 +773,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     /// emitted during the delta and delta-delta compression processes.
                     fn new(prealloc_rows: usize) -> Self {
                         #compressor_ident {
-                            #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#delta_col_tys, 10>::new(),)*
-                            #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<#delta_col_tys, 2>::new(),)*
+                            #( #col_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<10>::new(),)*
+                            #( #col_delta_delta_comp_queue_idents: ::tsz_compress::prelude::CompressionQueue::<2>::new(),)*
                             #( #col_delta_buf_idents: #col_delta_buf,)*
                             #( #col_delta_delta_buf_idents: #col_delta_delta_buf,)*
                             #( #col_values_emitted_delta: 0,)*
@@ -917,7 +917,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         #(
                             self.#col_delta_buf_idents.as_mut().map(|outbuf| {
                                 while self.#col_delta_comp_queue_idents.len() > 0 {
-                                    self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, true);
+                                    self.#col_delta_comp_queue_idents.flush_delta_bits(outbuf);
                                 }
                              });
                             self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {

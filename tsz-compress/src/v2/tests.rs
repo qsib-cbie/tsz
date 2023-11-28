@@ -21,7 +21,7 @@ mod tests_delta {
     ) -> (usize, usize, usize) {
         // Case 5: Encode and decode 10 samples between [-4, 3] in 3 bits
         // Create queue
-        let mut queue: CompressionQueue<i16, 10> = CompressionQueue::new();
+        let mut queue: CompressionQueue<10> = CompressionQueue::new();
         for value in values {
             queue.push(*value as i16);
         }
@@ -29,7 +29,11 @@ mod tests_delta {
         // Header
         bits.push(HalfWord::Half(0b1001));
         // Encode
-        let num_emitted_samples = queue.emit_delta_bits(&mut bits, flush);
+        let num_emitted_samples = if flush {
+            queue.flush_delta_bits(&mut bits)
+        } else {
+            queue.emit_delta_bits(&mut bits)
+        };
         if bits.len() % 2 == 1 {
             bits.push(HalfWord::Half(0b1001));
         }
@@ -50,7 +54,7 @@ mod tests_delta {
         flush: bool,
     ) -> (usize, usize, usize) {
         // Create queue
-        let mut queue: CompressionQueue<i16, 10> = CompressionQueue::new();
+        let mut queue: CompressionQueue<10> = CompressionQueue::new();
         for value in values {
             queue.push(*value);
         }
