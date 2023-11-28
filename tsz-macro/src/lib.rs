@@ -706,6 +706,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     }
 
                     /// Performs compression using delta/delta-delta compression.
+                    #[inline(always)]
                     fn compress(&mut self, row: Self::T) {
                         // Enqueues delta and delta-delta values
                         self.rows += 1;
@@ -828,6 +829,16 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             return 0;
                         }
                         4 * finished_nibble_count / total_col_values_emitted / #num_columns
+                    }
+
+
+                    ///
+                    /// The number of rows that have been compressed.
+                    /// This is an exact answer for rows consumed including rows that may not have been emitted.
+                    ///
+                    #[inline(always)]
+                    fn row_count(&self) -> usize {
+                        self.rows
                     }
 
                     ///
