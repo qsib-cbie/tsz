@@ -64,6 +64,12 @@ pub trait TszCompressV2 {
     fn bit_rate(&self) -> usize;
 
     ///
+    /// The number of rows that have been compressed.
+    /// This is an exact answer for rows consumed including rows that may not have been emitted.
+    ///
+    fn row_count(&self) -> usize;
+
+    ///
     /// Finish compression, consuming the compressor and returning the compressed bytes.
     /// This may leave intermediate buffers in a cleared state.
     ///
