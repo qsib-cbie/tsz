@@ -7,12 +7,9 @@ use rand::Rng;
 
 #[cfg(test)]
 mod tests {
-    use std::collections::btree_map::Values;
 
     use super::*;
-    use bitvec::vec;
     use rand::Rng;
-    use tsz_compress::compress;
 
     #[test]
     fn test_macro_compress_sanity1_i8() {
