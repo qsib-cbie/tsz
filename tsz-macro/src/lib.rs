@@ -709,7 +709,36 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     fn compress(&mut self, row: Self::T) {
                         // Enqueues delta and delta-delta values
                         self.rows += 1;
-                        if self.rows == 1 {
+
+                        if self.rows > 2 {
+                            #(
+                                // The new delta  and delta-delta
+                                let col = row.#col_idents as #delta_col_tys;
+                                let delta = col - self.#prev_col_idents;
+
+                                // Maybe do delta compression
+                                if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                    self.#col_delta_comp_queue_idents.push(delta);
+                                    if self.#col_delta_comp_queue_idents.is_full() {
+                                        let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                                        self.#col_values_emitted_delta += emitted;
+                                    }
+                                }
+
+                                // Maybe do delta-delta compression
+                                if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                    let delta_delta = delta - self.#prev_delta_idents;
+                                    self.#col_delta_delta_comp_queue_idents.push(delta_delta);
+                                    if self.#col_delta_delta_comp_queue_idents.is_full() {
+                                        self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
+                                    }
+                                }
+
+                                // Update the previous values
+                                self.#prev_col_idents = col;
+                                self.#prev_delta_idents = delta;
+                            )*
+                        } else if self.rows == 1 {
                             /// Write out the full value in the exact bit-width of the column.
                             #(
                                 if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
@@ -722,10 +751,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                                 }
                                 self.#prev_double_col_idents = row.#col_idents as #double_col_tys;
                             )*
-                            return;
-                        }
-
-                        if self.rows == 2 {
+                        } else if self.rows == 2 {
                             /// Write out the full value in the next exact bit-width of the column, regardless of chosen delta bit-width.
                             /// SAFETY: If the bit-width is configurable, then bits at rest will be uninterpretable.
                             #(
@@ -743,50 +769,9 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                                 self.#prev_delta_idents = delta as #delta_col_tys;
                                 self.#prev_col_idents = col as #delta_col_tys;
                             )*;
-                            return;
                         }
-
-                        #(
-                            // The new delta  and delta-delta
-                            let col = row.#col_idents as #delta_col_tys;
-                            let delta = col - self.#prev_col_idents;
-
-                            // Maybe do delta compression
-                            if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
-                                self.#col_delta_comp_queue_idents.push(delta);
-                                if self.#col_delta_comp_queue_idents.is_full() {
-                                    let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
-                                    self.#col_values_emitted_delta += emitted;
-                                }
-                            }
-
-                            // Maybe do delta-delta compression
-                            if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
-                                let delta_delta = delta - self.#prev_delta_idents;
-                                self.#col_delta_delta_comp_queue_idents.push(delta_delta);
-                                if self.#col_delta_delta_comp_queue_idents.is_full() {
-                                    self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
-                                }
-                            }
-
-                            // Update the previous values
-                            self.#prev_col_idents = col;
-                            self.#prev_delta_idents = delta;
-
-                            // // Chooses the compression algorithm associated with the output buffer that is N times smaller than the other output buffer.
-                            // let COMPRESSION_SIZE_FACTOR: usize = 3;
-                            // if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
-                            //     if delta_buffer.len() > delta_delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
-                            //         self.#col_delta_buf_idents = None;
-                            //         self.#col_values_emitted_delta = 0;
-                            //     }
-                            //     else if delta_delta_buffer.len() > delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
-                            //         self.#col_delta_delta_buf_idents = None;
-                            //         self.#col_values_emitted_delta_delta = 0;
-                            //     }
-                            // }
-                        )*
                     }
+
 
                     fn len(&self) -> usize {
                         let mut finished_nibble_count = 0;
