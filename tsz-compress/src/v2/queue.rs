@@ -7,20 +7,23 @@ use num_traits::PrimInt;
 /// A statically sized ring-buffer queue used
 /// while compressing a column.
 ///
+/// The absolute max size of this buffer is 16 elements.
+///
 #[derive(Debug)]
 pub struct CompressionQueue<T, const N: usize> {
-    buf: [MaybeUninit<T>; N],
+    buf: [MaybeUninit<T>; 16],
     front: usize,
     len: usize,
 }
 
-impl<T: PrimInt, const N: usize> CompressionQueue<T, N> {
+impl<T: PrimInt + Sized, const N: usize> CompressionQueue<T, N> {
     ///
     /// Creates an empty queue.
     ///
     pub const fn new() -> Self {
+        assert!(N <= 16);
         CompressionQueue {
-            buf: [MaybeUninit::uninit(); N],
+            buf: [MaybeUninit::uninit(); 16],
             front: 0,
             len: 0,
         }
@@ -38,7 +41,7 @@ impl<T: PrimInt, const N: usize> CompressionQueue<T, N> {
     /// have to overwrite an element to push a new value.
     ///
     pub fn is_full(&self) -> bool {
-        self.len == N
+        self.len >= N
     }
 
     ///
@@ -54,12 +57,12 @@ impl<T: PrimInt, const N: usize> CompressionQueue<T, N> {
     /// overwriting the oldest value if the queue is full.
     ///
     pub fn push(&mut self, value: T) {
-        let index = (self.front + self.len) % N;
+        let index = (self.front + self.len) % 16;
         unsafe { self.write(index, value) };
-        if !self.is_full() {
+        if self.len < 16 {
             self.len += 1;
         } else {
-            self.front = (self.front + 1) % N;
+            self.front = (self.front + 1) % 16;
         }
     }
 
@@ -73,7 +76,7 @@ impl<T: PrimInt, const N: usize> CompressionQueue<T, N> {
         }
 
         let value = unsafe { self.at(self.front) };
-        self.front = (self.front + 1) % N;
+        self.front = (self.front + 1) % 16;
         self.len -= 1;
         Some(value)
     }
@@ -90,11 +93,13 @@ impl<T: PrimInt, const N: usize> CompressionQueue<T, N> {
 
         let mut values: [T; M] = [T::zero(); M];
         for i in 0..M {
-            let index = (self.front + i) % N;
-            unsafe { *values.get_unchecked_mut(i) = self.at(index) };
+            let index = (self.front + i) % 16;
+            unsafe {
+                *values.get_unchecked_mut(i) = self.at(index);
+            }
         }
 
-        self.front = (self.front + M) % N;
+        self.front = (self.front + M) % 16;
         self.len -= M;
 
         Some(values)
@@ -153,7 +158,7 @@ impl<'a, T: PrimInt, const N: usize> Iterator for CompressionQueueIter<'a, T, N>
             return None;
         }
 
-        let index = (self.queue.front + self.index) % N;
+        let index = (self.queue.front + self.index) % 16;
         self.index += 1;
         Some(unsafe { self.queue.at(index) })
     }
@@ -223,19 +228,41 @@ mod tests {
         // keep pushing, queue should still be full
         for i in 4..8 {
             queue.push(i);
-            assert_eq!(queue.len(), 4);
+            assert_eq!(queue.len(), i + 1);
             assert_eq!(queue.is_empty(), false);
             assert_eq!(queue.is_full(), true);
         }
 
-        // iterate over the values, they should be 4..8
+        // keep pushing, queue should still be full and start overwriting
+        for i in 8..20 {
+            queue.push(i);
+            assert_eq!(queue.len(), (i + 1).min(16));
+            assert_eq!(queue.is_empty(), false);
+            assert_eq!(queue.is_full(), true);
+        }
+
+        // iterate over the values, they should be 4..20
         for (i, value) in queue.iter().enumerate() {
             assert_eq!(value, i + 4);
         }
 
-        // pop the values, they should be 4..8
+        // pop the values, they should be 16..20
         for j in 0..4 {
             assert_eq!(queue.pop(), Some(j + 4));
+            assert_eq!(queue.len(), 15 - j);
+            assert_eq!(queue.is_empty(), false);
+            assert_eq!(queue.is_full(), true);
+        }
+
+        // pop another 8 values, then the queue will start to empty
+        queue.pop_n::<8>().unwrap();
+        assert_eq!(queue.len(), 4);
+        assert_eq!(queue.is_empty(), false);
+        assert_eq!(queue.is_full(), true);
+
+        // pop the remaining 4 values, then the queue will be empty
+        for j in 0..4 {
+            assert_eq!(queue.pop(), Some(j + 16));
             assert_eq!(queue.len(), 3 - j);
             assert_eq!(queue.is_empty(), (j == 3));
             assert_eq!(queue.is_full(), false);
@@ -255,7 +282,7 @@ mod tests {
             let value = rng.gen::<usize>() % 100;
             if rng.gen::<bool>() {
                 std_queue.push_back(value);
-                if queue.is_full() {
+                if queue.len() == 16 {
                     std_queue.pop_front();
                 }
                 queue.push(value);
