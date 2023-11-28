@@ -1,3 +1,4 @@
+use itertools::izip;
 use itertools::{multiunzip, Itertools};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
@@ -616,6 +617,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
             _ => panic!("Unsupported type"),
         })
         .collect::<Vec<_>>();
+
     let write_first = col_tys
         .iter()
         .map(|ty| match ty {
@@ -664,6 +666,85 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         .iter()
         .map(|ident| format_ident!("prev_delta_{}", ident))
         .collect_vec();
+
+    // Do delta compression
+    let delta_comp_block = izip!(col_tys.iter(), col_delta_buf_idents.iter(), col_delta_comp_queue_idents.iter(), col_values_emitted_delta.iter())
+        .map(|(ty, col_delta_buf_idents,  col_delta_comp_queue_idents, col_values_emitted_delta)|  match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { 
+                        debug_assert!(self.#col_delta_buf_idents.is_some());
+                        let outbuf = unsafe { self.#col_delta_buf_idents.as_mut().unwrap_unchecked() };
+                        self.#col_delta_comp_queue_idents.push(delta);
+                        if self.#col_delta_comp_queue_idents.is_full() {
+                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                            self.#col_values_emitted_delta += emitted;
+                        }
+                    },
+                    "i16" => quote! { 
+                        debug_assert!(self.#col_delta_buf_idents.is_some());
+                        let outbuf = unsafe { self.#col_delta_buf_idents.as_mut().unwrap_unchecked() };
+                        self.#col_delta_comp_queue_idents.push(delta);
+                        if self.#col_delta_comp_queue_idents.is_full() {
+                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                            self.#col_values_emitted_delta += emitted;
+                        }
+                    },
+                    "i32" => quote! {
+                        debug_assert!(self.#col_delta_buf_idents.is_some());
+                        let outbuf = unsafe { self.#col_delta_buf_idents.as_mut().unwrap_unchecked() };
+                        self.#col_delta_comp_queue_idents.push(delta);
+                        if self.#col_delta_comp_queue_idents.is_full() {
+                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                            self.#col_values_emitted_delta += emitted;
+                        }
+                    },
+                    "i64" => quote! { 
+                        debug_assert!(self.#col_delta_buf_idents.is_some());
+                        let outbuf = unsafe { self.#col_delta_buf_idents.as_mut().unwrap_unchecked() };
+                        self.#col_delta_comp_queue_idents.push(delta);
+                        if self.#col_delta_comp_queue_idents.is_full() {
+                            let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
+                            self.#col_values_emitted_delta += emitted;
+                        }
+                    },
+                    "i128" => quote! { },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+
+    // Do delta-delta compression
+    let delta_delta_comp_block = izip!(col_tys.iter(), col_delta_delta_buf_idents.iter(), prev_delta_idents.iter(), col_delta_delta_comp_queue_idents.iter(), col_values_emitted_delta_delta.iter())
+        .map(|(ty, col_delta_delta_buf_idents, prev_delta_idents, col_delta_delta_comp_queue_idents, col_values_emitted_delta_delta)|  match ty {
+            syn::Type::Path(syn::TypePath { path, .. }) => {
+                let segment = path.segments.first().unwrap();
+                let ident = segment.ident.clone();
+                match ident.to_string().as_str() {
+                    "i8" => quote! { },
+                    "i16" => quote! { },
+                    "i32" => quote! { },
+                    "i64" => quote! { },
+                    "i128" => quote! {
+                        debug_assert!(self.#col_delta_delta_buf_idents.is_some());
+                        let outbuf = unsafe { self.#col_delta_delta_buf_idents.as_mut().unwrap_unchecked() };
+                        let delta_delta = delta - self.#prev_delta_idents;
+                        self.#col_delta_delta_comp_queue_idents.push(delta_delta);
+                        if self.#col_delta_delta_comp_queue_idents.is_full() {
+                            self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
+                        }
+                    },
+                    _ => panic!("Unsupported type"),
+                }
+            }
+            _ => panic!("Unsupported type"),
+        })
+        .collect::<Vec<_>>();
+
     let compressor_struct = quote! {
         pub mod compress {
             use super::*;
@@ -710,7 +791,24 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     fn compress(&mut self, row: Self::T) {
                         // Enqueues delta and delta-delta values
                         self.rows += 1;
-                        if self.rows == 1 {
+
+                        if self.rows > 2 {
+                            #(
+                                // The new delta  and delta-delta
+                                let col = row.#col_idents as #delta_col_tys;
+                                let delta = col - self.#prev_col_idents;
+
+                                // Do delta compression if configured
+                                #delta_comp_block
+
+                                // Do delta-delta compression if configured
+                                #delta_delta_comp_block
+
+                                // Update the previous values
+                                self.#prev_col_idents = col;
+                                self.#prev_delta_idents = delta;
+                            )*
+                        } else if self.rows == 1 {
                             /// Write out the full value in the exact bit-width of the column.
                             #(
                                 if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
@@ -723,10 +821,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                                 }
                                 self.#prev_double_col_idents = row.#col_idents as #double_col_tys;
                             )*
-                            return;
-                        }
-
-                        if self.rows == 2 {
+                        } else if self.rows == 2 {
                             /// Write out the full value in the next exact bit-width of the column, regardless of chosen delta bit-width.
                             /// SAFETY: If the bit-width is configurable, then bits at rest will be uninterpretable.
                             #(
@@ -744,50 +839,9 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                                 self.#prev_delta_idents = delta as #delta_col_tys;
                                 self.#prev_col_idents = col as #delta_col_tys;
                             )*;
-                            return;
                         }
-
-                        #(
-                            // The new delta  and delta-delta
-                            let col = row.#col_idents as #delta_col_tys;
-                            let delta = col - self.#prev_col_idents;
-
-                            // Maybe do delta compression
-                            if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
-                                self.#col_delta_comp_queue_idents.push(delta);
-                                if self.#col_delta_comp_queue_idents.is_full() {
-                                    let emitted = self.#col_delta_comp_queue_idents.emit_delta_bits(outbuf, false);
-                                    self.#col_values_emitted_delta += emitted;
-                                }
-                            }
-
-                            // Maybe do delta-delta compression
-                            if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
-                                let delta_delta = delta - self.#prev_delta_idents;
-                                self.#col_delta_delta_comp_queue_idents.push(delta_delta);
-                                if self.#col_delta_delta_comp_queue_idents.is_full() {
-                                    self.#col_values_emitted_delta_delta += self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
-                                }
-                            }
-
-                            // Update the previous values
-                            self.#prev_col_idents = col;
-                            self.#prev_delta_idents = delta;
-
-                            // // Chooses the compression algorithm associated with the output buffer that is N times smaller than the other output buffer.
-                            // let COMPRESSION_SIZE_FACTOR: usize = 3;
-                            // if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
-                            //     if delta_buffer.len() > delta_delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
-                            //         self.#col_delta_buf_idents = None;
-                            //         self.#col_values_emitted_delta = 0;
-                            //     }
-                            //     else if delta_delta_buffer.len() > delta_buffer.len() * COMPRESSION_SIZE_FACTOR {
-                            //         self.#col_delta_delta_buf_idents = None;
-                            //         self.#col_values_emitted_delta_delta = 0;
-                            //     }
-                            // }
-                        )*
                     }
+
 
                     fn len(&self) -> usize {
                         let mut finished_nibble_count = 0;
