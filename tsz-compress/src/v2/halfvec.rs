@@ -185,6 +185,25 @@ impl HalfVec {
     }
 }
 
+/// Compares two HalfVec for equality.
+impl PartialEq for HalfVec {
+    fn eq(&self, other: &Self) -> bool {
+        self.words == other.words && self.len == other.len
+    }
+}
+
+/// Compares two HalfWord for equality.
+impl PartialEq for HalfWord {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (HalfWord::Half(value1), HalfWord::Half(value2)) => value1 == value2,
+            (HalfWord::Byte(value1), HalfWord::Byte(value2)) => value1 == value2,
+            (HalfWord::Full(value1), HalfWord::Full(value2)) => value1 == value2,
+            _ => false,
+        }
+    }
+}
+
 /// Appends a value to a vector without checking the capacity.
 #[inline(always)]
 unsafe fn known_append(buf: &mut Vec<u8>, value: u8) {
