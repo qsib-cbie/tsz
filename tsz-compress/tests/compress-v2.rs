@@ -7,6 +7,7 @@ use rand::Rng;
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use rand::Rng;
 
@@ -337,6 +338,61 @@ mod tests {
             // Assert that the decompressed data matches the original
             assert_eq!(values, decompressor.col_a());
         }
+    }
+
+    #[test]
+    fn test_macro_compress_all_i16_deltas() {
+        // Test with deltas out of i16 range
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                pub a: i16,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        // Initialize the values vector
+        let mut values: Vec<i16> = Vec::with_capacity((i16::MAX as usize + 1) * 8 + 2);
+
+        // Write the first and second value
+        compressor.compress(TestRow { a: 0 });
+        compressor.compress(TestRow { a: 0 });
+        values.push(0);
+        values.push(0);
+
+        // Compress steady state values such that delta ranges from {-32768 - 32767 = -65535} and {32767 - -32768 = 65535}
+        for i in i16::MIN..=i16::MAX {
+            compressor.compress(TestRow { a: i });
+            compressor.compress(TestRow { a: i16::MIN });
+            values.push(i);
+            values.push(i16::MIN);
+        }
+
+        for i in i16::MIN..=i16::MAX {
+            compressor.compress(TestRow { a: i });
+            compressor.compress(TestRow { a: i16::MAX });
+            values.push(i);
+            values.push(i16::MAX);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
     }
 
     #[test]
