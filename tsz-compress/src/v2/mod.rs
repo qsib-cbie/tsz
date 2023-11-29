@@ -2,7 +2,6 @@ pub mod decode;
 pub mod encode;
 pub mod halfvec;
 pub mod queue;
-pub mod tests;
 pub use decode::*;
 pub use encode::*;
 pub use queue::*;
@@ -106,10 +105,10 @@ pub trait TszDecompressV2 {
     /// For example, if derived for a struct with fields `a: i8` and `b: i32`
     /// then the following accessors will be generated:
     ///
-    /// ```rust
+    /// rust
     /// fn col_a(&self) -> &[i8];
     /// fn col_b(&self) -> &[i32];
-    /// ```
+    ///
     ///
     /// # Returns
     /// A vector of rows, where each row is a struct with the same fields as the original.
