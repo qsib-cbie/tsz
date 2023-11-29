@@ -257,24 +257,24 @@ mod tests {
         use rand::Rng;
 
         let mut rng = rand::thread_rng();
-        let mut std_queue: VecDeque<usize> = VecDeque::new();
-        let mut queue: CompressionQueue<usize, 10> = CompressionQueue::new();
-
+        let mut std_queue: VecDeque<u32> = VecDeque::new();
+        let mut queue: CompressionQueue<10> = CompressionQueue::new();
         for _ in 0..10000 {
-            let value = rng.gen::<usize>() % 100;
+            let value = rng.gen::<i32>();
+            let zig_zag_value = value.zigzag();
             if rng.gen::<bool>() {
-                std_queue.push_back(value);
+                std_queue.push_back(zig_zag_value);
                 if queue.len() == 16 {
-                    std_queue.pop_front();
+                    assert_eq!(std_queue.pop_front(), queue.pop());
                 }
                 queue.push(value);
             } else {
                 assert_eq!(std_queue.pop_front(), queue.pop());
             }
-
             assert_eq!(std_queue.len(), queue.len());
-            for (a, b) in std_queue.iter().zip(queue.iter()) {
-                assert_eq!(*a, b);
+
+            for _ in 0..queue.len() {
+                assert_eq!(std_queue.pop_front(), queue.pop());
             }
         }
     }
