@@ -218,7 +218,7 @@ mod tests {
 
         for i in 0..128 {
             queue.push(HalfWord::Full(i as u32));
-            assert_eq!(queue.len(), 128 + (i + 1) * 4);
+            assert_eq!(queue.len(), 128 + (i + 1) * 8);
             assert_eq!(queue.is_empty(), false);
         }
 
@@ -228,7 +228,7 @@ mod tests {
         queue.push(HalfWord::Half(0));
 
         // Now every nibble is pushed together
-        let flat = HalfVec::finish(&[&queue]);
-        assert_eq!(flat.len(), (128 + 4 * 128 + 1 + 1) / 2);
+        let flat = HalfVec::finish([&queue].into_iter());
+        assert_eq!(flat.len(), (128 + 8 * 128 + 1 + 1) / 2);
     }
 }
