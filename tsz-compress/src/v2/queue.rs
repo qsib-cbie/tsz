@@ -260,7 +260,7 @@ mod tests {
         let mut std_queue: VecDeque<u32> = VecDeque::new();
         let mut queue: CompressionQueue<10> = CompressionQueue::new();
         for _ in 0..10000 {
-            let value = rng.gen::<i32>() % 100;
+            let value = rng.gen::<i32>();
             let zig_zag_value = value.zigzag();
             if rng.gen::<bool>() {
                 std_queue.push_back(zig_zag_value);
