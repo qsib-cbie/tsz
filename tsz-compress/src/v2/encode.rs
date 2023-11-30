@@ -14,12 +14,7 @@ pub trait Bits: PrimInt + Binary {
     fn zigzag(self) -> u32;
 
     /// Return the zigzag encoding and number of bits required to represent the value
-    #[inline(always)]
-    fn zigzag_bits(self) -> (u32, usize) {
-        let zbits = self.zigzag();
-        let leading = zbits.leading_zeros() as usize;
-        (zbits, Self::BITS - leading)
-    }
+    fn zigzag_bits(self) -> (u32, usize);
 }
 
 impl Bits for i8 {
@@ -28,6 +23,14 @@ impl Bits for i8 {
     #[inline(always)]
     fn zigzag(self) -> u32 {
         ((self << 1) ^ (self >> Self::BITS - 1)) as u32
+    }
+
+    /// Return the zigzag encoding and number of bits required to represent the value
+    #[inline(always)]
+    fn zigzag_bits(self) -> (u32, usize) {
+        let zbits = self.zigzag();
+        let leading = (zbits as i8).leading_zeros();
+        (zbits, (Self::BITS - leading) as usize)
     }
 }
 
@@ -38,6 +41,14 @@ impl Bits for i16 {
     fn zigzag(self) -> u32 {
         ((self << 1) ^ (self >> Self::BITS - 1)) as u32
     }
+
+    /// Return the zigzag encoding and number of bits required to represent the value
+    #[inline(always)]
+    fn zigzag_bits(self) -> (u32, usize) {
+        let zbits = self.zigzag();
+        let leading = (zbits as i16).leading_zeros();
+        (zbits, (Self::BITS - leading) as usize)
+    }
 }
 
 impl Bits for i32 {
@@ -46,6 +57,13 @@ impl Bits for i32 {
     #[inline(always)]
     fn zigzag(self) -> u32 {
         ((self << 1) ^ (self >> Self::BITS - 1)) as u32
+    }
+    /// Return the zigzag encoding and number of bits required to represent the value
+    #[inline(always)]
+    fn zigzag_bits(self) -> (u32, usize) {
+        let zbits = self.zigzag();
+        let leading = zbits.leading_zeros();
+        (zbits, (Self::BITS - leading) as usize)
     }
 }
 
