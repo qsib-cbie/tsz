@@ -64,14 +64,14 @@ fn push_three_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 10;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1111));
-    let mut word: u32 = 0;
+    let mut word: usize = 0;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
-        word |= values[i] as u32;
+        word |= values[i];
         word <<= 3;
     }
-    word |= values[N1] as u32;
-    buf.push(HalfWord::Full(word));
+    word |= values[N1];
+    buf.push(HalfWord::Full(word as u32));
 }
 
 #[inline(always)]
@@ -79,14 +79,14 @@ fn push_six_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 5;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1110));
-    let mut word: u32 = 0;
+    let mut word: usize = 0;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
-        word |= values[i] as u32;
+        word |= values[i];
         word <<= 6;
     }
-    word |= values[N1] as u32;
-    buf.push(HalfWord::Full(word));
+    word |= values[N1];
+    buf.push(HalfWord::Full(word as u32));
 }
 
 #[inline(always)]
@@ -94,14 +94,14 @@ fn push_eight_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 4;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1100));
-    let mut word: u32 = 0;
+    let mut word: usize = 0;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
-        word |= values[i] as u32;
+        word |= values[i];
         word <<= 8;
     }
-    word |= values[N1] as u32;
-    buf.push(HalfWord::Full(word));
+    word |= values[N1];
+    buf.push(HalfWord::Full(word as u32));
 }
 
 #[inline(always)]
@@ -109,14 +109,14 @@ fn push_ten_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 3;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1010));
-    let mut word: u32 = 0b00 << 10;
+    let mut word: usize = 0b00 << 10;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
-        word |= values[i] as u32;
+        word |= values[i];
         word <<= 10;
     }
-    word |= values[N1] as u32;
-    buf.push(HalfWord::Full(word));
+    word |= values[N1];
+    buf.push(HalfWord::Full(word as u32));
 }
 
 #[inline(always)]
@@ -124,14 +124,14 @@ fn push_sixteen_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 2;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1000));
-    let mut word: u32 = 0b00 << 10;
+    let mut word: usize = 0b00 << 10;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
-        word |= values[i] as u32;
+        word |= values[i];
         word <<= 16;
     }
-    word |= values[N1] as u32;
-    buf.push(HalfWord::Full(word));
+    word |= values[N1];
+    buf.push(HalfWord::Full(word as u32));
 }
 
 #[inline(always)]
