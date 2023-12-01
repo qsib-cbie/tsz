@@ -49,6 +49,16 @@ impl Bits for i32 {
     }
 }
 
+#[cfg(target_pointer_width = "64")]
+impl Bits for i64 {
+    const BITS: usize = 64;
+
+    #[inline(always)]
+    fn zigzag(self) -> usize {
+        ((self << 1) ^ (self >> Self::BITS - 1)) as u64 as usize
+    }
+}
+
 #[inline(always)]
 fn push_three_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 10;
