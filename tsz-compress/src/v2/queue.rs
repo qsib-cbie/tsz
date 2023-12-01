@@ -149,7 +149,7 @@ impl<const N: usize> CompressionQueue<N> {
     ///
     unsafe fn write<T: Bits + Sized>(&mut self, index: usize, t: T) {
         let (zbits, zcount) = t.zigzag_bits();
-        *self.zigzag.get_unchecked_mut(index) = zbits as usize;
+        *self.zigzag.get_unchecked_mut(index) = zbits;
         *self.bitcount.get_unchecked_mut(index) = zcount;
     }
 }

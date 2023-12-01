@@ -137,8 +137,8 @@ fn push_sixteen_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
 #[inline(always)]
 unsafe fn push_thirty_two_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     buf.push(HalfWord::Half(0b1011));
-    let value = q.pop().unwrap_unchecked();
-    buf.push(HalfWord::Full(value as u32));
+    let value = q.pop().unwrap_unchecked() as u32;
+    buf.push(HalfWord::Full(value));
 }
 
 // Todo: How can we implement this?
