@@ -8,7 +8,7 @@ use super::encode::Bits;
 ///
 #[derive(Debug)]
 pub struct CompressionQueue<const N: usize> {
-    zigzag: [u32; 16],
+    zigzag: [usize; 16],
     bitcount: [usize; 16],
     front: usize,
     len: usize,
@@ -69,7 +69,7 @@ impl<const N: usize> CompressionQueue<N> {
     /// Pops the oldest value from the queue,
     /// returning None if the queue is empty.
     ///
-    pub fn pop(&mut self) -> Option<u32> {
+    pub fn pop(&mut self) -> Option<usize> {
         if self.is_empty() {
             return None;
         }
@@ -86,8 +86,8 @@ impl<const N: usize> CompressionQueue<N> {
     /// not of length N.
     ///
     #[inline(always)]
-    pub fn pop_n<const M: usize>(&mut self) -> [u32; M] {
-        let mut values: [u32; M] = [0; M];
+    pub fn pop_n<const M: usize>(&mut self) -> [usize; M] {
+        let mut values: [usize; M] = [0; M];
         for i in 0..M {
             let index = (self.front + i) % 16;
             unsafe {
@@ -123,7 +123,7 @@ impl<const N: usize> CompressionQueue<N> {
     /// This function is unsafe because it assumes that
     /// the index is inbounds and initialized.
     ///
-    unsafe fn value_at(&self, index: usize) -> u32 {
+    unsafe fn value_at(&self, index: usize) -> usize {
         *self.zigzag.get_unchecked(index)
     }
 
@@ -149,7 +149,7 @@ impl<const N: usize> CompressionQueue<N> {
     ///
     unsafe fn write<T: Bits + Sized>(&mut self, index: usize, t: T) {
         let (zbits, zcount) = t.zigzag_bits();
-        *self.zigzag.get_unchecked_mut(index) = zbits;
+        *self.zigzag.get_unchecked_mut(index) = zbits as usize;
         *self.bitcount.get_unchecked_mut(index) = zcount;
     }
 }
@@ -257,13 +257,13 @@ mod tests {
         use rand::Rng;
 
         let mut rng = rand::thread_rng();
-        let mut std_queue: VecDeque<u32> = VecDeque::new();
+        let mut std_queue: VecDeque<usize> = VecDeque::new();
         let mut queue: CompressionQueue<10> = CompressionQueue::new();
         for _ in 0..10000 {
             let value = rng.gen::<i32>();
             let zig_zag_value = value.zigzag();
             if rng.gen::<bool>() {
-                std_queue.push_back(zig_zag_value);
+                std_queue.push_back(zig_zag_value as usize);
                 if queue.len() == 16 {
                     assert_eq!(std_queue.pop_front(), queue.pop());
                 }
