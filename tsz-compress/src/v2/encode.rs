@@ -8,18 +8,14 @@ use super::halfvec::{HalfVec, HalfWord};
 
 pub trait Bits: PrimInt + Binary {
     const BITS: usize;
+    const U32_BITS: u32 = 32;
 
     /// Language limitations prevent us from writing simple math expressions
     /// ((self << 1) ^ (self >> Self::BITS - 1)) as u32
     fn zigzag(self) -> u32;
 
     /// Return the zigzag encoding and number of bits required to represent the value
-    #[inline(always)]
-    fn zigzag_bits(self) -> (u32, usize) {
-        let zbits = self.zigzag();
-        let leading = zbits.leading_zeros() as usize;
-        (zbits, Self::BITS - leading)
-    }
+    fn zigzag_bits(self) -> (u32, usize);
 }
 
 impl Bits for i8 {
@@ -28,6 +24,14 @@ impl Bits for i8 {
     #[inline(always)]
     fn zigzag(self) -> u32 {
         ((self << 1) ^ (self >> Self::BITS - 1)) as u32
+    }
+
+    /// Return the zigzag encoding and number of bits required to represent the value
+    #[inline(always)]
+    fn zigzag_bits(self) -> (u32, usize) {
+        let zbits = self.zigzag();
+        let leading = zbits.leading_zeros() - (Self::U32_BITS - Self::BITS as u32); // To account for the difference in u32 bit-width and i8 bit-width
+        (zbits, (Self::BITS - leading) as usize)
     }
 }
 
@@ -38,6 +42,14 @@ impl Bits for i16 {
     fn zigzag(self) -> u32 {
         ((self << 1) ^ (self >> Self::BITS - 1)) as u32
     }
+
+    /// Return the zigzag encoding and number of bits required to represent the value
+    #[inline(always)]
+    fn zigzag_bits(self) -> (u32, usize) {
+        let zbits = self.zigzag();
+        let leading = zbits.leading_zeros() - (Self::U32_BITS - Self::BITS as u32); // To account for the difference in u32 bit-width and i16 bit-width
+        (zbits, (Self::BITS - leading) as usize)
+    }
 }
 
 impl Bits for i32 {
@@ -46,6 +58,13 @@ impl Bits for i32 {
     #[inline(always)]
     fn zigzag(self) -> u32 {
         ((self << 1) ^ (self >> Self::BITS - 1)) as u32
+    }
+    /// Return the zigzag encoding and number of bits required to represent the value
+    #[inline(always)]
+    fn zigzag_bits(self) -> (u32, usize) {
+        let zbits = self.zigzag();
+        let leading = zbits.leading_zeros();
+        (zbits, (Self::BITS - leading) as usize)
     }
 }
 
