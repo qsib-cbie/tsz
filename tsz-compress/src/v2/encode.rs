@@ -8,63 +8,53 @@ use super::halfvec::{HalfVec, HalfWord};
 
 pub trait Bits: PrimInt + Binary {
     const BITS: usize;
-    const U32_BITS: u32 = 32;
 
     /// Language limitations prevent us from writing simple math expressions
     /// ((self << 1) ^ (self >> Self::BITS - 1)) as u32
-    fn zigzag(self) -> u32;
+    fn zigzag(self) -> usize;
 
     /// Return the zigzag encoding and number of bits required to represent the value
-    fn zigzag_bits(self) -> (u32, usize);
+    #[inline(always)]
+    fn zigzag_bits(self) -> (usize, usize) {
+        let zbits = self.zigzag();
+        (zbits, (usize::BITS - zbits.leading_zeros()) as usize)
+    }
 }
 
 impl Bits for i8 {
     const BITS: usize = 8;
-    /// Language limitations prevent us from writing simple math expressions
-    #[inline(always)]
-    fn zigzag(self) -> u32 {
-        ((self << 1) ^ (self >> Self::BITS - 1)) as u32
-    }
 
-    /// Return the zigzag encoding and number of bits required to represent the value
     #[inline(always)]
-    fn zigzag_bits(self) -> (u32, usize) {
-        let zbits = self.zigzag();
-        let leading = zbits.leading_zeros() - (Self::U32_BITS - Self::BITS as u32); // To account for the difference in u32 bit-width and i8 bit-width
-        (zbits, (Self::BITS - leading) as usize)
+    fn zigzag(self) -> usize {
+        ((self << 1) ^ (self >> Self::BITS - 1)) as u8 as usize
     }
 }
 
 impl Bits for i16 {
     const BITS: usize = 16;
-    /// Language limitations prevent us from writing simple math expressions
-    #[inline(always)]
-    fn zigzag(self) -> u32 {
-        ((self << 1) ^ (self >> Self::BITS - 1)) as u32
-    }
 
-    /// Return the zigzag encoding and number of bits required to represent the value
     #[inline(always)]
-    fn zigzag_bits(self) -> (u32, usize) {
-        let zbits = self.zigzag();
-        let leading = zbits.leading_zeros() - (Self::U32_BITS - Self::BITS as u32); // To account for the difference in u32 bit-width and i16 bit-width
-        (zbits, (Self::BITS - leading) as usize)
+    fn zigzag(self) -> usize {
+        ((self << 1) ^ (self >> Self::BITS - 1)) as u16 as usize
     }
 }
 
 impl Bits for i32 {
     const BITS: usize = 32;
-    /// Language limitations prevent us from writing simple math expressions
+
     #[inline(always)]
-    fn zigzag(self) -> u32 {
-        ((self << 1) ^ (self >> Self::BITS - 1)) as u32
+    fn zigzag(self) -> usize {
+        ((self << 1) ^ (self >> Self::BITS - 1)) as u32 as usize
     }
-    /// Return the zigzag encoding and number of bits required to represent the value
+}
+
+#[cfg(target_pointer_width = "64")]
+impl Bits for i64 {
+    const BITS: usize = 64;
+
     #[inline(always)]
-    fn zigzag_bits(self) -> (u32, usize) {
-        let zbits = self.zigzag();
-        let leading = zbits.leading_zeros();
-        (zbits, (Self::BITS - leading) as usize)
+    fn zigzag(self) -> usize {
+        ((self << 1) ^ (self >> Self::BITS - 1)) as u64 as usize
     }
 }
 
@@ -73,14 +63,14 @@ fn push_three_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 10;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1111));
-    let mut word: u32 = 0;
+    let mut word: usize = 0;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
         word |= values[i];
         word <<= 3;
     }
     word |= values[N1];
-    buf.push(HalfWord::Full(word));
+    buf.push(HalfWord::Full(word as u32));
 }
 
 #[inline(always)]
@@ -88,14 +78,14 @@ fn push_six_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 5;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1110));
-    let mut word: u32 = 0;
+    let mut word: usize = 0;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
         word |= values[i];
         word <<= 6;
     }
     word |= values[N1];
-    buf.push(HalfWord::Full(word));
+    buf.push(HalfWord::Full(word as u32));
 }
 
 #[inline(always)]
@@ -103,14 +93,14 @@ fn push_eight_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 4;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1100));
-    let mut word: u32 = 0;
+    let mut word: usize = 0;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
         word |= values[i];
         word <<= 8;
     }
     word |= values[N1];
-    buf.push(HalfWord::Full(word));
+    buf.push(HalfWord::Full(word as u32));
 }
 
 #[inline(always)]
@@ -118,14 +108,14 @@ fn push_ten_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 3;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1010));
-    let mut word: u32 = 0b00 << 10;
+    let mut word: usize = 0b00 << 10;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
         word |= values[i];
         word <<= 10;
     }
     word |= values[N1];
-    buf.push(HalfWord::Full(word));
+    buf.push(HalfWord::Full(word as u32));
 }
 
 #[inline(always)]
@@ -133,20 +123,20 @@ fn push_sixteen_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 2;
     const N1: usize = N - 1;
     buf.push(HalfWord::Half(0b1000));
-    let mut word: u32 = 0b00 << 10;
+    let mut word: usize = 0b00 << 10;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
         word |= values[i];
         word <<= 16;
     }
     word |= values[N1];
-    buf.push(HalfWord::Full(word));
+    buf.push(HalfWord::Full(word as u32));
 }
 
 #[inline(always)]
 unsafe fn push_thirty_two_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     buf.push(HalfWord::Half(0b1011));
-    let value = q.pop().unwrap_unchecked();
+    let value = q.pop().unwrap_unchecked() as u32;
     buf.push(HalfWord::Full(value));
 }
 
@@ -300,7 +290,7 @@ pub trait EmitDeltaDeltaBits {
 
 fn emit_popped_values<const N: usize>(
     bitcounts: &[usize; N],
-    values: &[u32; N],
+    values: &[usize; N],
     out: &mut HalfVec,
 ) {
     for (bits, value) in bitcounts.into_iter().zip(values.into_iter()) {
@@ -324,7 +314,7 @@ fn emit_popped_values<const N: usize>(
             }
             _ => {
                 out.push(HalfWord::Half(0b0111));
-                out.push(HalfWord::Full(*value));
+                out.push(HalfWord::Full(*value as u32));
             }
         }
     }
