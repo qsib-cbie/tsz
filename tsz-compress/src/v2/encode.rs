@@ -14,10 +14,9 @@ pub trait Bits: PrimInt + Binary {
     fn zigzag(self) -> usize;
 
     /// Return the zigzag encoding and number of bits required to represent the value
+    #[inline(always)]
     fn zigzag_bits(self) -> (usize, usize) {
         let zbits = self.zigzag();
-        // let leading = zbits.leading_zeros() - (usize::BITS - Self::BITS); // To account for the difference in u32 bit-width and i32 bit-width
-        // (zbits, (Self::BITS - leading) as usize)
         (zbits, (usize::BITS - zbits.leading_zeros()) as usize)
     }
 }
