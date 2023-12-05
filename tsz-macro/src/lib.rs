@@ -1,8 +1,9 @@
 use itertools::izip;
 use itertools::{multiunzip, Itertools};
 use proc_macro::TokenStream;
+use proc_macro2::TokenTree;
 use quote::{format_ident, quote};
-use syn::parse_macro_input;
+use syn::{parse_macro_input, Meta};
 
 #[proc_macro_derive(DeltaEncodable)]
 pub fn derive_delta_encodable(item: TokenStream) -> TokenStream {
@@ -484,7 +485,7 @@ pub fn derive_decompressible(item: TokenStream) -> TokenStream {
     .into()
 }
 
-fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type)> {
+fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type, Option<String>)> {
     let fields = match input.data {
         syn::Data::Struct(syn::DataStruct { fields, .. }) => fields,
         _ => panic!("Expected fields in derive(Builder) struct"),
@@ -493,10 +494,69 @@ fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type)>
         syn::Fields::Named(syn::FieldsNamed { named, .. }) => named,
         _ => panic!("Expected named fields in derive(Builder) struct"),
     };
-    named_fields
+
+    let col_attrs = named_fields
+        .clone()
         .into_iter()
-        .map(|f| (f.ident.unwrap(), f.ty))
-        .collect::<Vec<_>>()
+        .map(|f| f.attrs)
+        .collect::<Vec<_>>();
+
+    let delta_attributes = col_attrs
+        .iter()
+        .map(|attrs| {
+            let filtered_attrs: Vec<_> = attrs
+                .iter()
+                .filter(|attr| attr.path().is_ident("tsz"))
+                .collect();
+            if filtered_attrs.is_empty() {
+                None
+            } else {
+                Some(filtered_attrs)
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let mut col_user_delta: Vec<Option<String>> = Vec::new();
+    for delta_attribute in delta_attributes {
+        if let Some(delta_attr) = delta_attribute {
+            for attr in delta_attr {
+                if let Meta::List(meta_list) = attr.meta.clone() {
+                    let tokens = meta_list.tokens.into_iter().peekable();
+
+                    let mut identifier = String::new();
+                    let mut punct = String::new();
+                    let mut literal = String::new();
+
+                    for token in tokens {
+                        if let TokenTree::Ident(ident) = &token {
+                            identifier = ident.to_string();
+                        }
+                        if let TokenTree::Punct(p) = &token {
+                            punct = p.to_string();
+                        }
+                        if let TokenTree::Literal(lit) = &token {
+                            literal = lit.to_string();
+                        }
+                    }
+                    if identifier == "delta" && punct == "=" {
+                        col_user_delta.push(Some(literal));
+                    }
+                }
+            }
+        } else {
+            col_user_delta.push(None);
+        }
+    }
+
+    let named_fields_with_attrs = named_fields
+        .into_iter()
+        .enumerate()
+        .map(|(i, f)| {
+            let attr = &col_user_delta[i];
+            (f.ident.unwrap(), f.ty, attr.clone())
+        })
+        .collect::<Vec<_>>();
+    named_fields_with_attrs
 }
 
 ///
@@ -504,7 +564,7 @@ fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type)>
 /// a struct and generate a StructCompressor with statically sized columnar
 /// compression for the fields.
 ///
-#[proc_macro_derive(CompressV2)]
+#[proc_macro_derive(CompressV2, attributes(tsz))]
 pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
     let input = parse_macro_input!(tokens as syn::DeriveInput);
     let ident = input.ident.clone();
@@ -514,7 +574,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
 
     // We will compress each of the fields as columns
     let columns = get_fields_of_struct(input);
-    let (col_idents, col_tys): (Vec<_>, Vec<_>) = multiunzip(columns);
+    let (col_idents, col_tys, col_attrs): (Vec<_>, Vec<_>, Vec<_>) = multiunzip(columns);
     let col_delta_comp_queue_idents = col_idents
         .iter()
         .map(|ident| format_ident!("{}_delta_compressor_queue", ident))
@@ -532,25 +592,34 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         .map(|ident| format_ident!("{}_delta_delta_output_buffer", ident))
         .collect_vec();
     let num_columns = col_idents.len();
-    let delta_col_tys = col_tys
+
+    let delta_col_tys = col_attrs
         .iter()
-        .map(|ty| match ty {
-            syn::Type::Path(syn::TypePath { path, .. }) => {
-                let segment = path.segments.first().unwrap();
-                let ident = segment.ident.clone();
-                match ident.to_string().as_str() {
-                    "i8" => quote! { i16 },
-                    "i16" => quote! { i32 },
-                    "i32" => quote! { i32 }, // todo, make choice based on macro attributes for field
-                    // "i32" => quote! { i64 }, // performance too degraded
-                    "i64" => quote! { i32 }, // todo, make choice based on macro attributes for field
-                    // "i64" => quote! { i128 }, // performance too degraded
-                    _ => panic!("Unsupported type"),
+        .zip(&col_tys)
+        .map(|(attr, ty)| match attr.as_ref() {
+            Some(s) if s == "\"i8\"" => quote! { i8 },
+            Some(s) if s == "\"i16\"" => quote! { i16 },
+            Some(s) if s == "\"i32\"" => quote! { i32 },
+            Some(s) if s == "\"i64\"" => quote! { i64 },
+            None => match ty {
+                // Default Deltas
+                syn::Type::Path(syn::TypePath { path, .. }) => {
+                    let segment = path.segments.first().unwrap();
+                    let ident = segment.ident.clone();
+                    match ident.to_string().as_str() {
+                        "i8" => quote! { i16 },
+                        "i16" => quote! { i32 },
+                        "i32" => quote! { i64 },
+                        "i64" => quote! { i64 },
+                        _ => panic!("Unsupported type"),
+                    }
                 }
-            }
+                _ => panic!("Unsupported type"),
+            },
             _ => panic!("Unsupported type"),
         })
         .collect::<Vec<_>>();
+
     let double_col_tys = col_tys
         .iter()
         .map(|ty| match ty {
@@ -960,7 +1029,7 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
     let decompressor_ident = format_ident!("{}DecompressorImpl", ident);
 
     let columns = get_fields_of_struct(input);
-    let (col_idents, col_tys): (Vec<_>, Vec<_>) = multiunzip(columns);
+    let (col_idents, col_tys, _col_attrs): (Vec<_>, Vec<_>, Vec<_>) = multiunzip(columns);
 
     let col_vec_idents = col_idents
         .iter()
