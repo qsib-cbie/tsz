@@ -1055,7 +1055,7 @@ mod test_field_attributes {
         let mut compressor = TestRowCompressorImpl::new(128);
 
         // Initialize the values vector
-        let mut values: Vec<i32> = Vec::with_capacity((i32::MAX as usize + 1) * 4 + 2);
+        let mut values: Vec<i32> = Vec::with_capacity((i8::MAX as usize + 1) * 4 + 2);
 
         // Write the first and second value
         compressor.compress(TestRow { a: 0 });
