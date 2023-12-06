@@ -495,34 +495,27 @@ fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type, 
         _ => panic!("Expected named fields in derive(Builder) struct"),
     };
 
-    let col_attrs = named_fields
-        .clone()
-        .into_iter()
-        .map(|f| f.attrs)
-        .collect::<Vec<_>>();
-
-    let delta_attributes = col_attrs
+    // Get the tsz attributes for each field attribute
+    let delta_attributes = named_fields
         .iter()
-        .map(|attrs| {
-            let filtered_attrs: Vec<_> = attrs
+        .map(|field| {
+            let filtered_attrs: Vec<_> = field
+                .attrs
                 .iter()
                 .filter(|attr| attr.path().is_ident("tsz"))
                 .collect();
-            if filtered_attrs.is_empty() {
-                None
-            } else {
-                Some(filtered_attrs)
-            }
+            Option::from(filtered_attrs).filter(|v| !v.is_empty())
         })
         .collect::<Vec<_>>();
 
-    let mut col_user_delta: Vec<Option<String>> = Vec::new();
+    // Get delta column types from each tsz field attribute
+    let mut delta_user_col_tys: Vec<Option<String>> = Vec::new();
     for delta_attribute in delta_attributes {
         if let Some(delta_attr) = delta_attribute {
             for attr in delta_attr {
+                // There should only be one tsz attribute per field that would be delta. For delta-delta
                 if let Meta::List(meta_list) = attr.meta.clone() {
                     let tokens = meta_list.tokens.into_iter().peekable();
-
                     let mut identifier = String::new();
                     let mut punct = String::new();
                     let mut literal = String::new();
@@ -530,21 +523,22 @@ fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type, 
                     for token in tokens {
                         if let TokenTree::Ident(ident) = &token {
                             identifier = ident.to_string();
-                        }
-                        if let TokenTree::Punct(p) = &token {
+                        } else if let TokenTree::Punct(p) = &token {
                             punct = p.to_string();
-                        }
-                        if let TokenTree::Literal(lit) = &token {
+                        } else if let TokenTree::Literal(lit) = &token {
                             literal = lit.to_string();
                         }
                     }
-                    if identifier == "delta" && punct == "=" {
-                        col_user_delta.push(Some(literal));
+
+                    match (identifier.as_str(), punct.as_str()) {
+                        ("delta", "=") => delta_user_col_tys.push(Some(literal)),
+                        ("delta", _) => panic!("Unexpected field operator"),
+                        _ => panic!("Unexpected delta bit-width attribute"),
                     }
                 }
             }
         } else {
-            col_user_delta.push(None);
+            delta_user_col_tys.push(None);
         }
     }
 
@@ -552,7 +546,7 @@ fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type, 
         .into_iter()
         .enumerate()
         .map(|(i, f)| {
-            let attr = &col_user_delta[i];
+            let attr = &delta_user_col_tys[i];
             (f.ident.unwrap(), f.ty, attr.clone())
         })
         .collect::<Vec<_>>();
@@ -593,6 +587,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         .collect_vec();
     let num_columns = col_idents.len();
 
+    // Get the delta types for each column: If user specified, use that, otherwise use default
     let delta_col_tys = col_attrs
         .iter()
         .zip(&col_tys)
