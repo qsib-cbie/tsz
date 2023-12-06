@@ -513,7 +513,7 @@ fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type, 
     for delta_attribute in delta_attributes {
         if let Some(delta_attr) = delta_attribute {
             for attr in delta_attr {
-                // There should only be one tsz attribute per field that would be delta. For delta-delta
+                // There should only be one tsz attribute per field: delta
                 if let Meta::List(meta_list) = attr.meta.clone() {
                     let tokens = meta_list.tokens.into_iter().peekable();
                     let mut identifier = String::new();
