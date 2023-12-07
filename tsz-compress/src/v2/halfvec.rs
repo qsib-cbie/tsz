@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use crate::prelude::*;
+use crate::v2::constants::Headers;
 use alloc::vec::Vec;
 pub use queue::*;
 
@@ -177,8 +178,8 @@ impl HalfVec {
             }
 
             if !upper {
-                // We are on the lower nibble, so fill the upper nibble with 0b1001
-                byte |= 0b1001;
+                // We are on the lower nibble, so fill the upper nibble with Headers::START_OF_COLUMN
+                byte |= Headers::START_OF_COLUMN;
                 known_append(&mut bytes, byte);
             }
 
@@ -235,7 +236,7 @@ mod tests {
     }
 }
 
-// Delta-Delta Tests
+// Delta Tests
 #[cfg(test)]
 mod tests_emit_delta {
 
@@ -294,7 +295,7 @@ mod tests_emit_delta {
         let mut expected_halfvec = HalfVec::new(8);
 
         // Expecting 10 samples of 3 bits
-        expected_halfvec.push(HalfWord::Half(0b1111));
+        expected_halfvec.push(HalfWord::Half(Headers::THREE_BITS_TEN_SAMPLES));
 
         // Values: [-3, 2, 0, 1, 2, -3, -1, -2, -4, -3]
         // Zigzag values: [5, 4, 0, 2, 4, 5, 1, 3, 7, 5]
@@ -317,7 +318,7 @@ mod tests_emit_delta {
         let mut expected_halfvec = HalfVec::new(8);
 
         // Expecting 10 samples of 3 bits
-        expected_halfvec.push(HalfWord::Half(0b1110));
+        expected_halfvec.push(HalfWord::Half(Headers::SIX_BITS_FIVE_SAMPLES));
 
         // Values: [-32, 31, 16, 1, 2]
         // Zigzag values: [63, 62, 32, 2, 4]
@@ -340,7 +341,7 @@ mod tests_emit_delta {
         let mut expected_halfvec = HalfVec::new(8);
 
         // Expecting 10 samples of 3 bits
-        expected_halfvec.push(HalfWord::Half(0b1100));
+        expected_halfvec.push(HalfWord::Half(Headers::EIGHT_BITS_FOUR_SAMPLES));
 
         // Values: [-128, 127, 64, 1]
         // Zigzag values: [255, 254, 128, 2]
@@ -363,7 +364,7 @@ mod tests_emit_delta {
         let mut expected_halfvec = HalfVec::new(8);
 
         // Expecting 10 samples of 3 bits
-        expected_halfvec.push(HalfWord::Half(0b1010));
+        expected_halfvec.push(HalfWord::Half(Headers::TEN_BITS_THREE_SAMPLES));
 
         // Values: [-512, 511, 256]
         // Zigzag values: [1023, 1022, 512]
@@ -386,7 +387,7 @@ mod tests_emit_delta {
         let mut expected_halfvec = HalfVec::new(8);
 
         // Expecting 10 samples of 3 bits
-        expected_halfvec.push(HalfWord::Half(0b1000));
+        expected_halfvec.push(HalfWord::Half(Headers::SIXTEEN_BITS_TWO_SAMPLES));
 
         // Values: [-32768, 32767]
         // Zigzag values: [65535, 65534]
@@ -409,7 +410,7 @@ mod tests_emit_delta {
         let mut expected_halfvec = HalfVec::new(8);
 
         // Expecting 10 samples of 3 bits
-        expected_halfvec.push(HalfWord::Half(0b1011));
+        expected_halfvec.push(HalfWord::Half(Headers::THIRTY_TWO_BITS_ONE_SAMPLE));
 
         // Values: vec![i32::MIN / 4]
         // Zigzag values: [-1 * i32::MIN / 2]

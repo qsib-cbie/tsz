@@ -796,11 +796,11 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             /// Write out the full value in the exact bit-width of the column.
                             #(
                                 if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
-                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::constants::Headers::START_OF_COLUMN));
                                     #write_first(outbuf, row.#col_idents);
                                 }
                                 if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
-                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(0b1001));
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::constants::Headers::START_OF_COLUMN));
                                     #write_first(outbuf, row.#col_idents);
                                 }
                                 self.#prev_double_col_idents = row.#col_idents as #double_col_tys;
@@ -1046,8 +1046,8 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                         // Iterate over the bits
                         let mut iter = HalfIter::new(bytes);
 
-                        // Expect a 1001 tag indicating the start of a new column
-                        if iter.next() != Some(0b1001) {
+                        // Expect a Headers::START_OF_COLUMN tag indicating the start of a new column
+                        if iter.next() != Some(::tsz_compress::prelude::constants::Headers::START_OF_COLUMN) {
                             #( self.#col_vec_idents.clear(); )*
                             return Err(CodingError::InvalidInitialColumnTag);
                         }
@@ -1057,7 +1057,7 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
 
                         // Pad nibbles to byte-alignment
                         match iter.next() {
-                            Some(0b1001) => (),
+                            Some(::tsz_compress::prelude::constants::Headers::START_OF_COLUMN) => (),
                             Some(_) => return Err(CodingError::InvalidColumnTag),
                             None => (),
                         }

@@ -1,8 +1,8 @@
 use core::fmt::Binary;
-
 use num_traits::PrimInt;
 
 use crate::prelude::*;
+use crate::v2::constants::Headers;
 
 use super::halfvec::{HalfVec, HalfWord};
 
@@ -62,7 +62,7 @@ impl Bits for i64 {
 fn push_three_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 10;
     const N1: usize = N - 1;
-    buf.push(HalfWord::Half(0b1111));
+    buf.push(HalfWord::Half(Headers::THREE_BITS_TEN_SAMPLES));
     let mut word: usize = 0;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
@@ -77,7 +77,7 @@ fn push_three_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
 fn push_six_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 5;
     const N1: usize = N - 1;
-    buf.push(HalfWord::Half(0b1110));
+    buf.push(HalfWord::Half(Headers::SIX_BITS_FIVE_SAMPLES));
     let mut word: usize = 0;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
@@ -92,7 +92,7 @@ fn push_six_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
 fn push_eight_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 4;
     const N1: usize = N - 1;
-    buf.push(HalfWord::Half(0b1100));
+    buf.push(HalfWord::Half(Headers::EIGHT_BITS_FOUR_SAMPLES));
     let mut word: usize = 0;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
@@ -107,7 +107,7 @@ fn push_eight_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
 fn push_ten_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 3;
     const N1: usize = N - 1;
-    buf.push(HalfWord::Half(0b1010));
+    buf.push(HalfWord::Half(Headers::TEN_BITS_THREE_SAMPLES));
     let mut word: usize = 0b00 << 10;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
@@ -122,7 +122,7 @@ fn push_ten_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
 fn push_sixteen_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     const N: usize = 2;
     const N1: usize = N - 1;
-    buf.push(HalfWord::Half(0b1000));
+    buf.push(HalfWord::Half(Headers::SIXTEEN_BITS_TWO_SAMPLES));
     let mut word: usize = 0b00 << 10;
     let values = q.pop_n::<N>();
     for i in 0..N1 {
@@ -135,7 +135,7 @@ fn push_sixteen_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
 
 #[inline(always)]
 unsafe fn push_thirty_two_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
-    buf.push(HalfWord::Half(0b1011));
+    buf.push(HalfWord::Half(Headers::THIRTY_TWO_BITS_ONE_SAMPLE));
     let value = q.pop().unwrap_unchecked() as u32;
     buf.push(HalfWord::Full(value));
 }
