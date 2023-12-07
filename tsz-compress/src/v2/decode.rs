@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::v2::constants::Headers;
+use crate::v2::consts::headers;
 use alloc::vec::Vec;
 ///
 /// An iterator over nibbles in the slice of bytes.
@@ -120,11 +120,11 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
     // Every thing is delta or delta-delta encoded from here on out
     while let Some(tag) = iter.next() {
         match tag {
-            Headers::START_OF_COLUMN => {
+            headers::START_OF_COLUMN => {
                 // Start of column of next column
                 break;
             }
-            Headers::THREE_BITS_TEN_SAMPLES => {
+            headers::THREE_BITS_TEN_SAMPLES => {
                 // 2 bit pad, 10 samples of 3 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -145,7 +145,7 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     output.push(value);
                 }
             }
-            Headers::SIX_BITS_FIVE_SAMPLES => {
+            headers::SIX_BITS_FIVE_SAMPLES => {
                 // 5 samples of 6 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -166,7 +166,7 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     output.push(value);
                 }
             }
-            Headers::EIGHT_BITS_FOUR_SAMPLES => {
+            headers::EIGHT_BITS_FOUR_SAMPLES => {
                 // 4 samples of 8 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -187,7 +187,7 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     output.push(value);
                 }
             }
-            Headers::TEN_BITS_THREE_SAMPLES => {
+            headers::TEN_BITS_THREE_SAMPLES => {
                 // 2 bit pad, 3 samples of 10 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -208,7 +208,7 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     output.push(value);
                 }
             }
-            Headers::SIXTEEN_BITS_TWO_SAMPLES => {
+            headers::SIXTEEN_BITS_TWO_SAMPLES => {
                 // 2 samples of 16 bit
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -229,7 +229,7 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
                     output.push(value);
                 }
             }
-            Headers::THIRTY_TWO_BITS_ONE_SAMPLE => {
+            headers::THIRTY_TWO_BITS_ONE_SAMPLE => {
                 // 1 sample of 32 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -296,11 +296,11 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
 
     while let Some(tag) = iter.next() {
         match tag {
-            Headers::START_OF_COLUMN => {
+            headers::START_OF_COLUMN => {
                 // Start of column of next column
                 break;
             }
-            Headers::THREE_BITS_TEN_SAMPLES => {
+            headers::THREE_BITS_TEN_SAMPLES => {
                 // 2 bit pad, 10 samples of 3 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -321,7 +321,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::SIX_BITS_FIVE_SAMPLES => {
+            headers::SIX_BITS_FIVE_SAMPLES => {
                 // 5 samples of 6 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -342,7 +342,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::EIGHT_BITS_FOUR_SAMPLES => {
+            headers::EIGHT_BITS_FOUR_SAMPLES => {
                 // 4 samples of 8 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -363,7 +363,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::TEN_BITS_THREE_SAMPLES => {
+            headers::TEN_BITS_THREE_SAMPLES => {
                 // 2 bit pad, 3 samples of 10 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -384,7 +384,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::SIXTEEN_BITS_TWO_SAMPLES => {
+            headers::SIXTEEN_BITS_TWO_SAMPLES => {
                 // 2 samples of 16 bit
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -405,7 +405,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::THIRTY_TWO_BITS_ONE_SAMPLE => {
+            headers::THIRTY_TWO_BITS_ONE_SAMPLE => {
                 // 1 sample of 32 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -484,11 +484,11 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
 
     while let Some(tag) = iter.next() {
         match tag {
-            Headers::START_OF_COLUMN => {
+            headers::START_OF_COLUMN => {
                 // Start of column of next column
                 break;
             }
-            Headers::THREE_BITS_TEN_SAMPLES => {
+            headers::THREE_BITS_TEN_SAMPLES => {
                 // 2 bit pad, 10 samples of 3 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -509,7 +509,7 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::SIX_BITS_FIVE_SAMPLES => {
+            headers::SIX_BITS_FIVE_SAMPLES => {
                 // 5 samples of 6 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -530,7 +530,7 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::EIGHT_BITS_FOUR_SAMPLES => {
+            headers::EIGHT_BITS_FOUR_SAMPLES => {
                 // 4 samples of 8 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -552,7 +552,7 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                 }
             }
 
-            Headers::TEN_BITS_THREE_SAMPLES => {
+            headers::TEN_BITS_THREE_SAMPLES => {
                 // 2 bit pad, 3 samples of 10 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -573,7 +573,7 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::SIXTEEN_BITS_TWO_SAMPLES => {
+            headers::SIXTEEN_BITS_TWO_SAMPLES => {
                 // 2 samples of 16 bit
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -594,7 +594,7 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::THIRTY_TWO_BITS_ONE_SAMPLE => {
+            headers::THIRTY_TWO_BITS_ONE_SAMPLE => {
                 // 1 sample of 32 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -697,11 +697,11 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
 
     while let Some(tag) = iter.next() {
         match tag {
-            Headers::START_OF_COLUMN => {
+            headers::START_OF_COLUMN => {
                 // Start of column of next column
                 break;
             }
-            Headers::THREE_BITS_TEN_SAMPLES => {
+            headers::THREE_BITS_TEN_SAMPLES => {
                 // 2 bit pad, 10 samples of 3 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -722,7 +722,7 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::SIX_BITS_FIVE_SAMPLES => {
+            headers::SIX_BITS_FIVE_SAMPLES => {
                 // 5 samples of 6 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -743,7 +743,7 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::EIGHT_BITS_FOUR_SAMPLES => {
+            headers::EIGHT_BITS_FOUR_SAMPLES => {
                 // 4 samples of 8 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -765,7 +765,7 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
                 }
             }
 
-            Headers::TEN_BITS_THREE_SAMPLES => {
+            headers::TEN_BITS_THREE_SAMPLES => {
                 // 2 bit pad, 3 samples of 10 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -786,7 +786,7 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::SIXTEEN_BITS_TWO_SAMPLES => {
+            headers::SIXTEEN_BITS_TWO_SAMPLES => {
                 // 2 samples of 16 bit
                 let mut word: u32 = 0;
                 for _ in 0..7 {
@@ -807,7 +807,7 @@ pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Resul
                     output.push(value);
                 }
             }
-            Headers::THIRTY_TWO_BITS_ONE_SAMPLE => {
+            headers::THIRTY_TWO_BITS_ONE_SAMPLE => {
                 // 1 sample of 32 bits
                 let mut word: u32 = 0;
                 for _ in 0..7 {

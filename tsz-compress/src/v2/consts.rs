@@ -1,6 +1,4 @@
-pub struct Headers;
-
-impl Headers {
+pub mod headers {
     pub const START_OF_COLUMN: u8 = 0b1001;
 
     // DELTA ENCODING
