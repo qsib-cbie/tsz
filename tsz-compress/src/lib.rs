@@ -158,7 +158,7 @@
 //!
 //!
 
-#![cfg_attr(all(not(feature = "std"), not(test)), no_std, no_main)]
+#![cfg_attr(all(not(feature = "std"), not(test)), no_std)]
 #![cfg_attr(test, allow(unused_imports))]
 
 use core::sync::atomic::{AtomicBool, Ordering};
