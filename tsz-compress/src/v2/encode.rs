@@ -314,7 +314,6 @@ fn emit_popped_values<const N: usize>(
     for (bits, value) in bitcounts.iter().zip(values.iter()) {
         match bits {
             0 => out.push(HalfWord::Half(0b0000)),
-            // -1 => out.push(HalfWord::Half(0b0001)),
             1..=5 => {
                 let zigzag = (value & 0b1_1111) as u8;
                 out.push(HalfWord::Byte(0b0010_0000 | zigzag));
