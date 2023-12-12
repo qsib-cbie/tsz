@@ -73,7 +73,7 @@ pub fn read_full_i64(buf: &[u8; 8]) -> i64 {
 pub fn read_full_i32(buf: &[u8; 4]) -> i32 {
     // Reverse of
     // buf.push(HalfWord::Full(i as u32));
-    let word = u32::from_le_bytes([buf[3], buf[2], buf[1], buf[0]]) as u32;
+    let word = u32::from_le_bytes([buf[3], buf[2], buf[1], buf[0]]);
     word as i32
 }
 
@@ -81,7 +81,7 @@ pub fn read_full_i16(buf: &[u8; 2]) -> i16 {
     // Reverse of
     // buf.push(HalfWord::Byte((i >> 8) as u8));
     // buf.push(HalfWord::Byte(i as u8));
-    let word = u16::from_le_bytes([buf[1], buf[0]]) as u16;
+    let word = u16::from_le_bytes([buf[1], buf[0]]);
     word as i16
 }
 
@@ -91,7 +91,7 @@ pub fn read_full_i8(buf: &[u8; 1]) -> i8 {
     buf[0] as i8
 }
 
-pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<(), CodingError> {
+pub fn decode_i8(iter: &mut HalfIter<'_>, output: &mut Vec<i8>) -> Result<(), CodingError> {
     // No rows
     let Some(next_upper) = iter.next() else {
         return Ok(());
@@ -260,7 +260,7 @@ pub fn decode_i8<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i8>) -> Result<
     Ok(())
 }
 
-pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Result<(), CodingError> {
+pub fn decode_i16(iter: &mut HalfIter<'_>, output: &mut Vec<i16>) -> Result<(), CodingError> {
     // No rows
     let Some(next_upper) = iter.next() else {
         return Ok(());
@@ -436,7 +436,7 @@ pub fn decode_i16<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i16>) -> Resul
     Ok(())
 }
 
-pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Result<(), CodingError> {
+pub fn decode_i32(iter: &mut HalfIter<'_>, output: &mut Vec<i32>) -> Result<(), CodingError> {
     // No rows
     let Some(next_upper) = iter.next() else {
         return Ok(());
@@ -625,7 +625,7 @@ pub fn decode_i32<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i32>) -> Resul
     Ok(())
 }
 
-pub fn decode_i64<'it>(iter: &mut HalfIter<'it>, output: &mut Vec<i64>) -> Result<(), CodingError> {
+pub fn decode_i64(iter: &mut HalfIter<'_>, output: &mut Vec<i64>) -> Result<(), CodingError> {
     // No rows
     let Some(next_upper) = iter.next() else {
         return Ok(());

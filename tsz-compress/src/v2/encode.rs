@@ -10,7 +10,7 @@ pub trait Bits: PrimInt + Binary {
     const BITS: usize;
 
     /// Language limitations prevent us from writing simple math expressions
-    /// ((self << 1) ^ (self >> Self::BITS - 1)) as u32
+    /// ((self << 1) ^ self >> (Self::BITS - 1)) as u32
     fn zigzag(self) -> usize;
 
     /// Return the zigzag encoding and number of bits required to represent the value
@@ -26,7 +26,7 @@ impl Bits for i8 {
 
     #[inline(always)]
     fn zigzag(self) -> usize {
-        ((self << 1) ^ (self >> Self::BITS - 1)) as u8 as usize
+        ((self << 1) ^ self >> (Self::BITS - 1)) as u8 as usize
     }
 }
 
@@ -35,7 +35,7 @@ impl Bits for i16 {
 
     #[inline(always)]
     fn zigzag(self) -> usize {
-        ((self << 1) ^ (self >> Self::BITS - 1)) as u16 as usize
+        ((self << 1) ^ self >> (Self::BITS - 1)) as u16 as usize
     }
 }
 
@@ -44,7 +44,7 @@ impl Bits for i32 {
 
     #[inline(always)]
     fn zigzag(self) -> usize {
-        ((self << 1) ^ (self >> Self::BITS - 1)) as u32 as usize
+        ((self << 1) ^ self >> (Self::BITS - 1)) as u32 as usize
     }
 }
 
@@ -54,7 +54,7 @@ impl Bits for i64 {
 
     #[inline(always)]
     fn zigzag(self) -> usize {
-        ((self << 1) ^ (self >> Self::BITS - 1)) as u64 as usize
+        ((self << 1) ^ self >> (Self::BITS - 1)) as u64 as usize
     }
 }
 
@@ -65,8 +65,8 @@ fn push_three_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     buf.push(HalfWord::Half(headers::THREE_BITS_TEN_SAMPLES));
     let mut word: usize = 0;
     let values = q.pop_n::<N>();
-    for i in 0..N1 {
-        word |= values[i];
+    for value in values.iter().take(N1) {
+        word |= value;
         word <<= 3;
     }
     word |= values[N1];
@@ -80,8 +80,8 @@ fn push_six_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     buf.push(HalfWord::Half(headers::SIX_BITS_FIVE_SAMPLES));
     let mut word: usize = 0;
     let values = q.pop_n::<N>();
-    for i in 0..N1 {
-        word |= values[i];
+    for value in values.iter().take(N1) {
+        word |= value;
         word <<= 6;
     }
     word |= values[N1];
@@ -95,8 +95,8 @@ fn push_eight_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     buf.push(HalfWord::Half(headers::EIGHT_BITS_FOUR_SAMPLES));
     let mut word: usize = 0;
     let values = q.pop_n::<N>();
-    for i in 0..N1 {
-        word |= values[i];
+    for value in values.iter().take(N1) {
+        word |= value;
         word <<= 8;
     }
     word |= values[N1];
@@ -110,8 +110,8 @@ fn push_ten_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     buf.push(HalfWord::Half(headers::TEN_BITS_THREE_SAMPLES));
     let mut word: usize = 0b00 << 10;
     let values = q.pop_n::<N>();
-    for i in 0..N1 {
-        word |= values[i];
+    for value in values.iter().take(N1) {
+        word |= value;
         word <<= 10;
     }
     word |= values[N1];
@@ -125,8 +125,8 @@ fn push_sixteen_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     buf.push(HalfWord::Half(headers::SIXTEEN_BITS_TWO_SAMPLES));
     let mut word: usize = 0b00 << 10;
     let values = q.pop_n::<N>();
-    for i in 0..N1 {
-        word |= values[i];
+    for value in values.iter().take(N1) {
+        word |= value;
         word <<= 16;
     }
     word |= values[N1];
@@ -293,7 +293,7 @@ fn emit_popped_values<const N: usize>(
     values: &[usize; N],
     out: &mut HalfVec,
 ) {
-    for (bits, value) in bitcounts.into_iter().zip(values.into_iter()) {
+    for (bits, value) in bitcounts.iter().zip(values.iter()) {
         match bits {
             0 => out.push(HalfWord::Half(0b0000)),
             // -1 => out.push(HalfWord::Half(0b0001)),
@@ -327,15 +327,15 @@ impl EmitDeltaDeltaBits for CompressionQueue<2> {
                 let bitcounts = self.peak_bitcounts::<2>();
                 let values = self.pop_n::<2>();
                 emit_popped_values(&bitcounts, &values, out);
-                return 2;
+                2
             }
             1 => {
                 let bitcounts = self.peak_bitcounts::<1>();
                 let values = self.pop_n::<1>();
                 emit_popped_values(&bitcounts, &values, out);
-                return 1;
+                1
             }
-            _ => return 0,
+            _ => 0,
         }
     }
 }

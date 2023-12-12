@@ -150,7 +150,7 @@ impl HalfVec {
                             byte |= value >> 4;
                             known_append(&mut bytes, byte);
                             // Use the lower nibble from the value as the upper nibble
-                            byte = (value << 4) as u8;
+                            byte = value << 4;
                             // We are still on the lower nibble
                             // println!("lower byte: {:b}", value);
                         }
