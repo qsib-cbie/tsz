@@ -716,7 +716,6 @@ mod tests {
     fn encode_decode_i32(value: i32) {
         let mut bits = BitBuffer::new();
         encode_delta_i32(value, &mut bits);
-        // println!("{:?}", bits);
         let (decoded, remaining) = decode_delta_i32(&bits).unwrap();
         assert_eq!(value, decoded);
         assert!(remaining.is_none());

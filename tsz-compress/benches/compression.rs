@@ -240,18 +240,15 @@ impl Compress for TestRow {
     type Delta = TestRowDelta;
 
     fn into_full(self) -> Self::Full {
-        // println!("into_full({:?})", self);
         self
     }
 
     fn into_delta(self, prev_row: &Self) -> Self::Delta {
         let r = self - *prev_row;
-        // println!("into_delta: {:?} - {:?} = {:?}", prev_row, self, r);
         r
     }
 
     fn into_deltadelta(self, prev_prev_row: &Self, prev_row: &Self) -> Self::Delta {
-        // println!("into_deltadelta: {:?} - {:?} = {:?}",  (*self - *prev_row), (*prev_row - *prev_prev_row), (*self - *prev_row) - (*prev_row - *prev_prev_row));
         (self - *prev_row) - (*prev_row - *prev_prev_row)
     }
 }

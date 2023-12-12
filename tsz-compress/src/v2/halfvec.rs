@@ -116,12 +116,10 @@ impl HalfVec {
                             byte = value << 4;
                             // We are now on the lower nibble
                             upper = false;
-                            // println!("upper nibble: {:b}", value);
                         }
                         HalfWord::Byte(value) => {
                             // Use both nibbles from the byte
                             known_append(&mut bytes, *value);
-                            // println!("upper byte: {:b}", value);
                         }
                         HalfWord::Full(value) => {
                             // Use both nibbles from the top of the full
@@ -132,7 +130,6 @@ impl HalfVec {
                             known_append(&mut bytes, (value >> 8) as u8);
                             // Use both nibbles from the bottom of the full
                             known_append(&mut bytes, *value as u8);
-                            // println!("upper full: {:b}", value);
                         }
                     }
                 } else {
@@ -143,7 +140,6 @@ impl HalfVec {
                             known_append(&mut bytes, byte);
                             // We are now on the upper nibble
                             upper = true;
-                            // println!("lower nibble: {:b}", value);
                         }
                         HalfWord::Byte(value) => {
                             // Fill the lower nibble with the upper nibble of the value
@@ -152,10 +148,8 @@ impl HalfVec {
                             // Use the lower nibble from the value as the upper nibble
                             byte = value << 4;
                             // We are still on the lower nibble
-                            // println!("lower byte: {:b}", value);
                         }
                         HalfWord::Full(value) => {
-                            // println!("lower full: {:b}", value);
                             // Fill the lower nibble with the upper nibble of the value
                             byte |= (value >> 28) as u8;
                             known_append(&mut bytes, byte);
