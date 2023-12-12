@@ -7,6 +7,9 @@ pub use decode::*;
 pub use encode::*;
 pub use queue::*;
 
+///
+/// An enumeration representing the possible errors that can occur during the decoding process.
+///
 #[derive(Debug)]
 pub enum CodingError {
     /// There is not enough data to decode a single value.
@@ -25,6 +28,9 @@ pub enum CodingError {
     InvalidRowCount(usize),
 }
 
+///
+/// A struct representing the expected and actual lengths of columns in a data set.
+///
 #[derive(Debug)]
 pub struct ColumnLengths {
     pub expected_rows: usize,

@@ -6,6 +6,13 @@ use crate::v2::consts::headers;
 
 use super::halfvec::{HalfVec, HalfWord};
 
+///
+/// A trait for types that can be represented as bits.
+///
+/// This trait is for types that can be used in binary operations and have a constant size in bits.
+/// It provides methods for zigzag encoding, which is a form of variable-length encoding that
+/// efficiently encodes signed integers.
+///
 pub trait Bits: PrimInt + Binary {
     const BITS: usize;
 
@@ -144,6 +151,12 @@ unsafe fn push_thirty_two_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) 
 // #[inline(always)]
 // unsafe fn push_sixty_four_bits<T: PrimInt + Bits>();
 
+///
+/// A trait that emits bits according to the most efficient case of Delta Compression.
+///
+/// This trait provides methods for emitting bits and flushing the remaining bits in the queue.
+/// The methods return the number of elements popped from the queue.
+///
 pub trait EmitDeltaBits {
     /// Emits bits according to the most efficient case of Delta Compression.
     /// Returns the number of elements popped from the queue.
@@ -282,12 +295,17 @@ impl EmitDeltaBits for CompressionQueue<10> {
 }
 
 // Delta-Delta Encoding
+///
+/// A trait that provides method for emitting bits according to the most efficient case of Delta-Delta Compression.
+///
 pub trait EmitDeltaDeltaBits {
-    /// Emits bits according to the most efficient case of Delta Compression.
+    /// Emits bits according to the most efficient case of Delta-Delta Compression.
     /// Returns the number of elements popped from the queue.
     fn emit_delta_delta_bits(&mut self, out: &mut HalfVec) -> usize;
 }
 
+///
+/// A helper function that emits bits according to the most efficient case of Delta-Delta Compression.
 fn emit_popped_values<const N: usize>(
     bitcounts: &[usize; N],
     values: &[usize; N],
@@ -340,6 +358,12 @@ impl EmitDeltaDeltaBits for CompressionQueue<2> {
     }
 }
 
+///
+/// Writes a 128-bit integer to a HalfVec.
+///
+/// This function takes a mutable reference to a HalfVec and a 128-bit integer.
+/// It converts the integer to a 128-bit unsigned integer and pushes it to the HalfVec in 32-bit chunks.
+///
 pub fn write_i128_bits(buf: &mut HalfVec, i: i128) {
     let i = i as u128;
     buf.push(HalfWord::Full((i >> 96) as u32));
@@ -348,22 +372,46 @@ pub fn write_i128_bits(buf: &mut HalfVec, i: i128) {
     buf.push(HalfWord::Full(i as u32));
 }
 
+///
+/// Writes a 64-bit integer to a HalfVec.
+///
+/// This function takes a mutable reference to a HalfVec and a 64-bit integer.
+/// It converts the integer to a 64-bit unsigned integer and pushes it to the HalfVec in 32-bit chunks.
+///
 pub fn write_i64_bits(buf: &mut HalfVec, i: i64) {
     let i = i as u64;
     buf.push(HalfWord::Full((i >> 32) as u32));
     buf.push(HalfWord::Full(i as u32));
 }
 
+///
+/// Writes a 32-bit integer to a HalfVec.
+///
+/// This function takes a mutable reference to a HalfVec and a 32-bit integer.
+/// It pushes the integer to the HalfVec as a 32-bit unsigned integer.
+///
 pub fn write_i32_bits(buf: &mut HalfVec, i: i32) {
     buf.push(HalfWord::Full(i as u32));
 }
 
+///
+/// Writes a 16-bit integer to a HalfVec.
+///
+/// This function takes a mutable reference to a HalfVec and a 16-bit integer.
+/// It converts the integer to a 16-bit unsigned integer and pushes it to the HalfVec in 8-bit chunks.
+///
 pub fn write_i16_bits(buf: &mut HalfVec, i: i16) {
     let i = i as u16;
     buf.push(HalfWord::Byte((i >> 8) as u8));
     buf.push(HalfWord::Byte(i as u8));
 }
 
+///
+/// Writes an 8-bit integer to a HalfVec.
+///
+/// This function takes a mutable reference to a HalfVec and an 8-bit integer.
+/// It pushes the integer to the HalfVec as an 8-bit unsigned integer.
+///
 pub fn write_i8_bits(buf: &mut HalfVec, i: i8) {
     buf.push(HalfWord::Byte(i as u8));
 }

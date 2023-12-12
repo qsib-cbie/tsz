@@ -48,6 +48,10 @@ impl<'it> Iterator for HalfIter<'it> {
     }
 }
 
+///
+/// Reads a 128-bit integer from a 16-byte buffer.
+/// This function interprets the buffer as a little-endian 128-bit integer and returns it.
+///
 pub fn read_full_i128(buf: &[u8; 16]) -> i128 {
     // Reverse of
     // buf.push(HalfWord::Full((i >> 96) as u32));
@@ -61,6 +65,10 @@ pub fn read_full_i128(buf: &[u8; 16]) -> i128 {
     word as i128
 }
 
+///
+/// Reads a 64-bit integer from an 8-byte buffer.
+/// This function interprets the buffer as a little-endian 64-bit integer and returns it.
+///
 pub fn read_full_i64(buf: &[u8; 8]) -> i64 {
     // Reverse of
     // buf.push(HalfWord::Full((i >> 32) as u32));
@@ -70,6 +78,8 @@ pub fn read_full_i64(buf: &[u8; 8]) -> i64 {
     word as i64
 }
 
+/// Reads a 32-bit integer from a 4-byte buffer.
+/// This function interprets the buffer as a little-endian 32-bit integer and returns it.
 pub fn read_full_i32(buf: &[u8; 4]) -> i32 {
     // Reverse of
     // buf.push(HalfWord::Full(i as u32));
@@ -77,6 +87,10 @@ pub fn read_full_i32(buf: &[u8; 4]) -> i32 {
     word as i32
 }
 
+///
+/// Reads a 16-bit integer from a 2-byte buffer.
+/// This function interprets the buffer as a little-endian 16-bit integer and returns it.
+///
 pub fn read_full_i16(buf: &[u8; 2]) -> i16 {
     // Reverse of
     // buf.push(HalfWord::Byte((i >> 8) as u8));
@@ -85,12 +99,22 @@ pub fn read_full_i16(buf: &[u8; 2]) -> i16 {
     word as i16
 }
 
+///
+/// Reads an 8-bit integer from a 1-byte buffer.
+/// This function interprets the buffer as a little-endian 8-bit integer and returns it.
+///
 pub fn read_full_i8(buf: &[u8; 1]) -> i8 {
     // Reverse of
     // buf.push(HalfWord::Byte(i as u8));
     buf[0] as i8
 }
 
+///
+/// Decodes 8-bit integers according to the delta encoding scheme.
+///
+/// This function reads the HalfIter in chunks, decodes the chunks according to the delta encoding scheme,
+/// and writes the decoded values to the Vec<i8>.
+///
 pub fn decode_i8(iter: &mut HalfIter<'_>, output: &mut Vec<i8>) -> Result<(), CodingError> {
     // No rows
     let Some(next_upper) = iter.next() else {
@@ -260,6 +284,12 @@ pub fn decode_i8(iter: &mut HalfIter<'_>, output: &mut Vec<i8>) -> Result<(), Co
     Ok(())
 }
 
+///
+/// Decodes 16-bit integers according to the delta encoding scheme.
+///
+/// This function reads the HalfIter in chunks, decodes the chunks according to the delta encoding scheme,
+/// and writes the decoded values to the Vec<i16>.
+///
 pub fn decode_i16(iter: &mut HalfIter<'_>, output: &mut Vec<i16>) -> Result<(), CodingError> {
     // No rows
     let Some(next_upper) = iter.next() else {
@@ -436,6 +466,12 @@ pub fn decode_i16(iter: &mut HalfIter<'_>, output: &mut Vec<i16>) -> Result<(), 
     Ok(())
 }
 
+///
+/// Decodes 32-bit integers according to the delta encoding scheme.
+///
+/// This function reads the HalfIter in chunks, decodes the chunks according to the delta encoding scheme,
+/// and writes the decoded values to the Vec<i32>.
+///
 pub fn decode_i32(iter: &mut HalfIter<'_>, output: &mut Vec<i32>) -> Result<(), CodingError> {
     // No rows
     let Some(next_upper) = iter.next() else {
@@ -625,6 +661,12 @@ pub fn decode_i32(iter: &mut HalfIter<'_>, output: &mut Vec<i32>) -> Result<(), 
     Ok(())
 }
 
+///
+/// Decodes 64-bit integers according to the delta encoding scheme.
+///
+/// This function reads the HalfIter in chunks, decodes the chunks according to the delta encoding scheme,
+/// and writes the decoded values to the Vec<i64>.
+///
 pub fn decode_i64(iter: &mut HalfIter<'_>, output: &mut Vec<i64>) -> Result<(), CodingError> {
     // No rows
     let Some(next_upper) = iter.next() else {
