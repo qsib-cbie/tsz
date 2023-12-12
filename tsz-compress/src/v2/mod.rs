@@ -58,6 +58,13 @@ pub trait TszCompressV2 {
     fn len(&self) -> usize;
 
     ///
+    /// Returns true if no bits have been compressed.
+    ///
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    ///
     /// Return an estimate of bits per column value as the number of
     /// compressed bits / count of column values compressed / columns per row.
     ///
