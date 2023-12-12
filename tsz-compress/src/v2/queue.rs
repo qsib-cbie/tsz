@@ -166,90 +166,80 @@ mod tests {
         assert_eq!(queue.is_empty(), true);
     }
 
-    // #[test]
-    // fn is_empty_or_full() {
-    //     let mut queue: CompressionQueue<usize, 4> = CompressionQueue::new();
-    //     assert_eq!(queue.len(), 0);
-    //     assert_eq!(queue.is_empty(), true);
-    //     assert_eq!(queue.is_full(), false);
+    #[test]
+    fn is_empty_or_full() {
+        let mut queue: CompressionQueue<4> = CompressionQueue::new();
+        assert_eq!(queue.len(), 0);
+        assert_eq!(queue.is_empty(), true);
+        assert_eq!(queue.is_full(), false);
 
-    //     // push 4 values, queue should be full
-    //     for i in 0..4 {
-    //         queue.push(i);
-    //         assert_eq!(queue.len(), i + 1);
-    //         assert_eq!(queue.is_empty(), false);
-    //         assert_eq!(queue.is_full(), i == 3);
-    //     }
+        // push 4 values, queue should be full
+        for i in 0..4 {
+            queue.push(i as i8);
+            assert_eq!(queue.len(), i + 1);
+            assert_eq!(queue.is_empty(), false);
+            assert_eq!(queue.is_full(), i == 3);
+        }
 
-    //     // iterate over the values, they should be 0..4
-    //     for x in queue.iter().enumerate() {
-    //         assert_eq!(x.0, x.1);
-    //     }
+        // pop 4 values, queue should be empty
+        for i in 0..4 {
+            assert_eq!(queue.pop(), Some((i as i8).zigzag()));
+            assert_eq!(queue.len(), 3 - i);
+            assert_eq!(queue.is_empty(), (i == 3));
+            assert_eq!(queue.is_full(), false);
+        }
+    }
 
-    //     // pop 4 values, queue should be empty
-    //     for i in 0..4 {
-    //         assert_eq!(queue.pop(), Some(i));
-    //         assert_eq!(queue.len(), 3 - i);
-    //         assert_eq!(queue.is_empty(), (i == 3));
-    //         assert_eq!(queue.is_full(), false);
-    //     }
-    // }
+    #[test]
+    fn can_overwrite() {
+        let mut queue: CompressionQueue<4> = CompressionQueue::new();
 
-    // #[test]
-    // fn can_overwrite() {
-    //     let mut queue: CompressionQueue<usize, 4> = CompressionQueue::new();
+        // push 4 values, queue should be full
+        for i in 0..4 {
+            queue.push(i as i8);
+            assert_eq!(queue.len(), i + 1);
+            assert_eq!(queue.is_empty(), false);
+            assert_eq!(queue.is_full(), i == 3);
+        }
 
-    //     // push 4 values, queue should be full
-    //     for i in 0..4 {
-    //         queue.push(i);
-    //         assert_eq!(queue.len(), i + 1);
-    //         assert_eq!(queue.is_empty(), false);
-    //         assert_eq!(queue.is_full(), i == 3);
-    //     }
+        // keep pushing, queue should still be full
+        for i in 4..8 {
+            queue.push(i as i8);
+            assert_eq!(queue.len(), i + 1);
+            assert_eq!(queue.is_empty(), false);
+            assert_eq!(queue.is_full(), true);
+        }
 
-    //     // keep pushing, queue should still be full
-    //     for i in 4..8 {
-    //         queue.push(i);
-    //         assert_eq!(queue.len(), i + 1);
-    //         assert_eq!(queue.is_empty(), false);
-    //         assert_eq!(queue.is_full(), true);
-    //     }
+        // keep pushing, queue should still be full and start overwriting
+        for i in 8..20 {
+            queue.push(i as i8);
+            assert_eq!(queue.len(), (i + 1).min(16));
+            assert_eq!(queue.is_empty(), false);
+            assert_eq!(queue.is_full(), true);
+        }
 
-    //     // keep pushing, queue should still be full and start overwriting
-    //     for i in 8..20 {
-    //         queue.push(i);
-    //         assert_eq!(queue.len(), (i + 1).min(16));
-    //         assert_eq!(queue.is_empty(), false);
-    //         assert_eq!(queue.is_full(), true);
-    //     }
+        // pop the values, they should be 16..20
+        for j in 0..4 {
+            assert_eq!(queue.pop(), Some(((j + 4) as i8).zigzag()));
+            assert_eq!(queue.len(), 15 - j);
+            assert_eq!(queue.is_empty(), false);
+            assert_eq!(queue.is_full(), true);
+        }
 
-    //     // iterate over the values, they should be 4..20
-    //     for (i, value) in queue.iter().enumerate() {
-    //         assert_eq!(value, i + 4);
-    //     }
+        // pop another 8 values, then the queue will start to empty
+        queue.pop_n::<8>();
+        assert_eq!(queue.len(), 4);
+        assert_eq!(queue.is_empty(), false);
+        assert_eq!(queue.is_full(), true);
 
-    //     // pop the values, they should be 16..20
-    //     for j in 0..4 {
-    //         assert_eq!(queue.pop(), Some(j + 4));
-    //         assert_eq!(queue.len(), 15 - j);
-    //         assert_eq!(queue.is_empty(), false);
-    //         assert_eq!(queue.is_full(), true);
-    //     }
-
-    //     // pop another 8 values, then the queue will start to empty
-    //     queue.pop_n::<8>();
-    //     assert_eq!(queue.len(), 4);
-    //     assert_eq!(queue.is_empty(), false);
-    //     assert_eq!(queue.is_full(), true);
-
-    //     // pop the remaining 4 values, then the queue will be empty
-    //     for j in 0..4 {
-    //         assert_eq!(queue.pop(), Some(j + 16));
-    //         assert_eq!(queue.len(), 3 - j);
-    //         assert_eq!(queue.is_empty(), (j == 3));
-    //         assert_eq!(queue.is_full(), false);
-    //     }
-    // }
+        // pop the remaining 4 values, then the queue will be empty
+        for j in 0..4 {
+            assert_eq!(queue.pop(), Some(((j + 16) as i8).zigzag()));
+            assert_eq!(queue.len(), 3 - j);
+            assert_eq!(queue.is_empty(), (j == 3));
+            assert_eq!(queue.is_full(), false);
+        }
+    }
 
     #[test]
     fn fuzz() {
