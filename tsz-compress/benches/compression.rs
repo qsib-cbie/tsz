@@ -183,36 +183,36 @@ impl FromCompressBits for TestRowDelta {
     fn from_bits(input: &BitBufferSlice) -> Result<(Self, &BitBufferSlice), &'static str> {
         let (ts, input) = decode_delta_i64(input)?;
         let Some(input) = input else {
-                    return Err("Early EOF");
-                };
+            return Err("Early EOF");
+        };
         let (v8, input) = decode_delta_i16(input)?;
         let Some(input) = input else {
-                    return Err("Early EOF");
-                };
+            return Err("Early EOF");
+        };
         let (v16, input) = decode_delta_i32(input)?;
         let Some(input) = input else {
-                    return Err("Early EOF");
-                };
+            return Err("Early EOF");
+        };
         let (v32, input) = decode_delta_i64(input)?;
         let Some(input) = input else {
-                    return Err("Early EOF");
-                };
+            return Err("Early EOF");
+        };
         let (v64, input) = decode_delta_i64(input)?;
         let Some(input) = input else {
-                    return Err("Early EOF");
-                };
+            return Err("Early EOF");
+        };
         let (vi8, input) = decode_delta_i16(input)?;
         let Some(input) = input else {
-                    return Err("Early EOF");
-                };
+            return Err("Early EOF");
+        };
         let (vi16, input) = decode_delta_i32(input)?;
         let Some(input) = input else {
-                    return Err("Early EOF");
-                };
+            return Err("Early EOF");
+        };
         let (vi32, input) = decode_delta_i64(input)?;
         let Some(input) = input else {
-                    return Err("Early EOF");
-                };
+            return Err("Early EOF");
+        };
         let (vi64, input) = decode_delta_i64(input)?;
         let input = input.unwrap_or_default();
 
