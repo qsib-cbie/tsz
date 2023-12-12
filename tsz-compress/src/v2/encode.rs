@@ -134,17 +134,14 @@ fn push_sixteen_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
 }
 
 #[inline(always)]
-unsafe fn push_thirty_two_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
-    buf.push(HalfWord::Half(headers::THIRTY_TWO_BITS_ONE_SAMPLE));
-    let value = q.pop().unwrap_unchecked() as u32;
-    buf.push(HalfWord::Full(value));
-}
-
-#[inline(always)]
-unsafe fn push_sixty_four_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
-    buf.push(HalfWord::Half(headers::SIXTY_FOUR_BITS_ONE_SAMPLE));
-    let value = q.pop().unwrap_unchecked() as u64;
-    buf.push(HalfWord::Full((value >> 32) as u32));
+unsafe fn push_32_or_64_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
+    let value = q.pop().unwrap_unchecked();
+    if value <= u32::MAX as usize {
+        buf.push(HalfWord::Half(headers::THIRTY_TWO_BITS_ONE_SAMPLE));
+    } else {
+        buf.push(HalfWord::Half(headers::SIXTY_FOUR_BITS_ONE_SAMPLE));
+        buf.push(HalfWord::Full((value >> 32) as u32));
+    }
     buf.push(HalfWord::Full(value as u32));
 }
 
@@ -158,14 +155,11 @@ pub trait EmitDeltaBits {
 impl EmitDeltaBits for CompressionQueue<10> {
     #[inline(always)]
     fn emit_delta_bits(&mut self, out: &mut HalfVec) -> usize {
-        let mut fits = [true; 6];
+        let mut fits = [true; 5];
 
         // Check if the values will fit in the cases
         let values = self.peak_bitcounts::<10>();
         for (index, bits_required) in values.into_iter().enumerate() {
-            if (index < 2) & (bits_required > 32) {
-                fits[5] = false;
-            }
             if (index < 2) & (bits_required > 16) {
                 fits[4] = false;
             }
@@ -199,14 +193,9 @@ impl EmitDeltaBits for CompressionQueue<10> {
         } else if fits[4] {
             push_sixteen_bits(self, out);
             return 2;
-        } else if fits[5] {
-            unsafe {
-                push_thirty_two_bits(self, out);
-            }
-            return 1;
         } else {
             unsafe {
-                push_sixty_four_bits(self, out);
+                push_32_or_64_bits(self, out);
             }
             return 1;
         }
@@ -214,7 +203,7 @@ impl EmitDeltaBits for CompressionQueue<10> {
 
     #[inline(always)]
     fn flush_delta_bits(&mut self, out: &mut HalfVec) -> usize {
-        let mut fits = [true; 6];
+        let mut fits = [true; 5];
 
         // Can not emit with any case of delta compression if queue is empty
         if self.is_empty() {
@@ -249,9 +238,6 @@ impl EmitDeltaBits for CompressionQueue<10> {
         // Check if the values will fit in the cases
         let values = self.peak_bitcounts::<10>();
         for (index, bits_required) in values.into_iter().enumerate() {
-            if (index < 2) & (bits_required > 32) {
-                fits[5] = false;
-            }
             if (index < 2) & (bits_required > 16) {
                 fits[4] = false;
             }
@@ -285,14 +271,9 @@ impl EmitDeltaBits for CompressionQueue<10> {
         } else if fits[4] {
             push_sixteen_bits(self, out);
             return 2;
-        } else if fits[5] {
-            unsafe {
-                push_thirty_two_bits(self, out);
-            }
-            return 1;
         } else {
             unsafe {
-                push_sixty_four_bits(self, out);
+                push_32_or_64_bits(self, out);
             }
             return 1;
         }
