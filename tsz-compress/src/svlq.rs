@@ -749,7 +749,6 @@ mod tests {
     #[test]
     fn can_convert_all_i8() {
         for i in -128..=127 {
-            // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i8::try_from(svlq).unwrap();
             assert_eq!(value, i);
@@ -759,14 +758,12 @@ mod tests {
     #[test]
     fn can_convert_all_i16() {
         for i in -128..=127 {
-            // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i16::try_from(svlq).unwrap();
             assert_eq!(value, i);
         }
 
         for i in i16::MIN..=i16::MAX {
-            // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i16::try_from(svlq).unwrap();
             assert_eq!(value, i);
@@ -793,14 +790,12 @@ mod tests {
     #[test]
     fn can_convert_all_i32() {
         for i in i8::MIN..=i8::MAX {
-            // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i32::try_from(svlq).unwrap();
             assert_eq!(value, i as i32);
         }
 
         for i in i16::MIN..=i16::MAX {
-            // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i32::try_from(svlq).unwrap();
             assert_eq!(value, i as i32);

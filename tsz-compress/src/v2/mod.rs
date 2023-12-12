@@ -7,6 +7,9 @@ pub use decode::*;
 pub use encode::*;
 pub use queue::*;
 
+///
+/// An enumeration representing the possible errors that can occur during the decoding process.
+///
 #[derive(Debug)]
 pub enum CodingError {
     /// There is not enough data to decode a single value.
@@ -25,6 +28,9 @@ pub enum CodingError {
     InvalidRowCount(usize),
 }
 
+///
+/// A struct representing the expected and actual lengths of columns in a data set.
+///
 #[derive(Debug)]
 pub struct ColumnLengths {
     pub expected_rows: usize,
@@ -56,6 +62,13 @@ pub trait TszCompressV2 {
     /// This is an estimate, as the last few samples may have been emitted are estimated.
     ///
     fn len(&self) -> usize;
+
+    ///
+    /// Returns true if no bits have been compressed.
+    ///
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     ///
     /// Return an estimate of bits per column value as the number of

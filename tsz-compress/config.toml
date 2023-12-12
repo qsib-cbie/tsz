@@ -1,3 +1,0 @@
-# Determines the compression algorithm (delta or delta-delta) based on relative size differences.
-# A higher value increases the likelihood of using both algorithms, while a lower value leads to an early decision.
-COMPRESSION_SIZE_FACTOR = 5
