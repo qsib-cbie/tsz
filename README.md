@@ -7,7 +7,7 @@
 
 A portable implementation for bit-packing and precise framing on space-constrained systems for periodic time-series integral data.
 
-Inspiration drawn from IC FIFO compression and Gorilla timestamp compression. https://www.vldb.org/pvldb/vol8/p1816-teller.pdf
+Inspiration drawn from Delta encoding, IC FIFO compression, and Gorilla timestamp compression. https://www.vldb.org/pvldb/vol8/p1816-teller.pdf
 
 ## Pros and Cons
 
@@ -16,72 +16,72 @@ Periodic integral data, like those from embedded sensor data, that changes with 
 
 ✅ `tsz` is designed to take advantage of the integral data patterns produced by ICs that generate consistent bit-width integral data over time with similar magnitudes of change.
 
-✅ `tsz` is designed to emit framed packets that would be considered very small outside of the embedded space, targetting <255 bytes per block.
+✅ `tsz` is designed to compress on 32-bit Cortex-M and emit framed packets that would be considered very small outside of the embedded ecosystem. It is compatible with (and much faster on 64-bit) and does limit the size of the compressed data.
+
+✅ `tsz` is designed to emit half-byte aligned words that work with a second-pass compression algorithm such as LZ4 or ZSTD.
 
 ❌ `tsz` is not designed to handle oscillating change or irregular event time streams optimally but can encode that information about as well as uncompressed.
+
+❌ `tsz` is not designed to handle floating-point or fixed-point data. Use of fixed-point is functional but not optimal, and floating-point is not supported.
+
+❌ `tsz` is not designed to optimize perfectly predictable data. Real-life instruments have some non-zero noise that often prevents perfect linearity.
 
 ❌ `tsz` is not designed to prioritize (de)compression rates over memory usage or compression ratio.
 
 ## Interface
 
-With a macro (or manually), implement the 2 traits for compression `Compress` and `IntoCompressBits` and/or 2 traits for decompression `Decompress` and `FromCompressBits`.
-
-From the end-to-end tests using a procedural macro to generate the delta encoding match and trait implementations, we have a functional example
+The `tsz` interface is designed to be as simple and result in as much inlining and static dispatch as possible. It uses a procedural macro to generate the necessary traits and structs to compress row-major data into column-major bytes and decompress column-major bytes into column-major or row-major data.
 
 ```rust
-// Import proc_macros and trait definitions
-use tsz_compress::prelude::*;
 
-// `Row` must be a `Copy` struct of integral primitives
-// `DeltaEncodable` generates a `RowDelta` struct to represent the difference between rows and how to add/subtract them
-// `Compressible` generates `Compress` and `IntoCompressBits` implementations for a `Row` and `RowDelta` struct
-// `Decompressible` generates `Decompress` and `FromCompressBits` implementations for a `Row` and `RowDelta` struct
-#[derive(Copy, Clone, DeltaEncodable, Compressible, Decompressible)]
-pub struct Row {
-    pub ts: i64,
-    pub val0: i8,
-    pub val1: i16,
-    pub val2: i32,
-    pub val3: i64,
+// Use a procedural macro to generate a compressor and decompressor for a row struct
+mod abcd {
+    use tsz_compress::prelude::*;
+    #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+    pub struct AbcdRow {
+        pub ts: i64,
+        pub a: i8,
+        pub b: i16,
+        pub c: i32,
+        pub d: i64,
+    }
+
+    pub use compress::AbcdRowCompressorImpl;
+    pub use decompress::AbcdRowDecompressorImpl;
 }
 
-// Create a compressor instance to hold compression state
-let mut c = Compressor::new();
+// Expose the structs you want to use
+use abcd::AbcdRow;
+use abcd::compress::AbcdRowCompressorImpl;
+use abcd::decompress::AbcdRowDecompressorImpl;
 
-// Insert a bunch of rows
-let lower = -100000;
-let upper = 100000;
-for i in lower..upper {
-    let row = AnotherRow {
-        ts: i,
-        val0: i as i8,
-        val1: i as i16,
-        val2: i as i32,
-        val3: i as i64,
-    };
-    c.compress(row);
-}
 
-// Emit the final encoded bits
-let bits = c.finish();
+// Initialize a compressor with preallocated space, using alloc::vec::Vec internally
+let mut compressor = TestRowCompressorImpl::new(32);
 
-// Create a decompressor instance to hold decompression state
-let mut d = Decompressor::new(&bits);
+// Compress all the rows you want
+compressor.compress(TestRow { ts: 0, a: 1, b: 2, c: 3, d: 4, });
+assert!(compressor.row_count() == 1);
 
-// Iterate through rows, decompressing each subsequent row on the Iterator::next call
-// All rows don't have to be read all at once, but typically are using the iterator pattern
-for (i, row) in d.decompress::<AnotherRow>().unwrap().enumerate() {
-    let row = row.unwrap();
-    let i = i as isize + lower as isize;
-    assert_eq!(row.ts, i as i64);
-    assert_eq!(row.val0, i as i8);
-    assert_eq!(row.val1, i as i16);
-    assert_eq!(row.val2, i as i32);
-    assert_eq!(row.val3, i as i64);
-}
+// Finalize the compression, flushing the compressor's pending bits
+let bytes = c.finish();
+
+// Initialize the decompressor
+let mut decompressor = TestRowDecompressorImpl::new();
+
+// Decompress the bit buffer
+decompressor.decompress(&bytes).unwrap();
+
+// Access data by column
+let a = decompressor.col_a();
+
+// Rotate the data back to row-major
+let rows= decompressor.rows();
 ```
 
-## Current Compression Scheme
+## TSZ V1 Compression Scheme
+
+This is accessible behind the `DeltaEncodable`, `Compressible`, and `Decompressible` procedural macros.
 
 The initial compression scheme implementation included:
 1. A VLQ encoding of the full value for each column for the first row
@@ -97,7 +97,9 @@ The initial compression scheme implementation included:
     1. header 11111110, 32 bits
     1. header 111111110, 64 bits
 
-## Future Compression Scheme
+## TSZ V2 Compression Scheme
+
+This is accessible behind the `CompressV2` and `DecompressV2` procedural macros.
 
 The future compression scheme will include a single bit before each delta-delta to indicate:
 * the following is a truncated binary encoding header indicating the number of following bits and the bits for the delta-delta from the previous delta. Each delta-delta is zigzag encoded
@@ -108,6 +110,8 @@ The future compression scheme will include a single bit before each delta-delta 
     1. 0, 111, 64 bits
 
 * the following is a truncated binary encoding header indicating the number of bit-packed deltas (not delta-deltas) in the next 32-bits. Each delta is zigzag encoded
+    1. 1, 10, 1 sample (64 bits)
+    1. 1, 01, 1, 1 sample (32 bits)
     1. 1, 00, pad 0, 2 samples (16 bits)
     1. 1, 01, pad 000, 3 samples (10 bits)
     1. 1, 10, pad 0, 4 samples (8 bits)
@@ -117,8 +121,7 @@ The future compression scheme will include a single bit before each delta-delta 
 In the updated scheme, the final encoding will include a final pass with an entropy coding with the minimum word size as 4 bits. All headers and delta bit sequences are 4 bit aligned, with octets tending towards 0000 for constant slope and 1111 for 10 consecutive data points within +-3. Values in delta zigzag encoding may also include octets of leading 0s.
 
 
-
-## Example
+## Example for v1
 
 The following example encodes 2 timestamps and 4 values. The first timestamp is an SoC uptime ms. The second timestamp is UTC us. The values are 4 channels of int16_t data incrementing slowly and sometimes resetting. Data in this example is collected at 1 Hz.
 
