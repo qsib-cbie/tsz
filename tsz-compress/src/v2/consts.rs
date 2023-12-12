@@ -8,4 +8,5 @@ pub mod headers {
     pub const TEN_BITS_THREE_SAMPLES: u8 = 0b1010;
     pub const SIXTEEN_BITS_TWO_SAMPLES: u8 = 0b1000;
     pub const THIRTY_TWO_BITS_ONE_SAMPLE: u8 = 0b1011;
+    pub const SIXTY_FOUR_BITS_ONE_SAMPLE: u8 = 0b1101;
 }

@@ -651,6 +651,27 @@ pub fn decode_i32(iter: &mut HalfIter<'_>, output: &mut Vec<i32>) -> Result<(), 
                     output.push(value);
                 }
             }
+            headers::SIXTY_FOUR_BITS_ONE_SAMPLE => {
+                // 1 sample of 64 bits
+                let mut word: u64 = 0;
+                for _ in 0..15 {
+                    let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
+                    word |= half as u64;
+                    word <<= 4;
+                }
+                let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
+                word |= half as u64;
+
+                let padding = 0;
+                let bit_width = 64;
+                let shift = 64 - padding - bit_width;
+                for i in 0..1 {
+                    let delta = (word >> (shift - bit_width * i)) as i64;
+                    let delta = (delta >> 1) ^ -(delta & 1);
+                    value = (value as i64 + delta) as i32;
+                    output.push(value);
+                }
+            }
             _ => {
                 // Delta-Delta encoding, or not implemented
                 todo!("Implement i32 delta-delta");
@@ -863,6 +884,27 @@ pub fn decode_i64(iter: &mut HalfIter<'_>, output: &mut Vec<i64>) -> Result<(), 
                 let padding = 0;
                 let bit_width = 32;
                 let shift = 32 - padding - bit_width;
+                for i in 0..1 {
+                    let delta = (word >> (shift - bit_width * i)) as i128;
+                    let delta = (delta >> 1) ^ -(delta & 1);
+                    value = (value as i128 + delta) as i64;
+                    output.push(value);
+                }
+            }
+            headers::SIXTY_FOUR_BITS_ONE_SAMPLE => {
+                // 1 sample of 64 bits
+                let mut word: u64 = 0;
+                for _ in 0..15 {
+                    let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
+                    word |= half as u64;
+                    word <<= 4;
+                }
+                let half = iter.next().ok_or(CodingError::NotEnoughBits)?;
+                word |= half as u64;
+
+                let padding = 0;
+                let bit_width = 64;
+                let shift = 64 - padding - bit_width;
                 for i in 0..1 {
                     let delta = (word >> (shift - bit_width * i)) as i128;
                     let delta = (delta >> 1) ^ -(delta & 1);
