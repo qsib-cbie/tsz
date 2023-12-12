@@ -542,14 +542,15 @@ fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type, 
         }
     }
 
-    named_fields
+    let named_fields_with_attrs = named_fields
         .into_iter()
         .enumerate()
         .map(|(i, f)| {
             let attr = &delta_user_col_tys[i];
             (f.ident.unwrap(), f.ty, attr.clone())
         })
-        .collect::<Vec<_>>() // (ident, ty, delta_bit_width)
+        .collect::<Vec<_>>();
+    named_fields_with_attrs
 }
 
 ///
