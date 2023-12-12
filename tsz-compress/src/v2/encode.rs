@@ -140,9 +140,13 @@ unsafe fn push_thirty_two_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) 
     buf.push(HalfWord::Full(value));
 }
 
-// Todo: How can we implement this?
-// #[inline(always)]
-// unsafe fn push_sixty_four_bits<T: PrimInt + Bits>();
+#[inline(always)]
+unsafe fn push_sixty_four_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
+    buf.push(HalfWord::Half(headers::SIXTY_FOUR_BITS_ONE_SAMPLE));
+    let value = q.pop().unwrap_unchecked() as u64;
+    buf.push(HalfWord::Full((value >> 32) as u32));
+    buf.push(HalfWord::Full(value as u32));
+}
 
 pub trait EmitDeltaBits {
     /// Emits bits according to the most efficient case of Delta Compression.
@@ -159,6 +163,9 @@ impl EmitDeltaBits for CompressionQueue<10> {
         // Check if the values will fit in the cases
         let values = self.peak_bitcounts::<10>();
         for (index, bits_required) in values.into_iter().enumerate() {
+            if (index < 2) & (bits_required > 32) {
+                fits[5] = false;
+            }
             if (index < 2) & (bits_required > 16) {
                 fits[4] = false;
             }
@@ -197,8 +204,12 @@ impl EmitDeltaBits for CompressionQueue<10> {
                 push_thirty_two_bits(self, out);
             }
             return 1;
+        } else {
+            unsafe {
+                push_sixty_four_bits(self, out);
+            }
+            return 1;
         }
-        0
     }
 
     #[inline(always)]
@@ -238,6 +249,9 @@ impl EmitDeltaBits for CompressionQueue<10> {
         // Check if the values will fit in the cases
         let values = self.peak_bitcounts::<10>();
         for (index, bits_required) in values.into_iter().enumerate() {
+            if (index < 2) & (bits_required > 32) {
+                fits[5] = false;
+            }
             if (index < 2) & (bits_required > 16) {
                 fits[4] = false;
             }
@@ -276,8 +290,12 @@ impl EmitDeltaBits for CompressionQueue<10> {
                 push_thirty_two_bits(self, out);
             }
             return 1;
+        } else {
+            unsafe {
+                push_sixty_four_bits(self, out);
+            }
+            return 1;
         }
-        0
     }
 }
 

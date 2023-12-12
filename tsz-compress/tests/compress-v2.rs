@@ -26,7 +26,7 @@ mod tests {
         use row::*;
         const N: usize = 20;
 
-        /// Test 10 samples (size of queue)
+        // Test 10 samples (size of queue)
         let row = TestRow { a: 1 };
 
         // Initialize the compressor
@@ -222,7 +222,7 @@ mod tests {
         use row::*;
         const N: usize = 20;
 
-        /// Test 10 samples (size of queue)
+        // Test 10 samples (size of queue)
         let row = TestRow { a: 1 };
 
         // Initialize the compressor
@@ -441,7 +441,7 @@ mod tests {
         use row::*;
         const N: usize = 13;
 
-        /// Test 10 samples (size of queue)
+        // Test 10 samples (size of queue)
         let row = TestRow { a: 1 };
 
         // Initialize the compressor
@@ -504,8 +504,58 @@ mod tests {
     }
 
     #[test]
+    fn test_macro_compress_i32_value_edge_cases() {
+        // Test with edge cases of deltas possible by i32 bit-widths values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                pub a: i32,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        let values = vec![
+            1,
+            1,
+            i32::MIN,
+            i32::MAX,
+            i32::MIN,
+            i32::MAX,
+            i32::MIN,
+            i32::MAX,
+            i32::MIN,
+            i32::MAX,
+            1,
+        ];
+
+        for value in &values {
+            let row = TestRow { a: *value };
+            compressor.compress(row);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
     fn test_macro_compress_i32_bit_width_values_random() {
-        // Test with random values with delta within i32 range
+        // Test with random i32 bit-widths values
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
@@ -527,9 +577,147 @@ mod tests {
             // Number of samples in the input vector
             let end_range = rng.gen_range(100..10000);
 
-            // Generate input vector randomly such that delta is in i32 range
+            // Generate input vector randomly
             let values: Vec<i32> = (0..end_range)
-                .map(|_| rng.gen_range((i32::MIN / 2)..(i32::MAX - 1) / 2))
+                .map(|_| rng.gen_range(i32::MIN..i32::MAX))
+                .collect();
+
+            // Compression
+            for value in &values {
+                let row = TestRow { a: *value };
+                compressor.compress(row);
+            }
+
+            // Finalize the compression
+            let bytes = compressor.finish();
+
+            // Initialize the decompressor
+            let mut decompressor = TestRowDecompressorImpl::new();
+
+            // Decompress the bit buffer
+            decompressor.decompress(&bytes).unwrap();
+
+            // Assert that the decompressed data matches the original
+            assert_eq!(values, decompressor.col_a());
+        }
+    }
+
+    #[test]
+    fn test_macro_compress_sanity_i64_bit_width_values1() {
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                pub a: i64,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+        const N: usize = 13;
+
+        // Test 10 samples (size of queue)
+        let row = TestRow { a: 1 };
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        // Compress row
+        for _ in 0..N {
+            compressor.compress(row);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(decompressor.col_a(), vec![row.a; N]);
+    }
+
+    #[test]
+    fn test_macro_compress_i64_value_edge_cases() {
+        // Test with edge cases of i64 deltas possible by i64 bit-widths values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                pub a: i64,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        let values = vec![
+            1,
+            1,
+            (i64::MIN) / 2,
+            (i64::MAX - 1) / 2,
+            (i64::MIN) / 2,
+            (i64::MAX - 1) / 2,
+            (i64::MIN) / 2,
+            (i64::MAX - 1) / 2,
+            (i64::MIN) / 2,
+            (i64::MAX - 1) / 2,
+            1,
+        ];
+
+        for value in &values {
+            let row = TestRow { a: *value };
+            compressor.compress(row);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
+    fn test_macro_compress_i64_bit_width_values_random() {
+        // Test with random i64 bit-widths values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                pub a: i64,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..1000 {
+            // Initialize the compressor
+            let mut compressor = TestRowCompressorImpl::new(128);
+
+            // Number of samples in the input vector
+            let end_range = rng.gen_range(100..1000);
+
+            // Generate input vector randomly
+            let values: Vec<i64> = (0..end_range)
+                .map(|_| rng.gen_range((i64::MIN / 2)..(i64::MAX - 1) / 2))
                 .collect();
 
             // Compression
@@ -571,6 +759,8 @@ mod test_field_attributes {
                 pub b: i8,
                 #[tsz(delta = "i32")]
                 pub c: i8,
+                #[tsz(delta = "i64")]
+                pub d: i8,
             }
 
             pub use compress::TestRowCompressorImpl;
@@ -579,8 +769,13 @@ mod test_field_attributes {
         use row::*;
         const N: usize = 20;
 
-        /// Test 10 samples (size of queue)
-        let row = TestRow { a: 1, b: 1, c: 1 };
+        // Test 10 samples (size of queue)
+        let row = TestRow {
+            a: 1,
+            b: 1,
+            c: 1,
+            d: 1,
+        };
 
         // Initialize the compressor
         let mut compressor = TestRowCompressorImpl::new(128);
@@ -603,6 +798,7 @@ mod test_field_attributes {
         assert_eq!(decompressor.col_a(), vec![row.a; N]);
         assert_eq!(decompressor.col_b(), vec![row.b; N]);
         assert_eq!(decompressor.col_c(), vec![row.c; N]);
+        assert_eq!(decompressor.col_d(), vec![row.d; N]);
     }
 
     #[test]
@@ -617,6 +813,8 @@ mod test_field_attributes {
                 pub b: i16,
                 #[tsz(delta = "i32")]
                 pub c: i16,
+                #[tsz(delta = "i64")]
+                pub d: i16,
             }
 
             pub use compress::TestRowCompressorImpl;
@@ -625,8 +823,13 @@ mod test_field_attributes {
         use row::*;
         const N: usize = 20;
 
-        /// Test 10 samples (size of queue)
-        let row = TestRow { a: 1, b: 1, c: 1 };
+        // Test 10 samples (size of queue)
+        let row = TestRow {
+            a: 1,
+            b: 1,
+            c: 1,
+            d: 1,
+        };
 
         // Initialize the compressor
         let mut compressor = TestRowCompressorImpl::new(128);
@@ -649,6 +852,7 @@ mod test_field_attributes {
         assert_eq!(decompressor.col_a(), vec![row.a; N]);
         assert_eq!(decompressor.col_b(), vec![row.b; N]);
         assert_eq!(decompressor.col_c(), vec![row.c; N]);
+        assert_eq!(decompressor.col_d(), vec![row.d; N]);
     }
 
     #[test]
@@ -663,6 +867,8 @@ mod test_field_attributes {
                 pub b: i32,
                 #[tsz(delta = "i32")]
                 pub c: i32,
+                #[tsz(delta = "i64")]
+                pub d: i32,
             }
 
             pub use compress::TestRowCompressorImpl;
@@ -671,8 +877,13 @@ mod test_field_attributes {
         use row::*;
         const N: usize = 20;
 
-        /// Test 10 samples (size of queue)
-        let row = TestRow { a: 1, b: 1, c: 1 };
+        // Test 10 samples (size of queue)
+        let row = TestRow {
+            a: 1,
+            b: 1,
+            c: 1,
+            d: 1,
+        };
 
         // Initialize the compressor
         let mut compressor = TestRowCompressorImpl::new(128);
@@ -695,6 +906,7 @@ mod test_field_attributes {
         assert_eq!(decompressor.col_a(), vec![row.a; N]);
         assert_eq!(decompressor.col_b(), vec![row.b; N]);
         assert_eq!(decompressor.col_c(), vec![row.c; N]);
+        assert_eq!(decompressor.col_d(), vec![row.d; N]);
     }
 
     #[test]
@@ -865,6 +1077,61 @@ mod test_field_attributes {
     }
 
     #[test]
+    fn test_macro_compress_i8_value_i64_delta_all() {
+        // Test with all i64 deltas possible by i8 bit-widths values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                #[tsz(delta = "i64")]
+                pub a: i8,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        // Initialize the values vector
+        let mut values: Vec<i8> = Vec::with_capacity((i8::MAX as usize + 1) * 8 + 2);
+
+        // Write the first and second value
+        compressor.compress(TestRow { a: 0 });
+        compressor.compress(TestRow { a: 0 });
+        values.push(0);
+        values.push(0);
+
+        for i in i8::MIN..=i8::MAX {
+            compressor.compress(TestRow { a: i });
+            compressor.compress(TestRow { a: i8::MIN });
+            values.push(i);
+            values.push(i8::MIN);
+        }
+
+        for i in i8::MIN..=i8::MAX {
+            compressor.compress(TestRow { a: i });
+            compressor.compress(TestRow { a: i8::MAX });
+            values.push(i);
+            values.push(i8::MAX);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
     fn test_macro_compress_i16_value_i8_delta_all() {
         // Test with all i8 deltas possible by i16 bit-widths values
         mod row {
@@ -982,12 +1249,67 @@ mod test_field_attributes {
 
     #[test]
     fn test_macro_compress_i16_value_i32_delta_all() {
-        // Test with all i32 deltas possible by i16 bit-widths values
+        // Test with all deltas possible by i16 bit-widths values
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
             pub struct TestRow {
                 #[tsz(delta = "i32")]
+                pub a: i16,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        // Initialize the values vector
+        let mut values: Vec<i16> = Vec::with_capacity((i16::MAX as usize + 1) * 8 + 2);
+
+        // Write the first and second value
+        compressor.compress(TestRow { a: 0 });
+        compressor.compress(TestRow { a: 0 });
+        values.push(0);
+        values.push(0);
+
+        for i in i16::MIN..=i16::MAX {
+            compressor.compress(TestRow { a: i });
+            compressor.compress(TestRow { a: i16::MIN });
+            values.push(i);
+            values.push(i16::MIN);
+        }
+
+        for i in i16::MIN..=i16::MAX {
+            compressor.compress(TestRow { a: i });
+            compressor.compress(TestRow { a: i16::MAX });
+            values.push(i);
+            values.push(i16::MAX);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
+    fn test_macro_compress_i16_value_i64_delta_all() {
+        // Test with all deltas possible by i16 bit-widths values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                #[tsz(delta = "i64")]
                 pub a: i16,
             }
 
@@ -1155,11 +1477,12 @@ mod test_field_attributes {
 
     #[test]
     fn test_macro_compress_i32_value_i32_delta_edge_cases() {
-        // Test with edge i32 deltas possible by i32 bit-widths values
+        // Test with edge cases of i32 deltas possible by i32 bit-widths values
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
             pub struct TestRow {
+                #[tsz(delta = "i32")]
                 pub a: i32,
             }
 
@@ -1204,13 +1527,64 @@ mod test_field_attributes {
     }
 
     #[test]
-    fn test_macro_compress_i32_value_i32_delta_random() {
-        // Test with random values with delta within i32 range
+    fn test_macro_compress_i32_value_i64_delta_edge_cases() {
+        // Test with edge cases of i32 deltas possible by i32 bit-widths values
         mod row {
             use tsz_compress::prelude::*;
             #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
             pub struct TestRow {
-                #[tsz(delta = "i32")]
+                #[tsz(delta = "i64")]
+                pub a: i32,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        let values = vec![
+            1,
+            1,
+            i32::MIN,
+            i32::MAX,
+            i32::MIN,
+            i32::MAX,
+            i32::MIN,
+            i32::MAX,
+            i32::MIN,
+            i32::MAX,
+            1,
+        ];
+
+        for value in &values {
+            let row = TestRow { a: *value };
+            compressor.compress(row);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
+    fn test_macro_compress_i32_values_random() {
+        // Test with random values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                #[tsz(delta = "i64")]
                 pub a: i32,
             }
 
@@ -1230,7 +1604,328 @@ mod test_field_attributes {
 
             // Generate input vector randomly such that delta is in i32 range
             let values: Vec<i32> = (0..end_range)
-                .map(|_| rng.gen_range((i32::MIN / 2)..(i32::MAX - 1) / 2))
+                .map(|_| rng.gen_range(i32::MIN..i32::MAX))
+                .collect();
+
+            // Compression
+            for value in &values {
+                let row = TestRow { a: *value };
+                compressor.compress(row);
+            }
+
+            // Finalize the compression
+            let bytes = compressor.finish();
+
+            // Initialize the decompressor
+            let mut decompressor = TestRowDecompressorImpl::new();
+
+            // Decompress the bit buffer
+            decompressor.decompress(&bytes).unwrap();
+
+            // Assert that the decompressed data matches the original
+            assert_eq!(values, decompressor.col_a());
+        }
+    }
+
+    #[test]
+    fn test_macro_compress_i64_value_i8_delta_all() {
+        // Test with all i8 deltas possible by i64 bit-widths values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                #[tsz(delta = "i8")]
+                pub a: i64,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        // Initialize the values vector
+        let mut values: Vec<i64> = Vec::with_capacity((i8::MAX as usize + 1) * 4 + 2);
+
+        // Write the first and second value
+        compressor.compress(TestRow { a: 0 });
+        compressor.compress(TestRow { a: 0 });
+        values.push(0);
+        values.push(0);
+
+        for i in ((i8::MIN / 2) as i64)..=(((i8::MAX - 1) / 2) as i64) {
+            compressor.compress(TestRow { a: i });
+            compressor.compress(TestRow {
+                a: (i8::MIN / 2) as i64,
+            });
+            values.push(i);
+            values.push((i8::MIN / 2) as i64);
+        }
+
+        for i in ((i8::MIN / 2) as i64)..=(((i8::MAX - 1) / 2) as i64) {
+            compressor.compress(TestRow { a: i });
+            compressor.compress(TestRow {
+                a: ((i8::MAX - 1) / 2) as i64,
+            });
+            values.push(i);
+            values.push(((i8::MAX - 1) / 2) as i64);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
+    fn test_macro_compress_i64_value_i16_delta_all() {
+        // Test with all i16 deltas possible by i64 bit-widths values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                #[tsz(delta = "i16")]
+                pub a: i64,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        // Initialize the values vector
+        let mut values: Vec<i64> = Vec::with_capacity((i16::MAX as usize + 1) * 4 + 2);
+
+        // Write the first and second value
+        compressor.compress(TestRow { a: 0 });
+        compressor.compress(TestRow { a: 0 });
+        values.push(0);
+        values.push(0);
+
+        for i in ((i16::MIN / 2) as i64)..=(((i16::MAX - 1) / 2) as i64) {
+            compressor.compress(TestRow { a: i });
+            compressor.compress(TestRow {
+                a: (i16::MIN / 2) as i64,
+            });
+            values.push(i);
+            values.push((i16::MIN / 2) as i64);
+        }
+
+        for i in ((i16::MIN / 2) as i64)..=(((i16::MAX - 1) / 2) as i64) {
+            compressor.compress(TestRow { a: i });
+            compressor.compress(TestRow {
+                a: ((i16::MAX - 1) / 2) as i64,
+            });
+            values.push(i);
+            values.push(((i16::MAX - 1) / 2) as i64);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
+    fn test_macro_compress_i64_value_i32_delta_edge_cases() {
+        // Test with edge cases of i32 deltas possible by i64 bit-widths values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                #[tsz(delta = "i32")]
+                pub a: i64,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        let values: Vec<i64> = vec![
+            1,
+            1,
+            (i32::MIN / 2) as i64,
+            ((i32::MAX - 1) / 2) as i64,
+            (i32::MIN / 2) as i64,
+            ((i32::MAX - 1) / 2) as i64,
+            (i32::MIN / 2) as i64,
+            ((i32::MAX - 1) / 2) as i64,
+            (i32::MIN / 2) as i64,
+            ((i32::MAX - 1) / 2) as i64,
+            1,
+        ];
+
+        for value in &values {
+            let row = TestRow { a: *value };
+            compressor.compress(row);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
+    fn test_macro_compress_i64_value_i64_delta_edge_cases1() {
+        // Test with edge cases of i32 deltas possible by i64 bit-widths values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                #[tsz(delta = "i64")]
+                pub a: i64,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        let values = vec![
+            1,
+            1,
+            (i32::MIN) as i64,
+            (i32::MAX) as i64,
+            (i32::MIN) as i64,
+            (i32::MAX) as i64,
+            (i32::MIN) as i64,
+            (i32::MAX) as i64,
+            (i32::MIN) as i64,
+            (i32::MAX) as i64,
+            1,
+        ];
+
+        for value in &values {
+            let row = TestRow { a: *value };
+            compressor.compress(row);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
+    fn test_macro_compress_i64_value_i64_delta_edge_cases2() {
+        // Test with edge cases of i64 deltas possible by i64 bit-widths values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                #[tsz(delta = "i64")]
+                pub a: i64,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        // Initialize the compressor
+        let mut compressor = TestRowCompressorImpl::new(128);
+
+        let values = vec![
+            1,
+            1,
+            i64::MIN / 2,
+            (i64::MAX - 1) / 2,
+            i64::MIN / 2,
+            (i64::MAX - 1) / 2,
+            i64::MIN / 2,
+            (i64::MAX - 1) / 2,
+            i64::MIN / 2,
+            (i64::MAX - 1) / 2,
+            1,
+        ];
+
+        for value in &values {
+            let row = TestRow { a: *value };
+            compressor.compress(row);
+        }
+
+        // Finalize the compression
+        let bytes = compressor.finish();
+
+        // Initialize the decompressor
+        let mut decompressor = TestRowDecompressorImpl::new();
+
+        // Decompress the bit buffer
+        decompressor.decompress(&bytes).unwrap();
+
+        // Assert that the decompressed data matches the original
+        assert_eq!(values, decompressor.col_a());
+    }
+
+    #[test]
+    fn test_macro_compress_i64_values_random() {
+        // Test with random values
+        mod row {
+            use tsz_compress::prelude::*;
+            #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+            pub struct TestRow {
+                #[tsz(delta = "i64")]
+                pub a: i64,
+            }
+
+            pub use compress::TestRowCompressorImpl;
+            pub use decompress::TestRowDecompressorImpl;
+        }
+        use row::*;
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..1000 {
+            // Initialize the compressor
+            let mut compressor = TestRowCompressorImpl::new(128);
+
+            // Number of samples in the input vector
+            let end_range = rng.gen_range(100..10000);
+
+            // Generate input vector randomly such that delta is in i32 range
+            let values: Vec<i64> = (0..end_range)
+                .map(|_| rng.gen_range((i64::MIN / 2)..(i64::MAX - 1) / 2))
                 .collect();
 
             // Compression

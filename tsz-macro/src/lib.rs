@@ -542,15 +542,14 @@ fn get_fields_of_struct(input: syn::DeriveInput) -> Vec<(syn::Ident, syn::Type, 
         }
     }
 
-    let named_fields_with_attrs = named_fields
+    named_fields
         .into_iter()
         .enumerate()
         .map(|(i, f)| {
             let attr = &delta_user_col_tys[i];
             (f.ident.unwrap(), f.ty, attr.clone())
         })
-        .collect::<Vec<_>>();
-    named_fields_with_attrs
+        .collect::<Vec<_>>() // (ident, ty, delta_bit_width)
 }
 
 ///
@@ -595,7 +594,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
             Some(s) if s == "\"i8\"" => quote! { i8 },
             Some(s) if s == "\"i16\"" => quote! { i16 },
             Some(s) if s == "\"i32\"" => quote! { i32 },
-            // Some(s) if s == "\"i64\"" => quote! { i64 },
+            Some(s) if s == "\"i64\"" => quote! { i64 },
             None => match ty {
                 // Default Deltas
                 syn::Type::Path(syn::TypePath { path, .. }) => {
@@ -604,8 +603,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     match ident.to_string().as_str() {
                         "i8" => quote! { i16 },
                         "i16" => quote! { i32 },
-                        "i32" => quote! { i32 },
-                        "i64" => quote! { i32 },
+                        "i32" => quote! { i64 },
+                        "i64" => quote! { i64 },
                         _ => panic!("Unsupported type"),
                     }
                 }
