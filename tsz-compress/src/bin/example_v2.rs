@@ -7,6 +7,7 @@ pub struct TestRow {
     t: i64,
     a: i8,
     b: i16,
+    #[tsz(delta = "i32")]
     c: i32,
 }
 
