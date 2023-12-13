@@ -96,7 +96,7 @@ The future compression scheme will include a single bit before each delta-delta 
     1. 0, 111, 64 bits
 
 * the following is a truncated binary encoding header indicating the number of bit-packed deltas (not delta-deltas) in the next 32-bits. Each delta is zigzag encoded
-    1. 1, 10, 1 sample (64 bits)
+    1. 1, 10, 1, 1 sample (64 bits)
     1. 1, 01, 1, 1 sample (32 bits)
     1. 1, 00, pad 0, 2 samples (16 bits)
     1. 1, 01, pad 000, 3 samples (10 bits)
