@@ -155,7 +155,8 @@ For maximal compression ratio, a linear sequence of integers, such as an increme
 
 ### Performance Configuration
 
-The V2 compression scheme includes math for each row happening on the native bit-width. i64 math can be very expensive on 32-bit microcontrollers, so the internal data structure uses usize for storing bits. To use i64 on 32-bit systems, specify the bit-wdith to use that will not overflow from sample to sample. You can explicitly select the bit-width to use like so
+The V2 compression scheme includes math for each row happening on the native bit-width. i64 math can be very expensive on 32-bit microcontrollers, so the internal data structure uses usize for storing bits. To use i64 on 32-bit systems, specify the bit-wdith to use that will not overflow from sample to sample. You can explicitly select the bit-width to use like so:
+
 ```rust
 use tsz_compress::prelude::*;
 #[derive(Copy, Clone, CompressV2, DecompressV2)]
@@ -171,7 +172,7 @@ pub struct AbcdRow {
 }
 ```
 
-This allows the first two rows to use the normal column width, then all delta/delta-delta instructions operate on the specified bit-width. For example, the epoch timestamp in microseconds may be 8 bytes on the first and second row, then a 50Hz analog front-end will have deltas around 20000 microseconds calculated with 32 bits throughout a payload.
+This allows the first two rows to use the normal column width, then all delta/delta-delta instructions operate on the specified bit-width. For example, the epoch timestamp in microseconds may be 8 bytes on the first and second row, then a 50Hz analog front-end will have deltas around 20000 microseconds calculated with 32 bits for the rest of the compression.
 
 
 
