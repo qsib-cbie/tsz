@@ -1,8 +1,8 @@
 [package]
 name = "tsz-macro"
 edition = "2021"
-homepage = "https://github.com/trueb2/tsz"
-repository = "https://github.com/trueb2/tsz"
+homepage = "https://github.com/qsib-cbie/tsz"
+repository = "https://github.com/qsib-cbie/tsz"
 description = "Delta-delta compression for time series data"
 license = "MIT OR Apache-2.0"
 categories = ["compression"]

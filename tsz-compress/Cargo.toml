@@ -2,8 +2,8 @@
 name = "tsz-compress"
 edition = "2021"
 authors = ["Jacob T. <jtrueb@northwestern.edu>"]
-homepage = "https://github.com/trueb2/tsz"
-repository = "https://github.com/trueb2/tsz"
+homepage = "https://github.com/qsib-cbie/tsz"
+repository = "https://github.com/qsib-cbie/tsz"
 description = "Delta-delta compression for time series data"
 license = "MIT OR Apache-2.0"
 categories = ["compression"]
@@ -23,15 +23,5 @@ bitvec = { version = "1.0.1", default-features = false, features = ["alloc"] }
 num-traits = { version = "0.2.17", default-features = false }
 tsz-macro = { workspace = true }
 
-
 [dev-dependencies]
-criterion = "0.4.0"
 rand = "0.8.5"
-
-[[bench]]
-name = "compression"
-harness = false
-
-[[bench]]
-name = "real_world"
-harness = false
