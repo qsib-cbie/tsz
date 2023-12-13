@@ -1,4 +1,4 @@
-![Rust](https://github.com/trueb2/tsz/actions/workflows/rust.yml/badge.svg)
+![Rust](https://github.com/qsib-cbie/tsz/actions/workflows/rust.yml/badge.svg)
 [![Crate](https://img.shields.io/crates/v/tsz-compress)](https://crates.io/crates/tsz-compress)
 [![DOI](https://zenodo.org/badge/597249911.svg)](https://zenodo.org/badge/latestdoi/597249911)
 

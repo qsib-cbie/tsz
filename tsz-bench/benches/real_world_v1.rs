@@ -2,7 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tsz_compress::prelude::*;
 
 fn criterion_benchmark(c: &mut Criterion) {
-    const FILE_NAME: &str = "tests/data/0001-1686168000000000-9223372037005771051-index.tsz";
+    const FILE_NAME: &str = "data/0001-1686168000000000-9223372037005771051-index.tsz";
     #[derive(Default, DeltaEncodable, Decompressible, Compressible, Copy, Clone, Debug)]
     pub(crate) struct XyzValue {
         x: i32,
