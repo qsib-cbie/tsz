@@ -37,7 +37,7 @@ The `tsz` interface is designed to be as simple and result in as much inlining a
 // Use a procedural macro to generate a compressor and decompressor for a row struct
 mod abcd {
     use tsz_compress::prelude::*;
-    #[derive(Debug, Copy, Clone, CompressV2, DecompressV2)]
+    #[derive(Copy, Clone, CompressV2, DecompressV2)]
     pub struct AbcdRow {
         pub ts: i64,
         pub a: i8,
@@ -60,7 +60,7 @@ use abcd::decompress::AbcdRowDecompressorImpl;
 let mut compressor = TestRowCompressorImpl::new(32);
 
 // Compress all the rows you want
-compressor.compress(TestRow { ts: 0, a: 1, b: 2, c: 3, d: 4, });
+compressor.compress(TestRow { ts: 0, a: 1, b: 2, c: 3, d: 4 });
 assert!(compressor.row_count() == 1);
 
 // Finalize the compression, flushing the compressor's pending bits
@@ -152,3 +152,26 @@ See the docs for more info.
 ### Best-case Compression Example
 
 For maximal compression ratio, a linear sequence of integers, such as an incrementing integer, has a delta-delta of 0. In this trivialized example, we have the smallest delta-delta, 0. A second pass with LZ4 or ZSTD would compress this down to basically nothing. Similarly, a delta-delta of 0 is equivalent to encoding a constant delta, which would also be highly compressible by a second pass.
+
+### Performance Configuration
+
+The V2 compression scheme includes math for each row happening on the native bit-width. i64 math can be very expensive on 32-bit microcontrollers, so the internal data structure uses usize for storing bits. To use i64 on 32-bit systems, specify the bit-wdith to use that will not overflow from sample to sample. You can explicitly select the bit-width to use like so
+```rust
+use tsz_compress::prelude::*;
+#[derive(Copy, Clone, CompressV2, DecompressV2)]
+pub struct AbcdRow {
+    #[tsz(delta = "i32")]
+    pub ts: i64,
+    pub a: i8,
+    pub b: i16,
+    #[tsz(delta = "i16")]
+    pub c: i32,
+    #[tsz(delta = "i8")]
+    pub d: i64,
+}
+```
+
+This allows the first two rows to use the normal column width, then all delta/delta-delta instructions operate on the specified bit-width. For example, the epoch timestamp in microseconds may be 8 bytes on the first and second row, then a 50Hz analog front-end will have deltas around 20000 microseconds calculated with 32 bits throughout a payload.
+
+
+
