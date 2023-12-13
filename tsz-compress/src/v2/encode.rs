@@ -152,7 +152,6 @@ unsafe fn push_32_or_64_bits(q: &mut CompressionQueue<10>, buf: &mut HalfVec) {
     buf.push(HalfWord::Full(value as u32));
 }
 
-
 ///
 /// A trait that emits bits according to the most efficient case of Delta Compression.
 ///
@@ -194,24 +193,24 @@ impl EmitDeltaBits for CompressionQueue<10> {
         // Emit according to priority of cases
         if fits[0] {
             push_three_bits(self, out);
-            return 10;
+            10
         } else if fits[1] {
             push_six_bits(self, out);
-            return 5;
+            5
         } else if fits[2] {
             push_eight_bits(self, out);
-            return 4;
+            4
         } else if fits[3] {
             push_ten_bits(self, out);
-            return 3;
+            3
         } else if fits[4] {
             push_sixteen_bits(self, out);
-            return 2;
+            2
         } else {
             unsafe {
                 push_32_or_64_bits(self, out);
             }
-            return 1;
+            1
         }
     }
 
@@ -272,24 +271,24 @@ impl EmitDeltaBits for CompressionQueue<10> {
         // Emit according to priority of cases
         if fits[0] {
             push_three_bits(self, out);
-            return 10;
+            10
         } else if fits[1] {
             push_six_bits(self, out);
-            return 5;
+            5
         } else if fits[2] {
             push_eight_bits(self, out);
-            return 4;
+            4
         } else if fits[3] {
             push_ten_bits(self, out);
-            return 3;
+            3
         } else if fits[4] {
             push_sixteen_bits(self, out);
-            return 2;
+            2
         } else {
             unsafe {
                 push_32_or_64_bits(self, out);
             }
-            return 1;
+            1
         }
     }
 }
