@@ -5,7 +5,7 @@
 
 # tsz :: Compact Integral Time-Series Compression
 
-A portable implementation for bit-packing and precise framing on space-constrained systems for periodic time-series integral data.
+A portable implementation for bit-packing on space-constrained systems for time-series integral data sampled on embedded systems.
 
 Inspiration drawn from Delta encoding, IC FIFO compression, and Gorilla timestamp compression. https://www.vldb.org/pvldb/vol8/p1816-teller.pdf
 
@@ -85,9 +85,9 @@ Check out the benchmarks for more info in [tsz-bench](./tsz-bench/README.md).
 
 ## TSZ V2 Compression Scheme
 
-This is accessible behind the `CompressV2` and `DecompressV2` procedural macros.
+This is accessible behind the `CompressV2` and `DecompressV2` procedural macros. The delta scheme is currently employed by default with delta-delta work in progress. Delta can be better for systems that sample some noise that make it slightly unpredictable. Delta-delta can be far more compressible with second pass compression when delta-delta is often 0.
 
-The future compression scheme will include a single bit before each delta-delta to indicate:
+The compression scheme includes a single bit before each word to indicate:
 * the following is a truncated binary encoding header indicating the number of following bits and the bits for the delta-delta from the previous delta. Each delta-delta is zigzag encoded
     1. 0, 00, 1 bit
     1. 0, 01, 5 bits
@@ -104,12 +104,12 @@ The future compression scheme will include a single bit before each delta-delta 
     1. 1, 110, 8 samples (4 bits)
     1. 1, 111, pad 00, 10 samples (3 bits)
 
-In the updated scheme, the final encoding will include a final pass with an entropy coding with the minimum word size as 4 bits. All headers and delta bit sequences are 4 bit aligned, with octets tending towards 0000 for constant slope and 1111 for 10 consecutive data points within +-3. Values in delta zigzag encoding may also include octets of leading 0s.
+In the updated scheme, a second pass compression algorithm such as LZ4 or ZSTD greatly improve compression ratios. An space-optimized second pass algorithm would include entropy coding with the minimum word size as 4 bits. All headers and delta bit sequences are 4 bit aligned, with octets tending towards 0000 for constant slope and 1111 for 10 consecutive data points within +-3. Values in delta zigzag encoding may also include octets of leading 0s.
 
 
 ## TSZ V1 Compression Scheme
 
-This is accessible behind the `DeltaEncodable`, `Compressible`, and `Decompressible` procedural macros.
+This is accessible behind the `DeltaEncodable`, `Compressible`, and `Decompressible` procedural macros. This may still be an appropriate choice, if you have highly predictable data or do not intend to make a second pass with another algorithm. However, the scheme must operate over bits (using `bitvec`), which is slower than the nibble-aligned optimized compression structure used in TSZ V2.
 
 The initial compression scheme implementation included:
 1. A VLQ encoding of the full value for each column for the first row
