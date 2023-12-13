@@ -45,7 +45,7 @@ macro_rules! impl_signed_svlq {
                 };
 
                 // First byte is 6 bits, the rest are 7 bits
-                let mut byte = (value & 0b00111111) as u8;
+                let mut byte = (value & 0b0011_1111) as u8;
                 value >>= 6;
                 if value > 0 {
                     // VLQ continuation bit is set to the 7th bit on the first byte
@@ -749,7 +749,6 @@ mod tests {
     #[test]
     fn can_convert_all_i8() {
         for i in -128..=127 {
-            // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i8::try_from(svlq).unwrap();
             assert_eq!(value, i);
@@ -759,14 +758,12 @@ mod tests {
     #[test]
     fn can_convert_all_i16() {
         for i in -128..=127 {
-            // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i16::try_from(svlq).unwrap();
             assert_eq!(value, i);
         }
 
         for i in i16::MIN..=i16::MAX {
-            // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i16::try_from(svlq).unwrap();
             assert_eq!(value, i);
@@ -793,14 +790,12 @@ mod tests {
     #[test]
     fn can_convert_all_i32() {
         for i in i8::MIN..=i8::MAX {
-            // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i32::try_from(svlq).unwrap();
             assert_eq!(value, i as i32);
         }
 
         for i in i16::MIN..=i16::MAX {
-            // println!("i: {}", i);
             let svlq = super::Svlq::from(i);
             let value = i32::try_from(svlq).unwrap();
             assert_eq!(value, i as i32);

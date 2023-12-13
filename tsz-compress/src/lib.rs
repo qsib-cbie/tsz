@@ -158,12 +158,12 @@
 //!
 //!
 
-#![cfg_attr(not(test), no_std, no_main)]
+#![cfg_attr(all(not(feature = "std"), not(test)), no_std)]
 #![cfg_attr(test, allow(unused_imports))]
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
-#[cfg(test)]
+#[cfg(any(feature = "std", test))]
 #[macro_use]
 extern crate std;
 
@@ -176,6 +176,7 @@ pub mod uvlq;
 
 pub mod prelude {
     pub use crate::compress::*;
+    pub use crate::v2::*;
     pub use bitvec::prelude as bv;
 }
 
@@ -197,6 +198,8 @@ pub unsafe extern "C" fn tsz_init(_heap_start: *mut u8, _heap_size: u32) {
         return;
     };
 }
+
+mod v2;
 
 #[cfg(test)]
 mod tests {

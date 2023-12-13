@@ -480,7 +480,6 @@ mod tests {
     #[test]
     fn can_convert_all_u8() {
         for i in u8::MIN..=u8::MAX {
-            // println!("i: {}", i);
             let svlq = super::Uvlq::from(i);
             let value = u8::try_from(svlq).unwrap();
             assert_eq!(value, i);
@@ -490,14 +489,12 @@ mod tests {
     #[test]
     fn can_convert_all_u16() {
         for i in u8::MIN..=u8::MAX {
-            // println!("i: {}", i);
             let svlq = super::Uvlq::from(i);
             let value = u16::try_from(svlq).unwrap();
             assert_eq!(value, i as u16);
         }
 
         for i in u16::MIN..=u16::MAX {
-            // println!("i: {}", i);
             let svlq = super::Uvlq::from(i);
             let value = u16::try_from(svlq).unwrap();
             assert_eq!(value, i);
@@ -524,14 +521,12 @@ mod tests {
     #[test]
     fn can_convert_all_u32() {
         for i in u8::MIN..=u8::MAX {
-            // println!("i: {}", i);
             let svlq = super::Uvlq::from(i);
             let value = u32::try_from(svlq).unwrap();
             assert_eq!(value, i as u32);
         }
 
         for i in u16::MIN..=u16::MAX {
-            // println!("i: {}", i);
             let svlq = super::Uvlq::from(i);
             let value = u32::try_from(svlq).unwrap();
             assert_eq!(value, i as u32);

@@ -1,27 +1,35 @@
 [package]
-name = "tsz-compress"
+name = "tsz-bench"
 edition = "2021"
 authors = ["Jacob T. <jtrueb@northwestern.edu>"]
 homepage = "https://github.com/qsib-cbie/tsz"
 repository = "https://github.com/qsib-cbie/tsz"
 description = "Delta-delta, Delta compression for time series data"
-license = "MIT OR Apache-2.0"
-categories = ["compression"]
-keywords = ["time-series", "delta", "compression", "Gorilla", "serde"]
 readme = "README.md"
 version = { workspace = true }
-
-[features]
-default = []
-std = []
+publish = false
 
 [lib]
 crate-type = ["rlib"]
 
 [dependencies]
-bitvec = { version = "1.0.1", default-features = false, features = ["alloc"] }
-num-traits = { version = "0.2.17", default-features = false }
+tsz-compress = { workspace = true }
 tsz-macro = { workspace = true }
 
 [dev-dependencies]
+criterion = "0.4.0"
 rand = "0.8.5"
+polars = { version = "0.35.4", features = ["parquet"] }
+lz4_flex = "0.11.1"
+
+[[bench]]
+name = "compression"
+harness = false
+
+[[bench]]
+name = "real_world_v1"
+harness = false
+
+[[bench]]
+name = "real_world_v2"
+harness = false
