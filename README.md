@@ -79,23 +79,9 @@ let a = decompressor.col_a();
 let rows= decompressor.rows();
 ```
 
-## TSZ V1 Compression Scheme
+## Benchmarks
 
-This is accessible behind the `DeltaEncodable`, `Compressible`, and `Decompressible` procedural macros.
-
-The initial compression scheme implementation included:
-1. A VLQ encoding of the full value for each column for the first row
-2. A VLQ encoding of the delta from the first row to the second row
-3. For each subsequent row, a unary encoding header indicating the number of following bits and the bits for the delta-delta from the previous delta.
-    1. header 0, 0 bits
-    1. header 10, 4 bits
-    1. header 110, 7 bits
-    1. header 1110, 9 bits
-    1. header 11110, 12 bits
-    1. header 111110, 15 bits
-    1. header 1111110, 18 bits
-    1. header 11111110, 32 bits
-    1. header 111111110, 64 bits
+Check out the benchmarks for more info in [tsz-bench](./tsz-bench/README.md).
 
 ## TSZ V2 Compression Scheme
 
@@ -121,7 +107,25 @@ The future compression scheme will include a single bit before each delta-delta 
 In the updated scheme, the final encoding will include a final pass with an entropy coding with the minimum word size as 4 bits. All headers and delta bit sequences are 4 bit aligned, with octets tending towards 0000 for constant slope and 1111 for 10 consecutive data points within +-3. Values in delta zigzag encoding may also include octets of leading 0s.
 
 
-## Example for v1
+## TSZ V1 Compression Scheme
+
+This is accessible behind the `DeltaEncodable`, `Compressible`, and `Decompressible` procedural macros.
+
+The initial compression scheme implementation included:
+1. A VLQ encoding of the full value for each column for the first row
+2. A VLQ encoding of the delta from the first row to the second row
+3. For each subsequent row, a unary encoding header indicating the number of following bits and the bits for the delta-delta from the previous delta.
+    1. header 0, 0 bits
+    1. header 10, 4 bits
+    1. header 110, 7 bits
+    1. header 1110, 9 bits
+    1. header 11110, 12 bits
+    1. header 111110, 15 bits
+    1. header 1111110, 18 bits
+    1. header 11111110, 32 bits
+    1. header 111111110, 64 bits
+
+## Example for V1
 
 The following example encodes 2 timestamps and 4 values. The first timestamp is an SoC uptime ms. The second timestamp is UTC us. The values are 4 channels of int16_t data incrementing slowly and sometimes resetting. Data in this example is collected at 1 Hz.
 
@@ -147,63 +151,4 @@ See the docs for more info.
 
 ### Best-case Compression Example
 
-For maximal compression ratio, an incrementing integer requires 1 bit per value to represent after the delta and delta-delta header. In this trivialized example, we have 63.999x compression at 1.5GBps.
-
-```rust
-use tsz_compress::prelude::*;
-
-#[derive(Clone, Copy, DeltaEncodable, Compressible, Decompressible)]
-struct Row {
-    a: i64,
-}
-
-fn main() {
-    let start = std::time::Instant::now();
-    let mut c = Compressor::new();
-    for i in 0..1000000000 {
-        let row = Row { a: i };
-        c.compress(row);
-    }
-
-    // Prints: 'compressed size: 125000002 bytes
-    println!("compressed size: {} bytes", c.len());
-    let bytes = c.finish();
-    // Prints: `5.232524s`
-    println!("{:?}", start.elapsed());
-
-    let mut d = Decompressor::new(&bytes);
-    d.decompress::<Row>()
-        .unwrap()
-        .enumerate()
-        .for_each(|(i, row)| {
-            assert_eq!(row.a, i as i64);
-        });
-
-    // Prints: `10.380991875s`
-    println!("{:?}", start.elapsed());
-}
-```
-
-## Benchmarks
-
-Initial benchmark results for compression on M1 Max Pro (not target platform)
-
-Consistent delta and delta-delta compresses faster than continuously changing data.
-
-19000 bytes per iteration yields between 173MiB/s to 960MiB/s on "good" hardware.
-
-```
-compress monotontic 500 time:   [109.46 µs 109.77 µs 110.06 µs]
-                        change: [-0.2060% +0.0239% +0.2984%] (p = 0.85 > 0.05)
-                        No change in performance detected.
-Found 18 outliers among 100 measurements (18.00%)
-  1 (1.00%) low mild
-  5 (5.00%) high mild
-  12 (12.00%) high severe
-
-compress linear 500     time:   [19.752 µs 19.791 µs 19.838 µs]
-                        change: [+0.0169% +0.2636% +0.4882%] (p = 0.03 < 0.05)
-                        Change within noise threshold.
-Found 1 outliers among 100 measurements (1.00%)
-  1 (1.00%) high severe
-```
+For maximal compression ratio, a linear sequence of integers, such as an incrementing integer, has a delta-delta of 0. In this trivialized example, we have the smallest delta-delta, 0. A second pass with LZ4 or ZSTD would compress this down to basically nothing. Similarly, a delta-delta of 0 is equivalent to encoding a constant delta, which would also be highly compressible by a second pass.
