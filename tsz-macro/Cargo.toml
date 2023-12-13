@@ -3,7 +3,7 @@ name = "tsz-macro"
 edition = "2021"
 homepage = "https://github.com/qsib-cbie/tsz"
 repository = "https://github.com/qsib-cbie/tsz"
-description = "Delta-delta compression for time series data"
+description = "Delta-delta, Delta compression for time series data"
 license = "MIT OR Apache-2.0"
 categories = ["compression"]
 keywords = ["time-series", "delta", "compression", "Gorilla", "serde"]
@@ -16,5 +16,5 @@ proc-macro = true
 [dependencies]
 quote = "1.0.33"
 syn = "2.0.38"
-itertools = "0.11.0"
+itertools = "0.12.0"
 proc-macro2 = "1.0.70"
