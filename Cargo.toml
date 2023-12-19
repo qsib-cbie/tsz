@@ -1,10 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-    "tsz-compress",
-    "tsz-macro",
-    "tsz-bench",
-]
+members = ["tsz-compress", "tsz-macro", "tsz-bench"]
 
 [profile.dev.package."*"]
 opt-level = 3
@@ -14,8 +10,8 @@ opt-level = 3
 debug = true
 
 [workspace.package]
-version = "1.1.0"
+version = "1.1.1"
 
 [workspace.dependencies]
-tsz-macro = { version = "1.1.0", path = "tsz-macro" }
+tsz-macro = { version = "1.1.1", path = "tsz-macro" }
 tsz-compress = { version = "1.1.0", path = "tsz-compress" }

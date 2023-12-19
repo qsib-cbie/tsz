@@ -121,8 +121,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     let mut infinite_iter = std::iter::repeat(rows.iter()).flatten();
-    let mut keys_compressor = Compressor::<PartitionedTimeKey>::new();
-    let mut values_compressor = Compressor::<XyzValue>::new();
+    let mut keys_compressor = Compressor::<PartitionedTimeKey>::new(1_000_000);
+    let mut values_compressor = Compressor::<XyzValue>::new(1_000_000);
     c.bench_function("compress xyz 10k", |b| {
         b.iter(|| {
             black_box(for _ in 0..10_000 {
@@ -132,8 +132,8 @@ fn criterion_benchmark(c: &mut Criterion) {
             })
         })
     });
-    let mut keys_compressor = Compressor::<PartitionedTimeKey>::new();
-    let mut values_compressor = Compressor::<XyzValue>::new();
+    let mut keys_compressor = Compressor::<PartitionedTimeKey>::new(1_000_000);
+    let mut values_compressor = Compressor::<XyzValue>::new(1_000_000);
     c.bench_function("compress xyz 100k", |b| {
         b.iter(|| {
             black_box(for _ in 0..100_000 {
@@ -143,8 +143,8 @@ fn criterion_benchmark(c: &mut Criterion) {
             })
         })
     });
-    let mut keys_compressor = Compressor::<PartitionedTimeKey>::new();
-    let mut values_compressor = Compressor::<XyzValue>::new();
+    let mut keys_compressor = Compressor::<PartitionedTimeKey>::new(1_000_000);
+    let mut values_compressor = Compressor::<XyzValue>::new(1_000_000);
     c.bench_function("compress xyz 1M", |b| {
         b.iter(|| {
             black_box(for _ in 0..1_000_000 {
