@@ -1841,7 +1841,7 @@ dependencies = [
 
 [[package]]
 name = "tsz-bench"
-version = "1.1.1"
+version = "1.1.2"
 dependencies = [
  "criterion",
  "lz4_flex",
@@ -1853,7 +1853,7 @@ dependencies = [
 
 [[package]]
 name = "tsz-compress"
-version = "1.1.1"
+version = "1.1.2"
 dependencies = [
  "bitvec",
  "num-traits",
@@ -1863,7 +1863,7 @@ dependencies = [
 
 [[package]]
 name = "tsz-macro"
-version = "1.1.1"
+version = "1.1.2"
 dependencies = [
  "itertools 0.12.0",
  "proc-macro2",
