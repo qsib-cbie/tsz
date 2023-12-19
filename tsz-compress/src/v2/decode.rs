@@ -120,6 +120,10 @@ pub fn decode_i8(iter: &mut HalfIter<'_>, output: &mut Vec<i8>) -> Result<(), Co
     let Some(next_upper) = iter.next() else {
         return Ok(());
     };
+    if next_upper == headers::START_OF_COLUMN {
+        // Start of column of next column
+        return Ok(());
+    }
 
     // Full 8 bit value
     let buf = [(next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?];
@@ -130,6 +134,10 @@ pub fn decode_i8(iter: &mut HalfIter<'_>, output: &mut Vec<i8>) -> Result<(), Co
     let Some(next_upper) = iter.next() else {
         return Ok(());
     };
+    if next_upper == headers::START_OF_COLUMN {
+        // Start of column of next column
+        return Ok(());
+    }
 
     // Delta encoded 16 bit value
     let buf = [
@@ -295,6 +303,10 @@ pub fn decode_i16(iter: &mut HalfIter<'_>, output: &mut Vec<i16>) -> Result<(), 
     let Some(next_upper) = iter.next() else {
         return Ok(());
     };
+    if next_upper == headers::START_OF_COLUMN {
+        // Start of column of next column
+        return Ok(());
+    }
 
     // Full 16 bit value
     let buf = [
@@ -309,6 +321,10 @@ pub fn decode_i16(iter: &mut HalfIter<'_>, output: &mut Vec<i16>) -> Result<(), 
     let Some(next_upper) = iter.next() else {
         return Ok(());
     };
+    if next_upper == headers::START_OF_COLUMN {
+        // Start of column of next column
+        return Ok(());
+    }
 
     // Delta encoded 32 bit value
     let buf = [
@@ -477,6 +493,10 @@ pub fn decode_i32(iter: &mut HalfIter<'_>, output: &mut Vec<i32>) -> Result<(), 
     let Some(next_upper) = iter.next() else {
         return Ok(());
     };
+    if next_upper == headers::START_OF_COLUMN {
+        // Start of column of next column
+        return Ok(());
+    }
 
     // Full 32 bit value
     let buf = [
@@ -495,6 +515,10 @@ pub fn decode_i32(iter: &mut HalfIter<'_>, output: &mut Vec<i32>) -> Result<(), 
     let Some(next_upper) = iter.next() else {
         return Ok(());
     };
+    if next_upper == headers::START_OF_COLUMN {
+        // Start of column of next column
+        return Ok(());
+    }
 
     // Delta encoded 64 bit value
     let buf = [
@@ -693,6 +717,10 @@ pub fn decode_i64(iter: &mut HalfIter<'_>, output: &mut Vec<i64>) -> Result<(), 
     let Some(next_upper) = iter.next() else {
         return Ok(());
     };
+    if next_upper == headers::START_OF_COLUMN {
+        // Start of column of next column
+        return Ok(());
+    }
 
     // Full 64 bit value
     let buf = [
@@ -719,6 +747,10 @@ pub fn decode_i64(iter: &mut HalfIter<'_>, output: &mut Vec<i64>) -> Result<(), 
     let Some(next_upper) = iter.next() else {
         return Ok(());
     };
+    if next_upper == headers::START_OF_COLUMN {
+        // Start of column of next column
+        return Ok(());
+    }
 
     // Delta encoded 128 bit value
     let buf = [

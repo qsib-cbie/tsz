@@ -956,6 +956,20 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             }
                         )*
 
+                        // Guarantee that at least the column start nibble is emitted
+                        #(
+                            if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                if outbuf.is_empty() {
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::START_OF_COLUMN));
+                                }
+                            }
+                            if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                if outbuf.is_empty() {
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::START_OF_COLUMN));
+                                }
+                            }
+                        )*
+
                         // Flush any pending samples in the queues
                         // All of the bits are concatenated with a 1001 tag indicating the start of a new column
                         #(
@@ -1082,7 +1096,7 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                     /// Decompress tsz-compressed bytes, extending the columns with the decompressed values.
                     fn decompress(&mut self, bytes: &[u8]) -> Result<(), CodingError> {
                         // Require at least the row count and 1 column
-                        if bytes.len() < 9 {
+                        if bytes.len() < core::mem::size_of::<i32>() + 1 {
                             return Err(CodingError::Empty);
                         }
 
@@ -1120,9 +1134,8 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
 
                         // Pad nibbles to byte-alignment
                         match iter.next() {
-                            Some(::tsz_compress::prelude::consts::headers::START_OF_COLUMN) => (),
+                            Some(::tsz_compress::prelude::consts::headers::START_OF_COLUMN) | None => (),
                             Some(_) => return Err(CodingError::InvalidColumnTag),
-                            None => (),
                         }
 
                         // Make sure all the columns are the same length
