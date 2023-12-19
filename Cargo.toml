@@ -13,5 +13,5 @@ debug = true
 version = "1.1.1"
 
 [workspace.dependencies]
-tsz-macro = { version = "1.1.1", path = "tsz-macro" }
-tsz-compress = { version = "1.1.0", path = "tsz-compress" }
+tsz-macro = { version = "1.1.0", path = "tsz-macro" }
+tsz-compress = { version = "1.1.1", path = "tsz-compress" }
