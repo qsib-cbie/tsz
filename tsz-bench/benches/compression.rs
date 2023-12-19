@@ -285,7 +285,7 @@ impl Decompress for TestRow {
 }
 
 fn compress(values: Vec<TestRow>) -> BitBuffer {
-    let mut compressor = Compressor::new();
+    let mut compressor = Compressor::new(256);
     values.into_iter().for_each(|row| compressor.compress(row));
     let compressed = compressor.finish();
     compressed

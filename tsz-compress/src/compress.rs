@@ -86,9 +86,12 @@ impl<T: Compress> Compressor<T> {
     ///
     /// Create a new `Compressor` instance.
     ///
-    pub fn new() -> Self {
+    /// # Arguments
+    /// * `size_hint` - The number of bytes estimated to be in the final compressed data.
+    ///
+    pub fn new(size_hint: usize) -> Self {
         Self {
-            output: BitBuffer::new(),
+            output: BitBuffer::with_capacity(size_hint * 8),
             row_n: None,
             row_n1: None,
         }
@@ -570,7 +573,7 @@ mod tests {
             }
         }
 
-        let mut compressor = Compressor::new();
+        let mut compressor = Compressor::new(100);
 
         let lower = -32;
         let j = 0;
