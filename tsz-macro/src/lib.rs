@@ -860,10 +860,12 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             #(
                                 if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
                                     outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::START_OF_COLUMN));
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::FIRST_ROW));
                                     #write_first(outbuf, row.#col_idents);
                                 }
                                 if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
                                     outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::START_OF_COLUMN));
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::FIRST_ROW));
                                     #write_first(outbuf, row.#col_idents);
                                 }
                                 self.#prev_double_col_idents = row.#col_idents as #double_col_tys;
@@ -876,9 +878,11 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                                 let col = row.#col_idents as #double_col_tys;
                                 let delta = col - self.#prev_double_col_idents;
                                 if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::SECOND_ROW));
                                     #write_second(outbuf, delta);
                                 }
                                 if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::SECOND_ROW));
                                     #write_second(outbuf, delta);
                                 }
 
@@ -952,6 +956,20 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                                     self.#col_delta_delta_buf_idents = None;
                                 } else {
                                     self.#col_delta_buf_idents = None;
+                                }
+                            }
+                        )*
+
+                        // Guarantee that at least the column start nibble is emitted
+                        #(
+                            if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                if outbuf.is_empty() {
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::START_OF_COLUMN));
+                                }
+                            }
+                            if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                if outbuf.is_empty() {
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::START_OF_COLUMN));
                                 }
                             }
                         )*
@@ -1082,7 +1100,7 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                     /// Decompress tsz-compressed bytes, extending the columns with the decompressed values.
                     fn decompress(&mut self, bytes: &[u8]) -> Result<(), CodingError> {
                         // Require at least the row count and 1 column
-                        if bytes.len() < 9 {
+                        if bytes.len() < core::mem::size_of::<i32>() + 1 {
                             return Err(CodingError::Empty);
                         }
 
@@ -1120,9 +1138,8 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
 
                         // Pad nibbles to byte-alignment
                         match iter.next() {
-                            Some(::tsz_compress::prelude::consts::headers::START_OF_COLUMN) => (),
+                            Some(::tsz_compress::prelude::consts::headers::START_OF_COLUMN) | None => (),
                             Some(_) => return Err(CodingError::InvalidColumnTag),
-                            None => (),
                         }
 
                         // Make sure all the columns are the same length
