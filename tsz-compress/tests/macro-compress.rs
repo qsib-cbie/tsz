@@ -15,7 +15,7 @@ mod tests {
             pub val3: i64,
         }
 
-        let mut c = Compressor::new();
+        let mut c = Compressor::new(256);
 
         let lower = -100000;
         let upper = 100000;
@@ -61,7 +61,7 @@ mod tests {
             pub val3: i64,
         }
 
-        let _ = Compressor::<ARow>::new();
+        let _ = Compressor::<ARow>::new(1000);
         let bits = BitBuffer::new();
         let mut d = Decompressor::new(&bits);
         let _ = d.decompress::<ARow>();
@@ -76,7 +76,7 @@ mod tests {
             pub val4: i128,
         }
 
-        let _ = Compressor::<BRow>::new();
+        let _ = Compressor::<BRow>::new(100);
         let bits = BitBuffer::new();
         let mut d = Decompressor::new(&bits);
         let _ = d.decompress::<BRow>();
@@ -89,7 +89,7 @@ mod tests {
             a: i64,
         }
 
-        let mut c = Compressor::new();
+        let mut c = Compressor::new(256);
         let row = Row { a: 1 };
         c.compress(row);
 
@@ -108,7 +108,7 @@ mod tests {
             a: i64,
         }
 
-        let mut c = Compressor::new();
+        let mut c = Compressor::new(256);
         let row = Row { a: 1 };
         c.compress(row);
         let row = Row { a: 2 };
@@ -131,7 +131,7 @@ mod tests {
             a: i64,
         }
 
-        let mut c = Compressor::new();
+        let mut c = Compressor::new(100);
         let row = Row { a: 1 };
         c.compress(row);
         let row = Row { a: 2 };
@@ -166,7 +166,7 @@ mod tests {
             a: i64,
         }
 
-        let mut c = Compressor::new();
+        let mut c = Compressor::new(256);
         for i in 0..10000 {
             let row = Row { a: i };
             c.compress(row);

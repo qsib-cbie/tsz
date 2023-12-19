@@ -7,7 +7,7 @@ pub struct Row {
 }
 
 fn main() {
-    let mut c = Compressor::new();
+    let mut c = Compressor::new(256);
     for i in 0..10 {
         let row = Row {
             ts: i,
