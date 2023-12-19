@@ -860,10 +860,12 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             #(
                                 if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
                                     outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::START_OF_COLUMN));
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::FIRST_ROW));
                                     #write_first(outbuf, row.#col_idents);
                                 }
                                 if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
                                     outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::START_OF_COLUMN));
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::FIRST_ROW));
                                     #write_first(outbuf, row.#col_idents);
                                 }
                                 self.#prev_double_col_idents = row.#col_idents as #double_col_tys;
@@ -876,9 +878,11 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                                 let col = row.#col_idents as #double_col_tys;
                                 let delta = col - self.#prev_double_col_idents;
                                 if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::SECOND_ROW));
                                     #write_second(outbuf, delta);
                                 }
                                 if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                                    outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::SECOND_ROW));
                                     #write_second(outbuf, delta);
                                 }
 

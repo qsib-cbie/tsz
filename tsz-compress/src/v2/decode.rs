@@ -116,32 +116,32 @@ pub fn read_full_i8(buf: &[u8; 1]) -> i8 {
 /// and writes the decoded values to the Vec<i8>.
 ///
 pub fn decode_i8(iter: &mut HalfIter<'_>, output: &mut Vec<i8>) -> Result<(), CodingError> {
-    // No rows
-    let Some(next_upper) = iter.next() else {
-        return Ok(());
-    };
-    if next_upper == headers::START_OF_COLUMN {
-        // Start of column of next column
-        return Ok(());
+    // Check for 0 rows
+    match iter.next() {
+        None => return Ok(()),
+        Some(headers::START_OF_COLUMN) => return Ok(()),
+        Some(headers::FIRST_ROW) => {}
+        _ => return Err(CodingError::InvalidBits),
     }
 
     // Full 8 bit value
-    let buf = [(next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?];
+    let buf = [(iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
+        | iter.next().ok_or(CodingError::NotEnoughBits)?];
     let value = read_full_i8(&buf);
     output.push(value);
 
     // One row
-    let Some(next_upper) = iter.next() else {
-        return Ok(());
-    };
-    if next_upper == headers::START_OF_COLUMN {
-        // Start of column of next column
-        return Ok(());
+    match iter.next() {
+        None => return Ok(()),
+        Some(headers::START_OF_COLUMN) => return Ok(()),
+        Some(headers::SECOND_ROW) => {}
+        _ => return Err(CodingError::InvalidBits),
     }
 
     // Delta encoded 16 bit value
     let buf = [
-        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
+            | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
     ];
@@ -299,18 +299,18 @@ pub fn decode_i8(iter: &mut HalfIter<'_>, output: &mut Vec<i8>) -> Result<(), Co
 /// and writes the decoded values to the Vec<i16>.
 ///
 pub fn decode_i16(iter: &mut HalfIter<'_>, output: &mut Vec<i16>) -> Result<(), CodingError> {
-    // No rows
-    let Some(next_upper) = iter.next() else {
-        return Ok(());
-    };
-    if next_upper == headers::START_OF_COLUMN {
-        // Start of column of next column
-        return Ok(());
+    // Check for 0 rows
+    match iter.next() {
+        None => return Ok(()),
+        Some(headers::START_OF_COLUMN) => return Ok(()),
+        Some(headers::FIRST_ROW) => {}
+        _ => return Err(CodingError::InvalidBits),
     }
 
     // Full 16 bit value
     let buf = [
-        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
+            | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
     ];
@@ -318,17 +318,17 @@ pub fn decode_i16(iter: &mut HalfIter<'_>, output: &mut Vec<i16>) -> Result<(), 
     output.push(value);
 
     // One row
-    let Some(next_upper) = iter.next() else {
-        return Ok(());
-    };
-    if next_upper == headers::START_OF_COLUMN {
-        // Start of column of next column
-        return Ok(());
+    match iter.next() {
+        None => return Ok(()),
+        Some(headers::START_OF_COLUMN) => return Ok(()),
+        Some(headers::SECOND_ROW) => {}
+        _ => return Err(CodingError::InvalidBits),
     }
 
     // Delta encoded 32 bit value
     let buf = [
-        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
+            | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
@@ -489,18 +489,18 @@ pub fn decode_i16(iter: &mut HalfIter<'_>, output: &mut Vec<i16>) -> Result<(), 
 /// and writes the decoded values to the Vec<i32>.
 ///
 pub fn decode_i32(iter: &mut HalfIter<'_>, output: &mut Vec<i32>) -> Result<(), CodingError> {
-    // No rows
-    let Some(next_upper) = iter.next() else {
-        return Ok(());
-    };
-    if next_upper == headers::START_OF_COLUMN {
-        // Start of column of next column
-        return Ok(());
+    // Check for 0 rows
+    match iter.next() {
+        None => return Ok(()),
+        Some(headers::START_OF_COLUMN) => return Ok(()),
+        Some(headers::FIRST_ROW) => {}
+        _ => return Err(CodingError::InvalidBits),
     }
 
     // Full 32 bit value
     let buf = [
-        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
+            | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
@@ -512,17 +512,17 @@ pub fn decode_i32(iter: &mut HalfIter<'_>, output: &mut Vec<i32>) -> Result<(), 
     output.push(value);
 
     // One row
-    let Some(next_upper) = iter.next() else {
-        return Ok(());
-    };
-    if next_upper == headers::START_OF_COLUMN {
-        // Start of column of next column
-        return Ok(());
+    match iter.next() {
+        None => return Ok(()),
+        Some(headers::START_OF_COLUMN) => return Ok(()),
+        Some(headers::SECOND_ROW) => {}
+        _ => return Err(CodingError::InvalidBits),
     }
 
     // Delta encoded 64 bit value
     let buf = [
-        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
+            | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
@@ -713,18 +713,18 @@ pub fn decode_i32(iter: &mut HalfIter<'_>, output: &mut Vec<i32>) -> Result<(), 
 /// and writes the decoded values to the Vec<i64>.
 ///
 pub fn decode_i64(iter: &mut HalfIter<'_>, output: &mut Vec<i64>) -> Result<(), CodingError> {
-    // No rows
-    let Some(next_upper) = iter.next() else {
-        return Ok(());
-    };
-    if next_upper == headers::START_OF_COLUMN {
-        // Start of column of next column
-        return Ok(());
+    // Check for 0 rows
+    match iter.next() {
+        None => return Ok(()),
+        Some(headers::START_OF_COLUMN) => return Ok(()),
+        Some(headers::FIRST_ROW) => {}
+        _ => return Err(CodingError::InvalidBits),
     }
 
     // Full 64 bit value
     let buf = [
-        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
+            | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
@@ -744,17 +744,17 @@ pub fn decode_i64(iter: &mut HalfIter<'_>, output: &mut Vec<i64>) -> Result<(), 
     output.push(value);
 
     // One row
-    let Some(next_upper) = iter.next() else {
-        return Ok(());
-    };
-    if next_upper == headers::START_OF_COLUMN {
-        // Start of column of next column
-        return Ok(());
+    match iter.next() {
+        None => return Ok(()),
+        Some(headers::START_OF_COLUMN) => return Ok(()),
+        Some(headers::SECOND_ROW) => {}
+        _ => return Err(CodingError::InvalidBits),
     }
 
     // Delta encoded 128 bit value
     let buf = [
-        (next_upper << 4) | iter.next().ok_or(CodingError::NotEnoughBits)?,
+        (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
+            | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)
             | iter.next().ok_or(CodingError::NotEnoughBits)?,
         (iter.next().ok_or(CodingError::NotEnoughBits)? << 4)

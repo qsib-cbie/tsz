@@ -343,6 +343,8 @@ mod tests {
         let result = decompressor.decompress(&bytes);
 
         // Assert that the decompressed data matches the original
+        assert_eq!(result.unwrap(), ());
+        assert_eq!(decompressor.col_a(), vec![row.a; N]);
     }
 
     #[test]

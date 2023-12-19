@@ -1,5 +1,7 @@
 pub mod headers {
     pub const START_OF_COLUMN: u8 = 0b1001;
+    pub const FIRST_ROW: u8 = 0b0110;
+    pub const SECOND_ROW: u8 = FIRST_ROW;
 
     // DELTA ENCODING
     pub const THREE_BITS_TEN_SAMPLES: u8 = 0b1111;
