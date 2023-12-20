@@ -10,8 +10,8 @@ opt-level = 3
 debug = true
 
 [workspace.package]
-version = "1.1.2"
+version = "1.1.3"
 
 [workspace.dependencies]
-tsz-macro = { version = "1.1.0", path = "tsz-macro" }
-tsz-compress = { version = "1.1.2", path = "tsz-compress" }
+tsz-macro = { version = "1.1.3", path = "tsz-macro" }
+tsz-compress = { version = "1.1.3", path = "tsz-compress" }
