@@ -83,10 +83,21 @@ pub trait TszCompressV2 {
     fn row_count(&self) -> usize;
 
     ///
-    /// Finish compression, consuming the compressor and returning the compressed bytes.
-    /// This may leave intermediate buffers in a cleared state.
+    /// Consumes the compressor state, appending compressed bytes
+    /// to the provided buffer and reserving space if needed.
     ///
-    fn finish(&mut self) -> ::alloc::vec::Vec<u8>;
+    /// Leaving the intermediate buffers in a reserved, cleared state.
+    ///
+    fn finish_into(&mut self, output_bytes: &mut ::alloc::vec::Vec<u8>);
+
+    ///
+    /// Convienence method to call `finish_into` compression and return the compressed bytes.
+    ///
+    fn finish(&mut self) -> ::alloc::vec::Vec<u8> {
+        let mut bytes = ::alloc::vec::Vec::new();
+        self.finish_into(&mut bytes);
+        bytes
+    }
 }
 
 ///
