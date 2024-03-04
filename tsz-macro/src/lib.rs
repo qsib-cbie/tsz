@@ -944,10 +944,12 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     }
 
                     ///
-                    /// Consumes the compressor and returns the compressed bytes.
-                    /// Leaving intermediate buffers in a cleared state.
+                    /// Consumes the compressor state, appending compressed bytes
+                    /// to the provided buffer and reserving space if needed.
                     ///
-                    fn finish(&mut self) -> ::alloc::vec::Vec<u8> {
+                    /// Leaving the intermediate buffers in a reserved, cleared state.
+                    ///
+                    fn finish_into(&mut self, output_bytes: &mut ::alloc::vec::Vec<u8>) {
                         // Only use one encoding mechanism
                         #(
                             if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
@@ -1007,7 +1009,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         ].into_iter().flatten();
 
                         // Pack the words into nibbles
-                        let output = ::tsz_compress::prelude::halfvec::HalfVec::finish(words);
+                        ::tsz_compress::prelude::halfvec::HalfVec::finish(output_bytes, words);
 
                         // Clear the buffers for re-use
                         #(
@@ -1019,8 +1021,6 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             });
                             self.rows = 0;
                         )*
-
-                        output
                     }
                 }
             }

@@ -2,7 +2,6 @@
 [![Crate](https://img.shields.io/crates/v/tsz-compress)](https://crates.io/crates/tsz-compress)
 [![DOI](https://zenodo.org/badge/597249911.svg)](https://zenodo.org/badge/latestdoi/597249911)
 
-
 # tsz :: Compact Integral Time-Series Compression
 
 A portable implementation for bit-packing on space-constrained systems for time-series integral data sampled on embedded systems.
@@ -79,6 +78,19 @@ let a = decompressor.col_a();
 let rows= decompressor.rows();
 ```
 
+If you want to compress into an existing buffer, you can use the `finish_into(&mut vec_buf)` method to avoid allocating a new buffer. If necessary, it will continue appending to the buffer by reserving exactly the extra space it needs.
+
+```rust
+let mut compressor = TestRowCompressorImpl::new(32);
+let mut bytes: Vec<u8> = Vec::new();
+bytes.extend([0xDE, 0xAD, 0xBE, 0xEF]);
+compressor.finish_into(&mut bytes);
+assert_eq!(vec_buf[0], 0xDE);
+assert_eq!(vec_buf[1], 0xAD);
+assert_eq!(vec_buf[2], 0xBE);
+assert_eq!(vec_buf[3], 0xEF);
+```
+
 ## Benchmarks
 
 Check out the benchmarks for more info in [tsz-bench](./tsz-bench/README.md).
@@ -88,64 +100,66 @@ Check out the benchmarks for more info in [tsz-bench](./tsz-bench/README.md).
 This is accessible behind the `CompressV2` and `DecompressV2` procedural macros. The delta scheme is currently employed by default with delta-delta work in progress. Delta can be better for systems that sample some noise that make it slightly unpredictable. Delta-delta can be far more compressible with second pass compression when delta-delta is often 0.
 
 The compression scheme includes a single bit before each word to indicate:
-* the following is a truncated binary encoding header indicating the number of following bits and the bits for the delta-delta from the previous delta. Each delta-delta is zigzag encoded
-    1. 0, 00, 1 bit
-    1. 0, 01, 5 bits
-    1. 0, 10, 9 bits
-    1. 0, 110, 16 bits
-    1. 0, 111, 64 bits
 
-* the following is a truncated binary encoding header indicating the number of bit-packed deltas (not delta-deltas) in the next 32-bits. Each delta is zigzag encoded
-    1. 1, 10, 1, 1 sample (64 bits)
-    1. 1, 01, 1, 1 sample (32 bits)
-    1. 1, 00, pad 0, 2 samples (16 bits)
-    1. 1, 01, pad 000, 3 samples (10 bits)
-    1. 1, 10, pad 0, 4 samples (8 bits)
-    1. 1, 110, 8 samples (4 bits)
-    1. 1, 111, pad 00, 10 samples (3 bits)
+- the following is a truncated binary encoding header indicating the number of following bits and the bits for the delta-delta from the previous delta. Each delta-delta is zigzag encoded
+
+  1. 0, 00, 1 bit
+  1. 0, 01, 5 bits
+  1. 0, 10, 9 bits
+  1. 0, 110, 16 bits
+  1. 0, 111, 64 bits
+
+- the following is a truncated binary encoding header indicating the number of bit-packed deltas (not delta-deltas) in the next 32-bits. Each delta is zigzag encoded
+  1. 1, 10, 1, 1 sample (64 bits)
+  1. 1, 01, 1, 1 sample (32 bits)
+  1. 1, 00, pad 0, 2 samples (16 bits)
+  1. 1, 01, pad 000, 3 samples (10 bits)
+  1. 1, 10, pad 0, 4 samples (8 bits)
+  1. 1, 110, 8 samples (4 bits)
+  1. 1, 111, pad 00, 10 samples (3 bits)
 
 In the updated scheme, a second pass compression algorithm such as LZ4 or ZSTD greatly improve compression ratios. An space-optimized second pass algorithm would include entropy coding with the minimum word size as 4 bits. All headers and delta bit sequences are 4 bit aligned, with octets tending towards 0000 for constant slope and 1111 for 10 consecutive data points within +-3. Values in delta zigzag encoding may also include octets of leading 0s.
-
 
 ## TSZ V1 Compression Scheme
 
 This is accessible behind the `DeltaEncodable`, `Compressible`, and `Decompressible` procedural macros. This may still be an appropriate choice, if you have highly predictable data or do not intend to make a second pass with another algorithm. However, the scheme must operate over bits (using `bitvec`), which is slower than the nibble-aligned optimized compression structure used in TSZ V2.
 
 The initial compression scheme implementation included:
+
 1. A VLQ encoding of the full value for each column for the first row
 2. A VLQ encoding of the delta from the first row to the second row
 3. For each subsequent row, a unary encoding header indicating the number of following bits and the bits for the delta-delta from the previous delta.
-    1. header 0, 0 bits
-    1. header 10, 4 bits
-    1. header 110, 7 bits
-    1. header 1110, 9 bits
-    1. header 11110, 12 bits
-    1. header 111110, 15 bits
-    1. header 1111110, 18 bits
-    1. header 11111110, 32 bits
-    1. header 111111110, 64 bits
+   1. header 0, 0 bits
+   1. header 10, 4 bits
+   1. header 110, 7 bits
+   1. header 1110, 9 bits
+   1. header 11110, 12 bits
+   1. header 111110, 15 bits
+   1. header 1111110, 18 bits
+   1. header 11111110, 32 bits
+   1. header 111111110, 64 bits
 
 ## Example for V1
 
 The following example encodes 2 timestamps and 4 values. The first timestamp is an SoC uptime ms. The second timestamp is UTC us. The values are 4 channels of int16_t data incrementing slowly and sometimes resetting. Data in this example is collected at 1 Hz.
 
-| soc (uint64_t) | utc (int64_t) | channel0 (int16_t) | channel1 (int16_t) | channel2 (int16_t) | channel3 (int16_t) |
-| --- | --- | -------- | -------- | -------- | -------- |
-| 250 | 1675465460000000 | 0 | 100 | 200 | 300 |
-| 1250 | 1675465461000153 | 2 | 101 | 200 | 299 |
-| 2250 | 1675465462000512 | 4 | 103 | 201 | 301 |
-| 3251 | 1675465463000913 | 7 | 104 | 202 | 302 |
-| 4251 | 1675465464001300 | 9 | 105 | 203 | 303 |
+| soc (uint64_t) | utc (int64_t)    | channel0 (int16_t) | channel1 (int16_t) | channel2 (int16_t) | channel3 (int16_t) |
+| -------------- | ---------------- | ------------------ | ------------------ | ------------------ | ------------------ |
+| 250            | 1675465460000000 | 0                  | 100                | 200                | 300                |
+| 1250           | 1675465461000153 | 2                  | 101                | 200                | 299                |
+| 2250           | 1675465462000512 | 4                  | 103                | 201                | 301                |
+| 3251           | 1675465463000913 | 7                  | 104                | 202                | 302                |
+| 4251           | 1675465464001300 | 9                  | 105                | 203                | 303                |
 
 Compresses down by 3.2x in example here, extrapolating to 5.9x per 251 byte packet if example continued.
 
 | soc_bits | utc_bits | channel0_bits | channel1_bits | channel2_bits | channel3_bits |
-| --- | --- | -------- | -------- | -------- | -------- |
-| 16  | 64 | 8 | 8 | 16 | 16 |
-| 17 | 40 | 6 | 6 | 6 | 1 | 6 |
-| 1 | 10 | 1 | 6 | 6 | 6 |
-| 6 | 10  | 6 | 6 | 1 | 6 |
-| 6 | 10 | 6 | 1 | 1 | 1 |
+| -------- | -------- | ------------- | ------------- | ------------- | ------------- | --- |
+| 16       | 64       | 8             | 8             | 16            | 16            |
+| 17       | 40       | 6             | 6             | 6             | 1             | 6   |
+| 1        | 10       | 1             | 6             | 6             | 6             |
+| 6        | 10       | 6             | 6             | 1             | 6             |
+| 6        | 10       | 6             | 1             | 1             | 1             |
 
 See the docs for more info.
 
@@ -173,6 +187,3 @@ pub struct AbcdRow {
 ```
 
 This allows the first two rows to use the normal column width, then all delta/delta-delta instructions operate on the specified bit-width. For example, the epoch timestamp in microseconds may be 8 bytes on the first and second row, then a 50Hz analog front-end will have deltas around 20000 microseconds calculated with 32 bits for the rest of the compression.
-
-
-

@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use core::mem::MaybeUninit;
+
 use crate::prelude::*;
 use crate::v2::consts::headers;
 use alloc::vec::Vec;
@@ -93,15 +95,22 @@ impl HalfVec {
     ///
     /// Flattens the queue into a single vector of bytes.
     ///
-    pub fn finish<'a, I>(word_lists: I) -> Vec<u8>
+    pub fn finish<'a, I>(out: &mut Vec<u8>, word_lists: I)
     where
         I: Iterator<Item = &'a HalfVec> + Clone,
     {
         // We will be writing directly into the buffer since we know the capacity
         unsafe {
             // 2 nibbles per byte and len is in nibbles
+            // Reserve enough space for the output
             let len = word_lists.clone().map(|w| w.len).sum::<usize>() / 2;
-            let mut bytes = Vec::with_capacity(len + 1);
+            let reserve_len = len + 1;
+            let avail = out.capacity() - out.len();
+            if avail < reserve_len {
+                out.reserve_exact(reserve_len - avail);
+            }
+            let bytes = out.spare_capacity_mut();
+            let mut idx = 0;
 
             // Keep track of whether we are on the upper or lower nibble across word lists
             let mut upper = true;
@@ -119,17 +128,17 @@ impl HalfVec {
                         }
                         HalfWord::Byte(value) => {
                             // Use both nibbles from the byte
-                            known_append(&mut bytes, *value);
+                            known_append(bytes, &mut idx, *value);
                         }
                         HalfWord::Full(value) => {
                             // Use both nibbles from the top of the full
-                            known_append(&mut bytes, (value >> 24) as u8);
+                            known_append(bytes, &mut idx, (value >> 24) as u8);
                             // Use both nibbles from the top middle of the full
-                            known_append(&mut bytes, (value >> 16) as u8);
+                            known_append(bytes, &mut idx, (value >> 16) as u8);
                             // Use both nibbles from the bottom middle of the full
-                            known_append(&mut bytes, (value >> 8) as u8);
+                            known_append(bytes, &mut idx, (value >> 8) as u8);
                             // Use both nibbles from the bottom of the full
-                            known_append(&mut bytes, *value as u8);
+                            known_append(bytes, &mut idx, *value as u8);
                         }
                     }
                 } else {
@@ -137,14 +146,14 @@ impl HalfVec {
                         HalfWord::Half(value) => {
                             // Fill the lower nibble, the upper nibble is already filled
                             byte |= value & 0x0F;
-                            known_append(&mut bytes, byte);
+                            known_append(bytes, &mut idx, byte);
                             // We are now on the upper nibble
                             upper = true;
                         }
                         HalfWord::Byte(value) => {
                             // Fill the lower nibble with the upper nibble of the value
                             byte |= value >> 4;
-                            known_append(&mut bytes, byte);
+                            known_append(bytes, &mut idx, byte);
                             // Use the lower nibble from the value as the upper nibble
                             byte = value << 4;
                             // We are still on the lower nibble
@@ -152,16 +161,16 @@ impl HalfVec {
                         HalfWord::Full(value) => {
                             // Fill the lower nibble with the upper nibble of the value
                             byte |= (value >> 28) as u8;
-                            known_append(&mut bytes, byte);
+                            known_append(bytes, &mut idx, byte);
                             // Bits 28-20
                             byte = (value >> 20) as u8;
-                            known_append(&mut bytes, byte);
+                            known_append(bytes, &mut idx, byte);
                             // Bits 20-12
                             byte = (value >> 12) as u8;
-                            known_append(&mut bytes, byte);
+                            known_append(bytes, &mut idx, byte);
                             // Bits 12-4
                             byte = (value >> 4) as u8;
-                            known_append(&mut bytes, byte);
+                            known_append(bytes, &mut idx, byte);
 
                             // Use the lower nibble from the full as the upper nibble
                             byte = (value << 4) as u8;
@@ -174,20 +183,20 @@ impl HalfVec {
             if !upper {
                 // We are on the lower nibble, so fill the upper nibble with headers::START_OF_COLUMN
                 byte |= headers::START_OF_COLUMN;
-                known_append(&mut bytes, byte);
+                known_append(bytes, &mut idx, byte);
             }
 
-            bytes
+            out.set_len(out.len() + idx);
         }
     }
 }
 
 /// Appends a value to a vector without checking the capacity.
 #[inline(always)]
-unsafe fn known_append(buf: &mut Vec<u8>, value: u8) {
+unsafe fn known_append(buf: &mut [MaybeUninit<u8>], idx: &mut usize, value: u8) {
     // SAFETY: We allocate at least one vector in the constructor and never remove it.
-    buf.as_mut_ptr().add(buf.len()).write(value);
-    buf.set_len(buf.len() + 1);
+    (*buf.as_mut_ptr().add(*idx)).write(value);
+    *idx += 1;
 }
 
 #[cfg(test)]
@@ -225,8 +234,46 @@ mod tests {
         queue.push(HalfWord::Half(0));
 
         // Now every nibble is pushed together
-        let flat = HalfVec::finish([&queue].into_iter());
-        assert_eq!(flat.len(), (128 + 8 * 128 + 1 + 1) / 2);
+        let mut bytes = Vec::new();
+        HalfVec::finish(&mut bytes, [&queue].into_iter());
+        assert_eq!(bytes.len(), (128 + 8 * 128 + 1 + 1) / 2);
+    }
+
+    #[test]
+    fn can_push_with_header() {
+        let mut queue = HalfVec::new(128);
+        assert_eq!(queue.len(), 0);
+        assert_eq!(queue.is_empty(), true);
+
+        for i in 0..128 {
+            queue.push(HalfWord::Half(i as u8));
+            assert_eq!(queue.len(), i + 1);
+            assert_eq!(queue.is_empty(), false);
+        }
+
+        for i in 0..128 {
+            queue.push(HalfWord::Full(i as u32));
+            assert_eq!(queue.len(), 128 + (i + 1) * 8);
+            assert_eq!(queue.is_empty(), false);
+        }
+
+        queue.push(HalfWord::Half(15));
+        assert!(queue.len() % 2 == 1);
+        // End on the byte
+        queue.push(HalfWord::Half(0));
+
+        // Now every nibble is pushed together
+        let mut bytes = Vec::new();
+        bytes.push(0xDE);
+        bytes.push(0xAD);
+        bytes.push(0xBE);
+        bytes.push(0xEF);
+        HalfVec::finish(&mut bytes, [&queue].into_iter());
+        assert_eq!(bytes.len(), 4 + ((128 + 8 * 128 + 1 + 1) / 2));
+        assert_eq!(bytes[0], 0xDE);
+        assert_eq!(bytes[1], 0xAD);
+        assert_eq!(bytes[2], 0xBE);
+        assert_eq!(bytes[3], 0xEF);
     }
 }
 
@@ -275,7 +322,7 @@ mod tests_emit_delta {
         // Encode
         queue.emit_delta_bits(&mut bits);
 
-        return bits;
+        bits
     }
 
     #[test]
