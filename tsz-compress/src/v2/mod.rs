@@ -42,7 +42,7 @@ pub struct ColumnLengths {
 ///
 pub trait TszCompressV2 {
     /// The type of the row to compress.
-    type T: Copy;
+    type T;
 
     ///
     /// Initializes a new instance of the Compressor.
@@ -104,7 +104,7 @@ pub trait TszCompressV2 {
 /// High-level interface for decompression.
 ///
 pub trait TszDecompressV2 {
-    type T: Copy;
+    type T;
 
     ///
     /// Initializes a new instance of the Decompressor.
