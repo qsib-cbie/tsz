@@ -139,4 +139,11 @@ pub trait TszDecompressV2 {
     /// A vector of rows, where each row is a struct with the same fields as the original.
     ///
     fn rows(&self) -> ::alloc::vec::Vec<Self::T>;
+
+    ///
+    /// Clears the internal state of the decompressor.
+    ///
+    /// This is useful for reusing the decompressor instance for multiple decompression operations.
+    ///
+    fn clear(&mut self);
 }

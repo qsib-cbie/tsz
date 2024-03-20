@@ -1165,6 +1165,11 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                         }
                         rows
                     }
+
+                    /// Clear the internal state
+                    fn clear(&mut self) {
+                        #( self.#col_vec_idents.clear(); )*
+                    }
                 }
             }
             pub use private::#decompressor_ident;
