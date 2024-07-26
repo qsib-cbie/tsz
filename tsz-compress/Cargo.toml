@@ -12,8 +12,7 @@ readme = "README.md"
 version = { workspace = true }
 
 [features]
-# default = []
-default = ["thin-vec"]
+default = []
 std = []
 thin-vec = ["dep:thin-vec", "tsz-macro/thin-vec"]
 
