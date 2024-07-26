@@ -796,6 +796,92 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
+    let finish_into_thin = if cfg!(feature = "thin-vec") {
+        quote! {
+            ///
+            /// Consumes the compressor state, appending compressed bytes
+            /// to the provided buffer and reserving space if needed.
+            ///
+            /// Leaving the intermediate buffers in a reserved, cleared state.
+            ///
+            fn finish_into_thin(&mut self, output_bytes: &mut ::thin_vec::ThinVec<u8>) {
+                // Only use one encoding mechanism
+                #(
+                    if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
+                        // Prefer delta on ties
+                        if delta_delta_buffer.len() >= delta_buffer.len() {
+                            self.#col_delta_delta_buf_idents = None;
+                        } else {
+                            self.#col_delta_buf_idents = None;
+                        }
+                    }
+                )*
+
+                // Guarantee that at least the column start nibble is emitted
+                #(
+                    if let Some(outbuf) = self.#col_delta_buf_idents.as_mut() {
+                        if outbuf.is_empty() {
+                            outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::START_OF_COLUMN));
+                        }
+                    }
+                    if let Some(outbuf) = self.#col_delta_delta_buf_idents.as_mut() {
+                        if outbuf.is_empty() {
+                            outbuf.push(::tsz_compress::prelude::halfvec::HalfWord::Half(::tsz_compress::prelude::consts::headers::START_OF_COLUMN));
+                        }
+                    }
+                )*
+
+                // Flush any pending samples in the queues
+                // All of the bits are concatenated with a 1001 tag indicating the start of a new column
+                #(
+                    self.#col_delta_buf_idents.as_mut().map(|outbuf| {
+                        while self.#col_delta_comp_queue_idents.len() > 0 {
+                            self.#col_delta_comp_queue_idents.flush_delta_bits(outbuf);
+                        }
+                        });
+                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                        while self.#col_delta_delta_comp_queue_idents.len() > 0 {
+                            self.#col_delta_delta_comp_queue_idents.emit_delta_delta_bits(outbuf);
+                        }
+                    });
+                )*
+
+                // Write the number of rows as a 32-bit integer
+                // The decompressor will read this value and reserve space for the rows
+                // SAFETY: The number of rows may be more than 2^32, but the decompressor will
+                //         reserve at most 2^32 rows.
+                let mut rows = ::tsz_compress::prelude::halfvec::HalfVec::new(8);
+                write_i32_bits(&mut rows, self.rows as u32 as i32);
+
+                // Create an iterator over the words to be written
+                let rows = Some(rows);
+                let words = [
+                    rows.as_ref().into_iter(),
+                    #(
+                        self.#col_delta_buf_idents.as_ref().into_iter(),
+                        self.#col_delta_delta_buf_idents.as_ref().into_iter(),
+                    )*
+                ].into_iter().flatten();
+
+                // Pack the words into nibbles
+                ::tsz_compress::prelude::halfvec::HalfVec::finish_thin(output_bytes, words);
+
+                // Clear the buffers for re-use
+                #(
+                    self.#col_delta_buf_idents.as_mut().map(|outbuf| {
+                        outbuf.clear();
+                    });
+                    self.#col_delta_delta_buf_idents.as_mut().map(|outbuf| {
+                        outbuf.clear();
+                    });
+                    self.rows = 0;
+                )*
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     let compressor_struct = quote! {
         pub mod compress {
             use super::*;
@@ -1022,6 +1108,8 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                             self.rows = 0;
                         )*
                     }
+
+                    #finish_into_thin
                 }
             }
 
