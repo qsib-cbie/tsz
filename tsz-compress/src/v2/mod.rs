@@ -98,6 +98,23 @@ pub trait TszCompressV2 {
         self.finish_into(&mut bytes);
         bytes
     }
+
+    ///
+    /// Consumes the compressor state the same was as `finish_into`, but
+    /// does so directly into a ThinVec
+    ///
+    #[cfg(feature = "thin-vec")]
+    fn finish_into_thin(&mut self, output_bytes: &mut ::thin_vec::ThinVec<u8>);
+
+    ///
+    /// Convenience method to call `finish_into_thin`
+    ///
+    #[cfg(feature = "thin-vec")]
+    fn finish_thin(&mut self) -> ::thin_vec::ThinVec<u8> {
+        let mut bytes = ::thin_vec::ThinVec::new();
+        self.finish_into_thin(&mut bytes);
+        bytes
+    }
 }
 
 ///

@@ -189,6 +189,101 @@ impl HalfVec {
             out.set_len(out.len() + idx);
         }
     }
+
+    ///
+    /// Flattens the queue into a single vector of bytes.
+    ///
+    /// TODO: Change the ThinVec interface with a push unchecked that skips
+    /// the wasted capacity checks done by the ThinVec repo
+    ///
+    #[cfg(feature = "thin-vec")]
+    pub fn finish_thin<'a, I>(out: &mut ::thin_vec::ThinVec<u8>, word_lists: I)
+    where
+        I: Iterator<Item = &'a HalfVec> + Clone,
+    {
+        // 2 nibbles per byte and len is in nibbles
+        // Reserve enough space for the output
+        let len = word_lists.clone().map(|w| w.len).sum::<usize>();
+        let len = if len % 2 == 0 { len / 2 } else { len / 2 + 1 };
+        let avail = out.capacity() - out.len();
+        if avail < len {
+            out.reserve_exact(len - avail);
+        }
+
+        // Keep track of whether we are on the upper or lower nibble across word lists
+        let mut upper = true;
+        let mut byte = 0u8;
+
+        // Iterate over all the words in all the word lists
+        for word in word_lists.flat_map(|w| w.words.iter()) {
+            if upper {
+                match word {
+                    HalfWord::Half(value) => {
+                        // Shift the value into the upper nibble
+                        byte = value << 4;
+                        // We are now on the lower nibble
+                        upper = false;
+                    }
+                    HalfWord::Byte(value) => {
+                        // Use both nibbles from the byte
+                        out.push(*value);
+                    }
+                    HalfWord::Full(value) => {
+                        // Use both nibbles from the top of the full
+                        out.push((value >> 24) as u8);
+                        // Use both nibbles from the top middle of the full
+                        out.push((value >> 16) as u8);
+                        // Use both nibbles from the bottom middle of the full
+                        out.push((value >> 8) as u8);
+                        // Use both nibbles from the bottom of the full
+                        out.push(*value as u8);
+                    }
+                }
+            } else {
+                match word {
+                    HalfWord::Half(value) => {
+                        // Fill the lower nibble, the upper nibble is already filled
+                        byte |= value & 0x0F;
+                        out.push(byte);
+                        // We are now on the upper nibble
+                        upper = true;
+                    }
+                    HalfWord::Byte(value) => {
+                        // Fill the lower nibble with the upper nibble of the value
+                        byte |= value >> 4;
+                        out.push(byte);
+                        // Use the lower nibble from the value as the upper nibble
+                        byte = value << 4;
+                        // We are still on the lower nibble
+                    }
+                    HalfWord::Full(value) => {
+                        // Fill the lower nibble with the upper nibble of the value
+                        byte |= (value >> 28) as u8;
+                        out.push(byte);
+                        // Bits 28-20
+                        byte = (value >> 20) as u8;
+                        out.push(byte);
+                        // Bits 20-12
+                        byte = (value >> 12) as u8;
+                        out.push(byte);
+                        // Bits 12-4
+                        byte = (value >> 4) as u8;
+                        out.push(byte);
+
+                        // Use the lower nibble from the full as the upper nibble
+                        byte = (value << 4) as u8;
+                        // We are still on the lower nibble
+                    }
+                }
+            }
+        }
+
+        if !upper {
+            // We are on the lower nibble, so fill the upper nibble with headers::START_OF_COLUMN
+            byte |= headers::START_OF_COLUMN;
+            out.push(byte);
+        }
+    }
 }
 
 /// Appends a value to a vector without checking the capacity.
@@ -269,6 +364,44 @@ mod tests {
         bytes.push(0xBE);
         bytes.push(0xEF);
         HalfVec::finish(&mut bytes, [&queue].into_iter());
+        assert_eq!(bytes.len(), 4 + ((128 + 8 * 128 + 1 + 1) / 2));
+        assert_eq!(bytes[0], 0xDE);
+        assert_eq!(bytes[1], 0xAD);
+        assert_eq!(bytes[2], 0xBE);
+        assert_eq!(bytes[3], 0xEF);
+    }
+
+    #[cfg(feature = "thin-vec")]
+    #[test]
+    fn can_push_with_header_thin() {
+        let mut queue = HalfVec::new(128);
+        assert_eq!(queue.len(), 0);
+        assert_eq!(queue.is_empty(), true);
+
+        for i in 0..128 {
+            queue.push(HalfWord::Half(i as u8));
+            assert_eq!(queue.len(), i + 1);
+            assert_eq!(queue.is_empty(), false);
+        }
+
+        for i in 0..128 {
+            queue.push(HalfWord::Full(i as u32));
+            assert_eq!(queue.len(), 128 + (i + 1) * 8);
+            assert_eq!(queue.is_empty(), false);
+        }
+
+        queue.push(HalfWord::Half(15));
+        assert!(queue.len() % 2 == 1);
+        // End on the byte
+        queue.push(HalfWord::Half(0));
+
+        // Now every nibble is pushed together
+        let mut bytes = thin_vec::ThinVec::new();
+        bytes.push(0xDE);
+        bytes.push(0xAD);
+        bytes.push(0xBE);
+        bytes.push(0xEF);
+        HalfVec::finish_thin(&mut bytes, [&queue].into_iter());
         assert_eq!(bytes.len(), 4 + ((128 + 8 * 128 + 1 + 1) / 2));
         assert_eq!(bytes[0], 0xDE);
         assert_eq!(bytes[1], 0xAD);

@@ -14,6 +14,7 @@ version = { workspace = true }
 [features]
 default = []
 std = []
+thin-vec = ["dep:thin-vec", "tsz-macro/thin-vec"]
 
 [lib]
 crate-type = ["rlib"]
@@ -21,6 +22,7 @@ crate-type = ["rlib"]
 [dependencies]
 bitvec = { version = "1.0.1", default-features = false, features = ["alloc"] }
 num-traits = { version = "0.2.17", default-features = false }
+thin-vec = { version = "0.2.13", default-features = false, optional = true }
 tsz-macro = { workspace = true }
 
 [dev-dependencies]
